@@ -1,6 +1,5 @@
 /* ==========================================================================
-   OPIA SOFTWARE - PERFECT RESPONSIVE STYLESHEET
-   Fixes drawer overlay leaks, icon fallbacks, and desktop/mobile layout clarity.
+   OPIA SOFTWARE - PERFECT RESPONSIVE STYLESHEET (HEADER SPECIFICITY FIX)
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
@@ -35,7 +34,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   2. Base Reset & Boundary Controls
+   2. Strict Reset & Mobile Base (< 1024px)
    -------------------------------------------------------------------------- */
 *, *::before, *::after {
     box-sizing: border-box !important;
@@ -202,17 +201,26 @@ h1, h2, h3, h4 {
 }
 
 /* --------------------------------------------------------------------------
-   4. Header & Drawer Controls (CRITICAL FIX FOR INVISIBLE CLOSED DRAWER)
+   4. Header & Drawer Controls (STRICT MOBILE / DESKTOP ISOLATION)
    -------------------------------------------------------------------------- */
+
+/* STRICTLY HIDE DESKTOP NAV AND DESKTOP BUTTONS ON MOBILE (<1024px) */
+.desktop-nav,
+.header-cta,
+.desktop-only {
+    display: none !important;
+}
+
 .header-nav {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     width: 100% !important;
+    height: 64px;
     z-index: 1000;
-    padding: 0.85rem 0;
-    background: rgba(9, 13, 22, 0.94);
+    padding: 0;
+    background: rgba(9, 13, 22, 0.96);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border-bottom: 1px solid var(--border-glass);
@@ -220,10 +228,12 @@ h1, h2, h3, h4 {
 }
 
 .header-inner {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    height: 100% !important;
 }
 
 .brand-logo {
@@ -266,7 +276,7 @@ h1, h2, h3, h4 {
     border: 1px solid var(--border-glass);
     color: var(--text-white);
     font-size: 1.4rem;
-    display: flex;
+    display: flex !important;
     align-items: center;
     justify-content: center;
     cursor: pointer;
@@ -299,7 +309,7 @@ h1, h2, h3, h4 {
     height: 100vh;
     background: #0d1322;
     z-index: 1100;
-    display: none !important; /* CRITICAL: Must be display:none when closed! */
+    display: none !important;
     flex-direction: column;
     padding: 1.25rem;
     box-shadow: -10px 0 30px rgba(0, 0, 0, 0.8);
@@ -308,7 +318,7 @@ h1, h2, h3, h4 {
 }
 
 .mobile-drawer.active {
-    display: flex !important; /* SHOWN ONLY WHEN HAMBURGER IS CLICKED */
+    display: flex !important;
 }
 
 .drawer-header {
@@ -1309,7 +1319,7 @@ h1, h2, h3, h4 {
     }
 
     .desktop-nav {
-        display: flex;
+        display: flex !important;
         align-items: center;
         gap: 1.8rem;
     }
@@ -1323,6 +1333,11 @@ h1, h2, h3, h4 {
 
     .desktop-nav .nav-link:hover {
         color: var(--text-white);
+    }
+
+    .header-cta {
+        display: flex !important;
+        align-items: center;
     }
 
     .hero-inner {
