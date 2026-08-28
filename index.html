@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>OPIA Software | Desarrollo de Software a la Medida impulsado por IA</title>
     <meta name="description" content="Desarrollo de software a la medida para empresas. Modelos de pago flexibles: pago único o suscripción mensual desde $500.000 COP. Desarrollo impulsado por Inteligencia Artificial.">
     <meta name="keywords" content="software a la medida, desarrollo de software colombia, software mensualidad, desarrollo con IA, ERP a la medida, CRM a la medida, OPIA Software">
@@ -17,7 +17,7 @@
     <!-- Fonts Google -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- Remixicons CDN -->
     <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet" />
@@ -26,6 +26,9 @@
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+
+    <!-- Overlay backdrop for mobile menu -->
+    <div class="nav-overlay" id="navOverlay"></div>
 
     <!-- Header Navigation -->
     <header class="navbar-header" id="navbar">
@@ -36,18 +39,34 @@
             </a>
             
             <nav class="nav-menu" id="navMenu">
-                <a href="#servicios" class="nav-link">Servicios</a>
-                <a href="#modelos-pago" class="nav-link">Modelos de Pago</a>
-                <a href="#calculadora" class="nav-link">Calculadora</a>
-                <a href="#diferencial" class="nav-link">Factor IA</a>
-                <a href="#faq" class="nav-link">Preguntas Frecuentes</a>
+                <div class="mobile-menu-header">
+                    <span class="logo-text">OPIA <span class="logo-highlight">SOFTWARE</span></span>
+                    <button class="mobile-menu-close" id="mobileCloseBtn" aria-label="Cerrar menú">
+                        <i class="ri-close-line"></i>
+                    </button>
+                </div>
+                <a href="#servicios" class="nav-link"><i class="ri-terminal-window-line mobile-only-icon"></i> Servicios</a>
+                <a href="#modelos-pago" class="nav-link"><i class="ri-money-dollar-box-line mobile-only-icon"></i> Modelos de Pago</a>
+                <a href="#calculadora" class="nav-link"><i class="ri-calculator-line mobile-only-icon"></i> Calculadora</a>
+                <a href="#diferencial" class="nav-link"><i class="ri-sparkling-line mobile-only-icon"></i> Factor IA</a>
+                <a href="#faq" class="nav-link"><i class="ri-question-line mobile-only-icon"></i> Preguntas Frecuentes</a>
+                
+                <div class="mobile-menu-footer">
+                    <a href="https://wa.me/573002374114?text=Hola%20OPIA%20Software,%20me%20gustar%C3%ADa%20recibir%20asesor%C3%ADa%20sobre%20desarrollo%20de%20software%20a%20la%20medida." 
+                       target="_blank" 
+                       rel="noopener noreferrer" 
+                       class="btn btn-whatsapp btn-block">
+                        <i class="ri-whatsapp-line"></i>
+                        <span>Cotizar por WhatsApp</span>
+                    </a>
+                </div>
             </nav>
 
             <div class="nav-actions">
-                <a href="https://wa.me/573002374114?text=Hola%20OPIA%20Software,%20me%20gustar%C3%ADa%20recibir%20asesor%C3%ADa%20sobre%20un%20software%20a%20la%20medida." 
+                <a href="https://wa.me/573002374114?text=Hola%20OPIA%20Software,%20me%20gustar%C3%ADa%20recibir%20asesor%C3%ADa%20sobre%20desarrollo%20de%20software%20a%20la%20medida." 
                    target="_blank" 
                    rel="noopener noreferrer" 
-                   class="btn btn-whatsapp nav-btn">
+                   class="btn btn-whatsapp nav-btn hide-mobile">
                     <i class="ri-whatsapp-line"></i>
                     <span>Cotizar por WhatsApp</span>
                 </a>
@@ -70,7 +89,7 @@
                 <div class="hero-content">
                     <div class="badge-tag animate-fade-in">
                         <span class="badge-icon"><i class="ri-sparkling-fill"></i></span>
-                        <span>Desarrollo Ágil con Inteligencia Artificial</span>
+                        <span>Desarrollo Ágil con IA | 100% Personalizado</span>
                     </div>
 
                     <h1 class="hero-title animate-slide-up">
@@ -89,37 +108,35 @@
                         <a href="https://wa.me/573002374114?text=Hola%20OPIA%20Software,%20deseo%20cotizar%20un%20proyecto%20a%20la%20medida." 
                            target="_blank" 
                            rel="noopener noreferrer" 
-                           class="btn btn-primary btn-lg">
+                           class="btn btn-primary btn-block-mobile">
                             <i class="ri-whatsapp-line"></i>
                             <span>Hablar con un Ingeniero (+57 300 237 4114)</span>
                         </a>
-                        <a href="#calculadora" class="btn btn-outline btn-lg">
+                        <a href="#calculadora" class="btn btn-outline btn-block-mobile">
                             <i class="ri-calculator-line"></i>
                             <span>Calcular mi Plan</span>
                         </a>
                     </div>
 
-                    <div class="hero-metrics">
+                    <div class="hero-metrics-scroll">
                         <div class="metric-item">
                             <i class="ri-speed-up-line metric-icon"></i>
                             <div>
                                 <span class="metric-value">3x Más Rápido</span>
-                                <span class="metric-label">Gracias a IA asistida</span>
+                                <span class="metric-label">Desarrollo asistido por IA</span>
                             </div>
                         </div>
-                        <div class="metric-divider"></div>
                         <div class="metric-item">
                             <i class="ri-wallet-3-line metric-icon"></i>
                             <div>
                                 <span class="metric-value">Desde $500.000/mes</span>
-                                <span class="metric-label">Opción de cuota mensual</span>
+                                <span class="metric-label">Cuotas de pago flexible</span>
                             </div>
                         </div>
-                        <div class="metric-divider"></div>
                         <div class="metric-item">
                             <i class="ri-shield-check-line metric-icon"></i>
                             <div>
-                                <span class="metric-value">100% Personalizado</span>
+                                <span class="metric-value">100% a la Medida</span>
                                 <span class="metric-label">Adaptado a tus procesos</span>
                             </div>
                         </div>
@@ -134,19 +151,11 @@
                                 <span class="dot yellow"></span>
                                 <span class="dot green"></span>
                             </div>
-                            <span class="mockup-title">OPIA AI Suite - Dashboard Ejecutiva</span>
+                            <span class="mockup-title">OPIA AI Suite - Dashboard</span>
                         </div>
                         <div class="mockup-body">
                             <img src="assets/images/hero_preview.png" alt="Vista previa del software a la medida desarrollado por OPIA Software" class="hero-img">
                             
-                            <div class="floating-badge badge-top-right">
-                                <i class="ri-robot-2-line"></i>
-                                <div>
-                                    <strong>Generación Inteligente</strong>
-                                    <span>Menor costo de desarrollo</span>
-                                </div>
-                            </div>
-
                             <div class="floating-badge badge-bottom-left">
                                 <i class="ri-checkbox-circle-fill text-success"></i>
                                 <div>
@@ -167,7 +176,7 @@
                     <span class="section-subtitle">Modelos de Contratación</span>
                     <h2 class="section-title">Elige la modalidad de pago que mejor <span class="text-gradient">se adapte a tu presupuesto</span></h2>
                     <p class="section-description">
-                        No permitas que los altos costos iniciales de desarrollo detengan la digitalización de tu negocio.
+                        No permitas que los altos costos iniciales detengan la digitalización de tu negocio.
                         En OPIA Software nos adaptamos a tu capacidad financiera.
                     </p>
                 </div>
@@ -277,7 +286,7 @@
                     <div class="calc-header text-center">
                         <span class="section-subtitle">Simulador Interactivo</span>
                         <h2 class="section-title">Calcula tu presupuesto estimado</h2>
-                        <p>Descubre lo fácil que es acceder a tu software a la medida comparando el Pago Único vs. Suscripción Mensual.</p>
+                        <p>Compara el Pago Único vs. Suscripción Mensual en tiempo real.</p>
                     </div>
 
                     <div class="calc-grid">
@@ -291,7 +300,7 @@
                                 <select id="projectType" class="calc-select">
                                     <option value="1.0" data-base="8000000">Sistema Web / ERP / CRM a la medida</option>
                                     <option value="1.2" data-base="10000000" selected>Aplicación Web Completa + Móvil (iOS/Android)</option>
-                                    <option value="0.7" data-base="5000000">Portal / Plataforma de E-commerce Especializado</option>
+                                    <option value="0.7" data-base="5000000">Portal / Plataforma E-commerce Especializado</option>
                                     <option value="0.8" data-base="6000000">Automatización de Procesos con IA & Agentes</option>
                                 </select>
                             </div>
@@ -303,9 +312,9 @@
                                 </label>
                                 <input type="range" id="complexityRange" min="1" max="3" step="1" value="2" class="calc-range">
                                 <div class="range-labels">
-                                    <span id="lblSimple">Básico (3-4 Módulos)</span>
-                                    <span id="lblMedium" class="active">Medio (5-8 Módulos)</span>
-                                    <span id="lblComplex">Avanzado (+9 Módulos)</span>
+                                    <span id="lblSimple">Básico (3-4)</span>
+                                    <span id="lblMedium" class="active">Medio (5-8)</span>
+                                    <span id="lblComplex">Avanzado (+9)</span>
                                 </div>
                             </div>
 
@@ -316,8 +325,8 @@
                                 </label>
                                 <select id="supportAddon" class="calc-select">
                                     <option value="0">Soporte Estándar Incluido</option>
-                                    <option value="100000">Soporte Prioritario (Respuesta en < 2h) (+$100.000/mes)</option>
-                                    <option value="250000">Soporte 24/7 + Bolsa de 10 Horas Mensuales de Ajustes (+$250.000/mes)</option>
+                                    <option value="100000">Soporte Prioritario (+$100.000/mes)</option>
+                                    <option value="250000">Soporte 24/7 + 10 Horas Ajustes (+$250.000/mes)</option>
                                 </select>
                             </div>
 
@@ -327,7 +336,7 @@
                             <h3 class="results-title">Estimación de Tu Proyecto</h3>
                             
                             <div class="result-card result-monthly">
-                                <span class="result-badge">Opción Recomendada</span>
+                                <span class="result-badge">Recomendado</span>
                                 <span class="result-label">Suscripción Mensual (SaaS)</span>
                                 <div class="result-amount-box">
                                     <span class="calc-currency">$</span>
@@ -337,7 +346,7 @@
                                 <p class="result-subtext">Cero desembolso gigante inicial. Mantenimiento y servidor incluidos.</p>
                             </div>
 
-                            <div class="result-divider">O también puedes optar por:</div>
+                            <div class="result-divider">O en modalidad tradicional:</div>
 
                             <div class="result-card result-upfront">
                                 <span class="result-label">Pago Único Tradicional (Propiedad Total)</span>
@@ -346,12 +355,12 @@
                                     <span id="upfrontResult" class="calc-number">10.000.000</span>
                                     <span class="calc-period">COP</span>
                                 </div>
-                                <p class="result-subtext">Pago en hitos. Código fuente y entregables al 100%.</p>
+                                <p class="result-subtext">Pago por hitos. Código fuente y entregables al 100%.</p>
                             </div>
 
                             <button id="btnSendCalcWhatsApp" class="btn btn-whatsapp btn-block btn-lg mt-3">
                                 <i class="ri-whatsapp-line"></i>
-                                <span>Solicitar esta Cotización por WhatsApp</span>
+                                <span>Solicitar este Plan por WhatsApp</span>
                             </button>
                         </div>
                     </div>
@@ -367,7 +376,7 @@
                         <span class="section-subtitle">Innovación y Eficiencia</span>
                         <h2 class="section-title">Impulsados por <span class="text-gradient">Inteligencia Artificial</span> para darte el mejor precio</h2>
                         <p class="section-description">
-                            En las casas de software tradicionales, desarrollar un sistema desde cero toma meses y requiere grandes equipos de programadores que encarecen el producto final.
+                            Usamos IA avanzada para automatizar tareas repetitivas de código, reduciendo los tiempos y trasladando ese ahorro a tu empresa.
                         </p>
                         
                         <div class="ai-features-list">
@@ -375,7 +384,7 @@
                                 <div class="ai-icon"><i class="ri-flashlight-line"></i></div>
                                 <div>
                                     <h4>Desarrollo Ultra Acelerado</h4>
-                                    <p>Usamos herramientas avanzadas de IA para autogenerar estructuras de código limpias, reduciendo los tiempos de entrega hasta en un 60%.</p>
+                                    <p>Generación asistida de código reduciendo entregas en un 60%.</p>
                                 </div>
                             </div>
 
@@ -383,7 +392,7 @@
                                 <div class="ai-icon"><i class="ri-price-tag-3-line"></i></div>
                                 <div>
                                     <h4>Costos Significativamente Menores</h4>
-                                    <p>Al requerir menos horas hombre repetitivas, trasladamos ese ahorro directamente a tu presupuesto en mensualidades desde $500.000 COP.</p>
+                                    <p>Presupuestos accesibles con mensualidades desde $500.000 COP.</p>
                                 </div>
                             </div>
 
@@ -391,7 +400,7 @@
                                 <div class="ai-icon"><i class="ri-code-box-line"></i></div>
                                 <div>
                                     <h4>Código Robusto y Escalable</h4>
-                                    <p>Auditoría de código asistida por IA para garantizar máxima seguridad, alto rendimiento y fácil integración con tus sistemas futuros.</p>
+                                    <p>Auditoría inteligente de seguridad y arquitectura de alto nivel.</p>
                                 </div>
                             </div>
                         </div>
@@ -405,18 +414,17 @@
                                 <span class="code-dot green"></span>
                                 <span class="code-filename">OPIA_Engine.ai.ts</span>
                             </div>
-                            <pre class="code-body"><code><span class="code-keyword">import</span> { OPIASoftwareEngine } <span class="code-keyword">from</span> <span class="code-string">'@opia/ai-core'</span>;
+                            <pre class="code-body"><code><span class="code-keyword">import</span> { OPIAEngine } <span class="code-keyword">from</span> <span class="code-string">'@opia/ai'</span>;
 
-<span class="code-comment">// Inicialización de Software a la Medida</span>
-<span class="code-keyword">const</span> project = <span class="code-keyword">await</span> OPIASoftwareEngine.build({
-  clientRequirement: <span class="code-string">"Sistema ERP & CRM Personalizado"</span>,
-  paymentPlan: <span class="code-string">"Suscripción Mensual Flex ($500.000 COP)"</span>,
-  aiAcceleration: <span class="code-boolean">true</span>,
-  timeToMarket: <span class="code-string">"Ultra Rápido"</span>
+<span class="code-comment">// Inicialización Software a la Medida</span>
+<span class="code-keyword">const</span> app = <span class="code-keyword">await</span> OPIAEngine.build({
+  type: <span class="code-string">"ERP & CRM Personalizado"</span>,
+  plan: <span class="code-string">"Suscripción $500.000 COP/mes"</span>,
+  speed: <span class="code-string">"3x Rápido con IA"</span>
 });
 
-console.log(project.status); 
-<span class="code-comment">// Output: 🚀 Listo para producción en tiempo récord</span></code></pre>
+console.log(app.status); 
+<span class="code-comment">// 🚀 Listo para producción</span></code></pre>
                         </div>
                     </div>
                 </div>
@@ -430,7 +438,7 @@ console.log(project.status);
                     <span class="section-subtitle">¿Qué Construimos?</span>
                     <h2 class="section-title">Soluciones digitales diseñadas <span class="text-gradient">para hacer crecer tu negocio</span></h2>
                     <p class="section-description">
-                        Sin importar el sector de tu empresa, creamos la herramienta perfecta adaptada a tus flujos operativos reales.
+                        Creamos la herramienta exacta para tus necesidades operativas.
                     </p>
                 </div>
 
@@ -439,42 +447,42 @@ console.log(project.status);
                     <div class="service-card glass-card">
                         <div class="service-icon"><i class="ri-layout-grid-line"></i></div>
                         <h3>Sistemas ERP & CRM a la Medida</h3>
-                        <p>Gestiona inventarios, ventas, clientes, facturación y operaciones en una sola plataforma diseñada exclusivamente para la lógica de tu negocio.</p>
+                        <p>Inventarios, ventas, clientes, facturación y operaciones en una sola plataforma adaptada a tus procesos.</p>
                         <a href="https://wa.me/573002374114?text=Hola%20OPIA%20Software,%20requiero%20un%20sistema%20ERP%20o%20CRM%20a%20la%20medida." target="_blank" class="service-link">Cotizar ERP / CRM <i class="ri-arrow-right-line"></i></a>
                     </div>
 
                     <div class="service-card glass-card">
                         <div class="service-icon"><i class="ri-smartphone-line"></i></div>
                         <h3>Apps Móviles (iOS & Android)</h3>
-                        <p>Aplicaciones nativas o híbridas de alto rendimiento para tus clientes o para la fuerza de trabajo en campo de tu empresa.</p>
+                        <p>Aplicaciones de alto rendimiento para tus clientes o para tu personal de campo.</p>
                         <a href="https://wa.me/573002374114?text=Hola%20OPIA%20Software,%20necesito%20desarrollar%20una%20App%20m%C3%B3vil." target="_blank" class="service-link">Cotizar App Móvil <i class="ri-arrow-right-line"></i></a>
                     </div>
 
                     <div class="service-card glass-card">
                         <div class="service-icon"><i class="ri-robot-line"></i></div>
                         <h3>Automatización & Agentes IA</h3>
-                        <p>Integramos inteligencia artificial para responder clientes por WhatsApp 24/7, procesar documentos automáticos y agilizar tareas operativas.</p>
+                        <p>Chatbots para WhatsApp 24/7, procesamiento de documentos y flujos automáticos.</p>
                         <a href="https://wa.me/573002374114?text=Hola%20OPIA%20Software,%20me%20interesa%20automatizar%20procesos%20con%20IA." target="_blank" class="service-link">Cotizar Automatización <i class="ri-arrow-right-line"></i></a>
                     </div>
 
                     <div class="service-card glass-card">
                         <div class="service-icon"><i class="ri-shopping-bag-3-line"></i></div>
                         <h3>Portales Web & E-Commerce</h3>
-                        <p>Plataformas transaccionales avanzadas con pasarelas de pago, paneles administrativos y experiencia de usuario fluida.</p>
+                        <p>Plataformas transaccionales avanzadas con pasarelas de pago y paneles administrativos.</p>
                         <a href="https://wa.me/573002374114?text=Hola%20OPIA%20Software,%20quiero%20un%20portal%20web%20o%20tienda%20online." target="_blank" class="service-link">Cotizar Portal Web <i class="ri-arrow-right-line"></i></a>
                     </div>
 
                     <div class="service-card glass-card">
                         <div class="service-icon"><i class="ri-time-line"></i></div>
                         <h3>Bolsa de Horas & Soporte</h3>
-                        <p>Mantenimiento, corrección de errores, optimización de velocidad e integración de nuevas características en tus software existentes.</p>
+                        <p>Mantenimiento, corrección de errores, optimización e integración de funciones.</p>
                         <a href="https://wa.me/573002374114?text=Hola%20OPIA%20Software,%20necesito%20contratar%20bolsa%20de%20horas%20o%20soporte." target="_blank" class="service-link">Cotizar Horas <i class="ri-arrow-right-line"></i></a>
                     </div>
 
                     <div class="service-card glass-card">
                         <div class="service-icon"><i class="ri-cloud-line"></i></div>
                         <h3>Migración a la Nube & APIs</h3>
-                        <p>Conectamos tus programas actuales con servicios cloud, APIs externas o bases de datos centralizadas de forma segura.</p>
+                        <p>Conexión de sistemas actuales con servicios cloud y APIs externas.</p>
                         <a href="https://wa.me/573002374114?text=Hola%20OPIA%20Software,%20necesito%20integraci%C3%B3n%20de%20APIs%20o%20servicios%20en%20la%20nube." target="_blank" class="service-link">Cotizar Migración <i class="ri-arrow-right-line"></i></a>
                     </div>
 
@@ -488,28 +496,28 @@ console.log(project.status);
                 <div class="section-header text-center">
                     <span class="section-subtitle">Dudas Frecuentes</span>
                     <h2 class="section-title">Preguntas <span class="text-gradient">Frecuentes</span></h2>
-                    <p class="section-description">Resuelve tus inquietudes sobre nuestros esquemas de contratación y metodologías.</p>
+                    <p class="section-description">Resuelve tus inquietudes sobre nuestros esquemas de pago.</p>
                 </div>
 
                 <div class="faq-accordion">
                     
                     <div class="faq-item">
                         <button class="faq-question">
-                            <span>¿Cómo funciona la modalidad de suscripción mensual desde $500.000 COP?</span>
+                            <span>¿Cómo funciona la suscripción mensual desde $500.000 COP?</span>
                             <i class="ri-add-line faq-icon"></i>
                         </button>
                         <div class="faq-answer">
-                            <p>En lugar de pagar el costo total del diseño y desarrollo por adelantado (que puede rondar los 10 millones de pesos), establecemos una cuota mensual accesible (por ejemplo, desde $500.000 COP según el alcance). Nosotros construimos el software a tu medida y mantenemos la infraestructura, servidores, seguridad y soporte al día mientras mantengas activa la suscripción.</p>
+                            <p>En lugar de pagar el costo total del desarrollo por adelantado, establecemos una cuota mensual accesible (desde $500.000 COP según alcance). Construimos tu software a la medida y nos encargamos del servidor, seguridad y soporte mientras esté activa la suscripción.</p>
                         </div>
                     </div>
 
                     <div class="faq-item">
                         <button class="faq-question">
-                            <span>¿El software realmente se hace 100% a la medida de mi negocio?</span>
+                            <span>¿El software se hace 100% a la medida de mi negocio?</span>
                             <i class="ri-add-line faq-icon"></i>
                         </button>
                         <div class="faq-answer">
-                            <p>¡Totalmente! No vendemos plantillas rígidas ni programas genéricos. Analizamos tus procesos operativos reales y programamos cada pantalla, formulario, reporte y flujo para que se adapte exactamente a cómo trabaja tu empresa.</p>
+                            <p>¡Totalmente! No vendemos plantillas rígidas ni programas genéricos. Programamos cada pantalla y flujo para que se adapte exactamente a cómo trabaja tu empresa.</p>
                         </div>
                     </div>
 
@@ -519,37 +527,37 @@ console.log(project.status);
                             <i class="ri-add-line faq-icon"></i>
                         </button>
                         <div class="faq-answer">
-                            <p>Ofrecemos total flexibilidad. Si inicias con la modalidad de suscripción mensual y más adelante tu empresa decide adquirir la propiedad definitiva del código fuente, realizamos un avalúo del saldo restante y puedes comprar el software 100% para tu propiedad.</p>
+                            <p>Ofrecemos total flexibilidad. Si inicias en suscripción mensual y luego deseas adquirir la propiedad definitiva del código fuente, realizamos un avalúo del saldo restante y lo adquieres 100%.</p>
                         </div>
                     </div>
 
                     <div class="faq-item">
                         <button class="faq-question">
-                            <span>¿Cómo ayuda la Inteligencia Artificial a abaratar los costos?</span>
+                            <span>¿Cómo ayuda la Inteligencia Artificial a abaratar costos?</span>
                             <i class="ri-add-line faq-icon"></i>
                         </button>
                         <div class="faq-answer">
-                            <p>Utilizamos herramientas de IA de última generación que automatizan tareas repetitivas de programación, pruebas de software y diseño de bases de datos. Esto nos permite avanzar hasta 3 veces más rápido que una agencia tradicional, reduciendo drásticamente las horas hombres y ofreciéndote tarifas mucho más competitivas.</p>
+                            <p>Utilizamos herramientas de IA que automatizan tareas repetitivas de programación y pruebas. Avanzamos hasta 3x más rápido que agencias tradicionales, reduciendo costos que trasladamos a tu tarifa.</p>
                         </div>
                     </div>
 
                     <div class="faq-item">
                         <button class="faq-question">
-                            <span>¿Cómo funciona la contratación por bolsa de horas o soporte?</span>
+                            <span>¿Cómo funciona la contratación por bolsa de horas?</span>
                             <i class="ri-add-line faq-icon"></i>
                         </button>
                         <div class="faq-answer">
-                            <p>Si ya tienes un software desarrollado o solo necesitas tareas puntuales, puedes adquirir una bolsa de horas (por ejemplo, 10, 20 o 50 horas). Con esta bolsa puedes solicitar modificaciones, parches de seguridad, nuevas funciones o asistencia técnica según lo vayas necesitando.</p>
+                            <p>Adquieres paquetes de 10, 20 o 50 horas para ajustes, parches de seguridad o nuevas características según las necesidades de tu sistema existente.</p>
                         </div>
                     </div>
 
                     <div class="faq-item">
                         <button class="faq-question">
-                            <span>¿Cuál es el primer paso para empezar mi proyecto?</span>
+                            <span>¿Cuál es el primer paso para empezar?</span>
                             <i class="ri-add-line faq-icon"></i>
                         </button>
                         <div class="faq-answer">
-                            <p>Simplemente haz clic en el botón de WhatsApp <strong>(+57 300 237 4114)</strong>. Agendaremos una breve llamada o chat para escuchar tus requerimientos y en menos de 24-48 horas te entregaremos una propuesta formal con los distintos esquemas de pago para tu elección.</p>
+                            <p>Escríbenos al botón de WhatsApp <strong>(+57 300 237 4114)</strong>. Escucharemos tu idea y en menos de 24-48 horas te entregaremos una propuesta formal con los distintos esquemas de pago.</p>
                         </div>
                     </div>
 
@@ -561,7 +569,7 @@ console.log(project.status);
         <section class="section section-cta">
             <div class="container">
                 <div class="cta-card glass-card text-center">
-                    <span class="badge-tag"><i class="ri-rocket-line"></i> Inicia tu transformación digital hoy</span>
+                    <span class="badge-tag"><i class="ri-rocket-line"></i> Transformación Digital</span>
                     <h2 class="cta-title">¿Listo para tener tu software a la medida sin grandes inversiones?</h2>
                     <p class="cta-subtitle">Escríbenos por WhatsApp, cuéntanos tu idea y te estructuramos la mejor opción técnica y financiera.</p>
                     
@@ -569,7 +577,7 @@ console.log(project.status);
                         <a href="https://wa.me/573002374114?text=Hola%20OPIA%20Software,%20quisiera%20agendar%20una%20asesor%C3%ADa%20gratuita%20para%20un%20software%20a%20la%20medida." 
                            target="_blank" 
                            rel="noopener noreferrer" 
-                           class="btn btn-whatsapp btn-lg">
+                           class="btn btn-whatsapp btn-lg btn-block-mobile">
                             <i class="ri-whatsapp-line"></i>
                             <span>Escribir al WhatsApp +57 300 237 4114</span>
                         </a>
@@ -588,7 +596,7 @@ console.log(project.status);
                     <div class="logo-icon"><i class="ri-code-s-slash-line"></i></div>
                     <span class="logo-text">OPIA <span class="logo-highlight">SOFTWARE</span></span>
                 </a>
-                <p class="footer-desc">Desarrollo de software a la medida con Inteligencia Artificial. Planes de pago en suscripción mensual desde $500.000 COP, pago único y bolsa de horas.</p>
+                <p class="footer-desc">Desarrollo de software a la medida con Inteligencia Artificial. Suscripción mensual desde $500.000 COP, pago único y bolsa de horas.</p>
             </div>
 
             <div class="footer-links">
@@ -605,27 +613,37 @@ console.log(project.status);
             <div class="footer-contact">
                 <h4>Contacto Directo</h4>
                 <p><i class="ri-whatsapp-line text-whatsapp"></i> WhatsApp: <a href="https://wa.me/573002374114" target="_blank">+57 300 237 4114</a></p>
-                <p><i class="ri-global-line"></i> Atendemos clientes en toda Colombia e Latinoamérica</p>
+                <p><i class="ri-global-line"></i> Atendemos empresas en toda Latinoamérica</p>
                 <div class="footer-socials">
                     <a href="https://wa.me/573002374114" target="_blank" aria-label="WhatsApp Directo"><i class="ri-whatsapp-fill"></i></a>
-                    <a href="#" aria-label="GitHub"><i class="ri-github-fill"></i></a>
-                    <a href="#" aria-label="LinkedIn"><i class="ri-linkedin-fill"></i></a>
+                    <a href="https://github.com/juanoviedo/opiasoftware" target="_blank" aria-label="GitHub"><i class="ri-github-fill"></i></a>
                 </div>
             </div>
         </div>
 
         <div class="footer-bottom">
             <div class="container text-center">
-                <p>&copy; 2026 OPIA Software. Todos los derechos reservados. Software a la medida acelerado por Inteligencia Artificial.</p>
+                <p>&copy; 2026 OPIA Software. Todos los derechos reservados.</p>
             </div>
         </div>
     </footer>
 
-    <!-- Dynamic WhatsApp Floating Widget -->
+    <!-- Fixed Bottom Sticky Bar for Mobile Users -->
+    <div class="mobile-sticky-bar">
+        <a href="https://wa.me/573002374114?text=Hola%20OPIA%20Software,%20me%20gustar%C3%ADa%20cotizar%20un%20software%20a%20la%20medida." 
+           target="_blank" 
+           rel="noopener noreferrer" 
+           class="btn btn-whatsapp btn-block">
+            <i class="ri-whatsapp-line"></i>
+            <span>Hablar por WhatsApp (+57 300 237 4114)</span>
+        </a>
+    </div>
+
+    <!-- Floating WhatsApp Widget (Desktop) -->
     <a href="https://wa.me/573002374114?text=Hola%20OPIA%20Software,%20me%20gustar%C3%ADa%20recibir%20informaci%C3%B3n%20sobre%20sus%20servicios." 
        target="_blank" 
        rel="noopener noreferrer" 
-       class="whatsapp-float-btn" 
+       class="whatsapp-float-btn hide-mobile" 
        aria-label="Contactar por WhatsApp">
         <div class="pulse-ring"></div>
         <i class="ri-whatsapp-line"></i>

@@ -1,49 +1,58 @@
 /**
  * OPIA SOFTWARE - MAIN JAVASCRIPT MODULE
- * Interactive Calculator, Dynamic WhatsApp Links, Navigation, Accordion FAQ
+ * Mobile-First Drawer Navigation, Touch Support, Interactive Calculator, FAQ Accordion
  */
 
 document.addEventListener('DOMContentLoaded', () => {
 
-    // Phone number constant
     const WHATSAPP_PHONE = '573002374114';
 
     /* ==========================================================================
-       1. Navbar Scroll Effect & Mobile Menu
+       1. Mobile Drawer Navigation & Backdrop Overlay
        ========================================================================== */
     const navbar = document.getElementById('navbar');
     const hamburgerBtn = document.getElementById('hamburgerBtn');
+    const mobileCloseBtn = document.getElementById('mobileCloseBtn');
     const navMenu = document.getElementById('navMenu');
+    const navOverlay = document.getElementById('navOverlay');
 
+    function openMobileMenu() {
+        if (navMenu) navMenu.classList.add('active');
+        if (navOverlay) navOverlay.classList.add('active');
+        document.body.classList.add('menu-open');
+    }
+
+    function closeMobileMenu() {
+        if (navMenu) navMenu.classList.remove('active');
+        if (navOverlay) navOverlay.classList.remove('active');
+        document.body.classList.remove('menu-open');
+    }
+
+    if (hamburgerBtn) {
+        hamburgerBtn.addEventListener('click', openMobileMenu);
+    }
+
+    if (mobileCloseBtn) {
+        mobileCloseBtn.addEventListener('click', closeMobileMenu);
+    }
+
+    if (navOverlay) {
+        navOverlay.addEventListener('click', closeMobileMenu);
+    }
+
+    // Close menu when clicking nav links
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', closeMobileMenu);
+    });
+
+    // Navbar background blur on scroll
     window.addEventListener('scroll', () => {
-        if (window.scrollY > 50) {
+        if (window.scrollY > 30) {
             navbar.classList.add('scrolled');
         } else {
             navbar.classList.remove('scrolled');
         }
     });
-
-    if (hamburgerBtn && navMenu) {
-        hamburgerBtn.addEventListener('click', () => {
-            navMenu.classList.toggle('active');
-            const icon = hamburgerBtn.querySelector('i');
-            if (navMenu.classList.contains('active')) {
-                icon.className = 'ri-close-line';
-            } else {
-                icon.className = 'ri-menu-3-line';
-            }
-        });
-
-        // Close menu on nav link click
-        document.querySelectorAll('.nav-link').forEach(link => {
-            link.addEventListener('click', () => {
-                navMenu.classList.remove('active');
-                if (hamburgerBtn.querySelector('i')) {
-                    hamburgerBtn.querySelector('i').className = 'ri-menu-3-line';
-                }
-            });
-        });
-    }
 
     /* ==========================================================================
        2. FAQ Accordion Interaction
@@ -56,7 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
             questionBtn.addEventListener('click', () => {
                 const isActive = item.classList.contains('active');
                 
-                // Close other items
+                // Close other accordion items
                 faqItems.forEach(otherItem => {
                     otherItem.classList.remove('active');
                 });
@@ -80,7 +89,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const upfrontResultEl = document.getElementById('upfrontResult');
     const btnSendCalcWhatsApp = document.getElementById('btnSendCalcWhatsApp');
 
-    // Label elements for complexity
     const lblSimple = document.getElementById('lblSimple');
     const lblMedium = document.getElementById('lblMedium');
     const lblComplex = document.getElementById('lblComplex');
@@ -123,21 +131,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const supportAddonVal = parseFloat(supportAddonSelect.value) || 0;
 
-        // Upfront estimated total
+        // Upfront total
         const upfrontTotal = Math.round(basePrice * complexityMultiplier);
         
-        // Monthly subscription calculation (Appx 5% of upfront cost per month for base + support addon, with min $450,000)
+        // Monthly calculation
         let rawMonthly = (upfrontTotal * 0.05) + supportAddonVal;
-        let monthlyTotal = Math.max(500000, Math.round(rawMonthly / 50000) * 50000); // rounded to neat $50k increments
+        let monthlyTotal = Math.max(500000, Math.round(rawMonthly / 50000) * 50000);
 
-        // Update UI
+        // Update UI Text
         if (monthlyResultEl) monthlyResultEl.textContent = formatCOP(monthlyTotal);
         if (upfrontResultEl) upfrontResultEl.textContent = formatCOP(upfrontTotal);
 
-        // Update WhatsApp Send Button URL with specific quote summary
+        // WhatsApp Quote Link
         if (btnSendCalcWhatsApp) {
             const projectTypeName = selectedOption.text;
-            const message = `Hola OPIA Software, realicé una simulación en su calculadora web:\n\n` +
+            const message = `Hola OPIA Software, realicé una simulación en su calculadora móvil:\n\n` +
                             `📌 *Proyecto:* ${projectTypeName}\n` +
                             `⚙️ *Módulos:* ${complexityText}\n` +
                             `💰 *Suscripción Estimada:* $${formatCOP(monthlyTotal)} COP/mes\n` +
@@ -151,11 +159,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Add Event Listeners for Calculator Controls
     if (projectTypeSelect) projectTypeSelect.addEventListener('change', calculateEstimate);
     if (complexityRange) complexityRange.addEventListener('input', calculateEstimate);
     if (supportAddonSelect) supportAddonSelect.addEventListener('change', calculateEstimate);
 
-    // Initial calculation run
     calculateEstimate();
 });
