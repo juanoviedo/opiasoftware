@@ -1,6 +1,6 @@
 /**
  * OPIA SOFTWARE - MAIN JAVASCRIPT MODULE
- * Mobile-First Drawer Navigation, Touch Support, Interactive Calculator, FAQ Accordion
+ * Mobile Drawer, Calculator, FAQ Accordions, Dynamic WhatsApp Integration
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -8,90 +8,70 @@ document.addEventListener('DOMContentLoaded', () => {
     const WHATSAPP_PHONE = '573002374114';
 
     /* ==========================================================================
-       1. Mobile Drawer Navigation & Backdrop Overlay
+       1. Mobile Navigation Drawer & Backdrop Overlay
        ========================================================================== */
-    const navbar = document.getElementById('navbar');
-    const hamburgerBtn = document.getElementById('hamburgerBtn');
-    const mobileCloseBtn = document.getElementById('mobileCloseBtn');
-    const navMenu = document.getElementById('navMenu');
-    const navOverlay = document.getElementById('navOverlay');
+    const menuToggleBtn = document.getElementById('menuToggleBtn');
+    const drawerCloseBtn = document.getElementById('drawerCloseBtn');
+    const mobileDrawer = document.getElementById('mobileDrawer');
+    const drawerOverlay = document.getElementById('drawerOverlay');
 
-    function openMobileMenu() {
-        if (navMenu) navMenu.classList.add('active');
-        if (navOverlay) navOverlay.classList.add('active');
+    function openDrawer() {
+        if (mobileDrawer) mobileDrawer.classList.add('active');
+        if (drawerOverlay) drawerOverlay.classList.add('active');
         document.body.classList.add('menu-open');
     }
 
-    function closeMobileMenu() {
-        if (navMenu) navMenu.classList.remove('active');
-        if (navOverlay) navOverlay.classList.remove('active');
+    function closeDrawer() {
+        if (mobileDrawer) mobileDrawer.classList.remove('active');
+        if (drawerOverlay) drawerOverlay.classList.remove('active');
         document.body.classList.remove('menu-open');
     }
 
-    if (hamburgerBtn) {
-        hamburgerBtn.addEventListener('click', openMobileMenu);
-    }
+    if (menuToggleBtn) menuToggleBtn.addEventListener('click', openDrawer);
+    if (drawerCloseBtn) drawerCloseBtn.addEventListener('click', closeDrawer);
+    if (drawerOverlay) drawerOverlay.addEventListener('click', closeDrawer);
 
-    if (mobileCloseBtn) {
-        mobileCloseBtn.addEventListener('click', closeMobileMenu);
-    }
-
-    if (navOverlay) {
-        navOverlay.addEventListener('click', closeMobileMenu);
-    }
-
-    // Close menu when clicking nav links
-    document.querySelectorAll('.nav-link').forEach(link => {
-        link.addEventListener('click', closeMobileMenu);
-    });
-
-    // Navbar background blur on scroll
-    window.addEventListener('scroll', () => {
-        if (window.scrollY > 30) {
-            navbar.classList.add('scrolled');
-        } else {
-            navbar.classList.remove('scrolled');
-        }
+    // Close drawer when clicking any nav link inside drawer
+    document.querySelectorAll('.drawer-link').forEach(link => {
+        link.addEventListener('click', closeDrawer);
     });
 
     /* ==========================================================================
-       2. FAQ Accordion Interaction
+       2. FAQ Accordion Cards
        ========================================================================== */
-    const faqItems = document.querySelectorAll('.faq-item');
+    const faqCards = document.querySelectorAll('.faq-card');
 
-    faqItems.forEach(item => {
-        const questionBtn = item.querySelector('.faq-question');
-        if (questionBtn) {
-            questionBtn.addEventListener('click', () => {
-                const isActive = item.classList.contains('active');
+    faqCards.forEach(card => {
+        const toggleBtn = card.querySelector('.faq-toggle');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', () => {
+                const isActive = card.classList.contains('active');
                 
-                // Close other accordion items
-                faqItems.forEach(otherItem => {
-                    otherItem.classList.remove('active');
-                });
+                // Close other cards
+                faqCards.forEach(other => other.classList.remove('active'));
 
-                // Toggle current item
+                // Toggle selected card
                 if (!isActive) {
-                    item.classList.add('active');
+                    card.classList.add('active');
                 }
             });
         }
     });
 
     /* ==========================================================================
-       3. Interactive Pricing & Plan Calculator
+       3. Interactive Cost & Plan Calculator
        ========================================================================== */
-    const projectTypeSelect = document.getElementById('projectType');
-    const complexityRange = document.getElementById('complexityRange');
-    const supportAddonSelect = document.getElementById('supportAddon');
+    const projectTypeSelect = document.getElementById('projectTypeSelect');
+    const complexityInput = document.getElementById('complexityInput');
+    const supportSelect = document.getElementById('supportSelect');
 
-    const monthlyResultEl = document.getElementById('monthlyResult');
-    const upfrontResultEl = document.getElementById('upfrontResult');
-    const btnSendCalcWhatsApp = document.getElementById('btnSendCalcWhatsApp');
+    const monthlyPriceVal = document.getElementById('monthlyPriceVal');
+    const upfrontPriceVal = document.getElementById('upfrontPriceVal');
+    const calcWhatsAppBtn = document.getElementById('calcWhatsAppBtn');
 
-    const lblSimple = document.getElementById('lblSimple');
-    const lblMedium = document.getElementById('lblMedium');
-    const lblComplex = document.getElementById('lblComplex');
+    const lblBase = document.getElementById('lblBase');
+    const lblMid = document.getElementById('lblMid');
+    const lblAdv = document.getElementById('lblAdv');
 
     function formatCOP(amount) {
         return new Intl.NumberFormat('es-CO', {
@@ -101,58 +81,57 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function calculateEstimate() {
-        if (!projectTypeSelect || !complexityRange || !supportAddonSelect) return;
+        if (!projectTypeSelect || !complexityInput || !supportSelect) return;
 
         const selectedOption = projectTypeSelect.options[projectTypeSelect.selectedIndex];
         const basePrice = parseFloat(selectedOption.getAttribute('data-base')) || 8000000;
         
-        const complexityVal = parseInt(complexityRange.value);
+        const complexityVal = parseInt(complexityInput.value);
         let complexityMultiplier = 1.0;
         let complexityText = "Medio (5-8 Módulos)";
 
-        // Update range labels
-        if (lblSimple) lblSimple.classList.remove('active');
-        if (lblMedium) lblMedium.classList.remove('active');
-        if (lblComplex) lblComplex.classList.remove('active');
+        if (lblBase) lblBase.classList.remove('active-lbl');
+        if (lblMid) lblMid.classList.remove('active-lbl');
+        if (lblAdv) lblAdv.classList.remove('active-lbl');
 
         if (complexityVal === 1) {
             complexityMultiplier = 0.75;
             complexityText = "Básico (3-4 Módulos)";
-            if (lblSimple) lblSimple.classList.add('active');
+            if (lblBase) lblBase.classList.add('active-lbl');
         } else if (complexityVal === 2) {
             complexityMultiplier = 1.0;
             complexityText = "Medio (5-8 Módulos)";
-            if (lblMedium) lblMedium.classList.add('active');
+            if (lblMid) lblMid.classList.add('active-lbl');
         } else {
             complexityMultiplier = 1.35;
             complexityText = "Avanzado (+9 Módulos)";
-            if (lblComplex) lblComplex.classList.add('active');
+            if (lblAdv) lblAdv.classList.add('active-lbl');
         }
 
-        const supportAddonVal = parseFloat(supportAddonSelect.value) || 0;
+        const supportAddonVal = parseFloat(supportSelect.value) || 0;
 
-        // Upfront total
+        // Calculate upfront total
         const upfrontTotal = Math.round(basePrice * complexityMultiplier);
         
-        // Monthly calculation
+        // Calculate monthly plan
         let rawMonthly = (upfrontTotal * 0.05) + supportAddonVal;
         let monthlyTotal = Math.max(500000, Math.round(rawMonthly / 50000) * 50000);
 
-        // Update UI Text
-        if (monthlyResultEl) monthlyResultEl.textContent = formatCOP(monthlyTotal);
-        if (upfrontResultEl) upfrontResultEl.textContent = formatCOP(upfrontTotal);
+        // Update UI
+        if (monthlyPriceVal) monthlyPriceVal.textContent = formatCOP(monthlyTotal);
+        if (upfrontPriceVal) upfrontPriceVal.textContent = formatCOP(upfrontTotal);
 
-        // WhatsApp Quote Link
-        if (btnSendCalcWhatsApp) {
+        // Update WhatsApp Send Button URL
+        if (calcWhatsAppBtn) {
             const projectTypeName = selectedOption.text;
-            const message = `Hola OPIA Software, realicé una simulación en su calculadora móvil:\n\n` +
+            const message = `Hola OPIA Software, realicé una cotización en su simulador:\n\n` +
                             `📌 *Proyecto:* ${projectTypeName}\n` +
                             `⚙️ *Módulos:* ${complexityText}\n` +
                             `💰 *Suscripción Estimada:* $${formatCOP(monthlyTotal)} COP/mes\n` +
                             `🏢 *Pago Único Estimado:* $${formatCOP(upfrontTotal)} COP\n\n` +
-                            `Me gustaría recibir una cotización detallada para mi empresa.`;
+                            `Me gustaría recibir una asesoría técnica para mi empresa.`;
             
-            btnSendCalcWhatsApp.onclick = () => {
+            calcWhatsAppBtn.onclick = () => {
                 const encodedMsg = encodeURIComponent(message);
                 window.open(`https://wa.me/${WHATSAPP_PHONE}?text=${encodedMsg}`, '_blank');
             };
@@ -160,8 +139,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (projectTypeSelect) projectTypeSelect.addEventListener('change', calculateEstimate);
-    if (complexityRange) complexityRange.addEventListener('input', calculateEstimate);
-    if (supportAddonSelect) supportAddonSelect.addEventListener('change', calculateEstimate);
+    if (complexityInput) complexityInput.addEventListener('input', calculateEstimate);
+    if (supportSelect) supportSelect.addEventListener('change', calculateEstimate);
 
     calculateEstimate();
 });
