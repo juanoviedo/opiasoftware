@@ -1,10 +1,10 @@
 /* ==========================================================================
-   OPIA SOFTWARE - MOBILE-FIRST STYLESHEET (REFACTORED FROM SCRATCH)
-   Core Architecture: Mobile (<768px) -> Tablet (>=768px) -> Desktop (>=1024px)
+   OPIA SOFTWARE - PERFECT RESPONSIVE STYLESHEET
+   Fixes drawer overlay leaks, icon fallbacks, and desktop/mobile layout clarity.
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   1. CSS Tokens
+   1. Design Tokens
    -------------------------------------------------------------------------- */
 :root {
     --bg-dark: #090d16;
@@ -35,7 +35,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   2. Strict Mobile-First Base & Boundary System (< 768px)
+   2. Base Reset & Boundary Controls
    -------------------------------------------------------------------------- */
 *, *::before, *::after {
     box-sizing: border-box !important;
@@ -57,7 +57,7 @@ body {
     background-color: var(--bg-dark);
     color: var(--text-white);
     line-height: 1.55;
-    padding-bottom: 75px; /* Space for mobile sticky bottom action bar */
+    padding-bottom: 75px; /* Mobile sticky bar space */
     -webkit-font-smoothing: antialiased;
 }
 
@@ -103,23 +103,14 @@ h1, h2, h3, h4 {
 .text-center { text-align: center !important; }
 .text-whatsapp { color: var(--whatsapp-green); }
 
-/* Visibility Control Classes */
-.desktop-only {
-    display: none !important;
-}
-
-.mobile-only {
-    display: flex !important;
-}
-
-/* Container Utility */
+/* Containers */
 .site-container {
     width: 100% !important;
     max-width: 1200px;
     margin-left: auto !important;
     margin-right: auto !important;
-    padding-left: 1.1rem !important;
-    padding-right: 1.1rem !important;
+    padding-left: 1.25rem !important;
+    padding-right: 1.25rem !important;
     box-sizing: border-box !important;
 }
 
@@ -133,7 +124,6 @@ h1, h2, h3, h4 {
     position: relative;
 }
 
-/* Glass Card Component */
 .card-glass {
     background: var(--bg-card-glass);
     backdrop-filter: blur(16px);
@@ -145,14 +135,14 @@ h1, h2, h3, h4 {
 }
 
 /* --------------------------------------------------------------------------
-   3. Mobile Button System (Guarantees zero text overflow)
+   3. Buttons & Badges
    -------------------------------------------------------------------------- */
 .btn {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    padding: 0.85rem 1.1rem;
+    padding: 0.85rem 1.25rem;
     min-height: 48px;
     font-family: var(--font-heading);
     font-size: 0.95rem;
@@ -161,21 +151,19 @@ h1, h2, h3, h4 {
     border: 1px solid transparent;
     cursor: pointer;
     text-align: center;
-    white-space: normal !important; /* Forces text wrapping on mobile */
+    white-space: normal !important;
     word-break: break-word;
-    overflow-wrap: break-word;
     box-sizing: border-box !important;
-    width: 100%;
     line-height: 1.3;
 }
 
 .btn-lg {
-    padding: 1rem 1.5rem;
-    font-size: 1rem;
+    padding: 1rem 1.6rem;
+    font-size: 1.02rem;
     min-height: 52px;
 }
 
-.btn-full, .btn-full-mobile {
+.btn-full {
     width: 100% !important;
 }
 
@@ -214,7 +202,7 @@ h1, h2, h3, h4 {
 }
 
 /* --------------------------------------------------------------------------
-   4. Mobile Header Navigation
+   4. Header & Drawer Controls (CRITICAL FIX FOR INVISIBLE CLOSED DRAWER)
    -------------------------------------------------------------------------- */
 .header-nav {
     position: fixed;
@@ -223,7 +211,7 @@ h1, h2, h3, h4 {
     right: 0;
     width: 100% !important;
     z-index: 1000;
-    padding: 0.75rem 0;
+    padding: 0.85rem 0;
     background: rgba(9, 13, 22, 0.94);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
@@ -242,7 +230,6 @@ h1, h2, h3, h4 {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    max-width: 75%;
 }
 
 .logo-icon {
@@ -265,8 +252,6 @@ h1, h2, h3, h4 {
     font-weight: 800;
     color: #ffffff;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 
 .logo-highlight {
@@ -281,53 +266,49 @@ h1, h2, h3, h4 {
     border: 1px solid var(--border-glass);
     color: var(--text-white);
     font-size: 1.4rem;
-    display: flex !important;
+    display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     flex-shrink: 0;
 }
 
-/* Mobile Drawer */
+/* Strictly Hide Drawer & Overlay by default */
 .drawer-overlay {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
+    width: 100vw;
+    height: 100vh;
     background: rgba(0, 0, 0, 0.8);
     backdrop-filter: blur(5px);
     z-index: 1050;
-    opacity: 0;
-    visibility: hidden;
-    transition: all var(--transition);
+    display: none !important;
 }
 
 .drawer-overlay.active {
-    opacity: 1;
-    visibility: visible;
+    display: block !important;
 }
 
 .mobile-drawer {
     position: fixed;
     top: 0;
-    right: -100%;
+    right: 0;
     width: 85%;
     max-width: 320px;
     height: 100vh;
     background: #0d1322;
     z-index: 1100;
-    display: flex;
+    display: none !important; /* CRITICAL: Must be display:none when closed! */
     flex-direction: column;
     padding: 1.25rem;
-    transition: right var(--transition);
     box-shadow: -10px 0 30px rgba(0, 0, 0, 0.8);
     overflow-y: auto;
     box-sizing: border-box;
 }
 
 .mobile-drawer.active {
-    right: 0;
+    display: flex !important; /* SHOWN ONLY WHEN HAMBURGER IS CLICKED */
 }
 
 .drawer-header {
@@ -350,6 +331,7 @@ h1, h2, h3, h4 {
     display: flex;
     align-items: center;
     justify-content: center;
+    cursor: pointer;
 }
 
 .drawer-links {
@@ -380,7 +362,7 @@ h1, h2, h3, h4 {
 }
 
 /* --------------------------------------------------------------------------
-   5. Hero Section (Mobile First Centered Layout)
+   5. Hero Section
    -------------------------------------------------------------------------- */
 .hero-block {
     padding-top: 5.5rem;
@@ -407,7 +389,7 @@ h1, h2, h3, h4 {
 }
 
 .hero-heading {
-    font-size: clamp(1.6rem, 6.5vw, 2.7rem);
+    font-size: clamp(1.6rem, 6vw, 2.7rem);
     letter-spacing: -0.5px;
     margin-bottom: 1rem;
     text-align: center;
@@ -457,7 +439,7 @@ h1, h2, h3, h4 {
     padding: 0.75rem 1rem;
     border-radius: var(--radius-md);
     width: 100%;
-    max-width: 320px;
+    max-width: 340px;
     box-sizing: border-box;
     text-align: left;
 }
@@ -531,7 +513,7 @@ h1, h2, h3, h4 {
 }
 
 /* --------------------------------------------------------------------------
-   6. Tech Stack Section (Azure, AWS & Power Platform)
+   6. Tech Stack (Azure, AWS, Power Platform)
    -------------------------------------------------------------------------- */
 .section-heading-box {
     margin-bottom: 2rem;
@@ -617,7 +599,7 @@ h1, h2, h3, h4 {
 }
 
 /* --------------------------------------------------------------------------
-   7. Pricing Cards Stack
+   7. Pricing Cards
    -------------------------------------------------------------------------- */
 .pricing-cards-stack {
     display: flex;
@@ -755,7 +737,7 @@ h1, h2, h3, h4 {
 }
 
 /* --------------------------------------------------------------------------
-   8. Interactive Calculator (Mobile First Stack & Bound Control)
+   8. Calculator
    -------------------------------------------------------------------------- */
 .calc-wrapper {
     padding: 1.75rem 1.1rem;
@@ -938,7 +920,7 @@ h1, h2, h3, h4 {
 }
 
 /* --------------------------------------------------------------------------
-   9. AI Advantage & Services
+   9. AI & Services
    -------------------------------------------------------------------------- */
 .ai-grid-layout {
     display: flex;
@@ -1197,7 +1179,6 @@ h1, h2, h3, h4 {
     color: var(--text-muted);
 }
 
-/* Mobile Sticky Bottom Bar */
 .mobile-bottom-bar {
     position: fixed;
     bottom: 0;
@@ -1222,10 +1203,10 @@ h1, h2, h3, h4 {
 }
 
 /* --------------------------------------------------------------------------
-   11. Progressive Enhancement (Tablets & Desktops)
+   11. Media Queries (Progressive Enhancement)
    -------------------------------------------------------------------------- */
 
-/* Tablet (>= 768px) */
+/* Tablet & Up (>= 768px) */
 @media (min-width: 768px) {
     body {
         padding-bottom: 0 !important;
@@ -1313,9 +1294,13 @@ h1, h2, h3, h4 {
     }
 }
 
-/* Desktop (>= 1024px) */
+/* Desktop & Up (>= 1024px) */
 @media (min-width: 1024px) {
-    .mobile-only {
+    .menu-toggle-btn {
+        display: none !important;
+    }
+
+    .drawer-overlay, .mobile-drawer {
         display: none !important;
     }
 
@@ -1326,11 +1311,11 @@ h1, h2, h3, h4 {
     .desktop-nav {
         display: flex;
         align-items: center;
-        gap: 2rem;
+        gap: 1.8rem;
     }
 
     .desktop-nav .nav-link {
-        font-size: 0.95rem;
+        font-size: 0.92rem;
         font-weight: 500;
         color: var(--text-muted);
         transition: color var(--transition);
