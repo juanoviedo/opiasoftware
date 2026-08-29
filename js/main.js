@@ -1,6 +1,6 @@
 /**
- * OPIA SOFTWARE - MAIN JAVASCRIPT MODULE
- * Mobile Drawer, Calculator, FAQ Accordions, Dynamic WhatsApp Integration
+ * O&P IA SOFTWARE - MAIN JAVASCRIPT MODULE
+ * Mobile Drawer Navigation, Project Evaluator, FAQ Accordion, WhatsApp Messaging
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -59,35 +59,23 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     /* ==========================================================================
-       3. Interactive Cost & Plan Calculator
+       3. Interactive Project Requirements Evaluator
        ========================================================================== */
     const projectTypeSelect = document.getElementById('projectTypeSelect');
     const complexityInput = document.getElementById('complexityInput');
-    const supportSelect = document.getElementById('supportSelect');
-
-    const monthlyPriceVal = document.getElementById('monthlyPriceVal');
-    const upfrontPriceVal = document.getElementById('upfrontPriceVal');
+    const paymentModeSelect = document.getElementById('paymentModeSelect');
     const calcWhatsAppBtn = document.getElementById('calcWhatsAppBtn');
 
     const lblBase = document.getElementById('lblBase');
     const lblMid = document.getElementById('lblMid');
     const lblAdv = document.getElementById('lblAdv');
 
-    function formatCOP(amount) {
-        return new Intl.NumberFormat('es-CO', {
-            style: 'decimal',
-            maximumFractionDigits: 0
-        }).format(amount);
-    }
+    function updateEvaluatorState() {
+        if (!projectTypeSelect || !complexityInput || !paymentModeSelect) return;
 
-    function calculateEstimate() {
-        if (!projectTypeSelect || !complexityInput || !supportSelect) return;
-
-        const selectedOption = projectTypeSelect.options[projectTypeSelect.selectedIndex];
-        const basePrice = parseFloat(selectedOption.getAttribute('data-base')) || 8000000;
-        
+        const projectTypeName = projectTypeSelect.value;
+        const paymentModeName = paymentModeSelect.value;
         const complexityVal = parseInt(complexityInput.value);
-        let complexityMultiplier = 1.0;
         let complexityText = "Medio (5-8 Módulos)";
 
         if (lblBase) lblBase.classList.remove('active-lbl');
@@ -95,41 +83,23 @@ document.addEventListener('DOMContentLoaded', () => {
         if (lblAdv) lblAdv.classList.remove('active-lbl');
 
         if (complexityVal === 1) {
-            complexityMultiplier = 0.75;
             complexityText = "Básico (3-4 Módulos)";
             if (lblBase) lblBase.classList.add('active-lbl');
         } else if (complexityVal === 2) {
-            complexityMultiplier = 1.0;
             complexityText = "Medio (5-8 Módulos)";
             if (lblMid) lblMid.classList.add('active-lbl');
         } else {
-            complexityMultiplier = 1.35;
             complexityText = "Avanzado (+9 Módulos)";
             if (lblAdv) lblAdv.classList.add('active-lbl');
         }
 
-        const supportAddonVal = parseFloat(supportSelect.value) || 0;
-
-        // Calculate upfront total
-        const upfrontTotal = Math.round(basePrice * complexityMultiplier);
-        
-        // Calculate monthly plan
-        let rawMonthly = (upfrontTotal * 0.05) + supportAddonVal;
-        let monthlyTotal = Math.max(500000, Math.round(rawMonthly / 50000) * 50000);
-
-        // Update UI
-        if (monthlyPriceVal) monthlyPriceVal.textContent = formatCOP(monthlyTotal);
-        if (upfrontPriceVal) upfrontPriceVal.textContent = formatCOP(upfrontTotal);
-
-        // Update WhatsApp Send Button URL
+        // Configure custom WhatsApp request message
         if (calcWhatsAppBtn) {
-            const projectTypeName = selectedOption.text;
-            const message = `Hola OPIA Software, realicé una cotización en su simulador:\n\n` +
-                            `📌 *Proyecto:* ${projectTypeName}\n` +
-                            `⚙️ *Módulos:* ${complexityText}\n` +
-                            `💰 *Suscripción Estimada:* $${formatCOP(monthlyTotal)} COP/mes\n` +
-                            `🏢 *Pago Único Estimado:* $${formatCOP(upfrontTotal)} COP\n\n` +
-                            `Me gustaría recibir una asesoría técnica para mi empresa.`;
+            const message = `Hola O&P IA Software, me gustaría solicitar la evaluación de un proyecto:\n\n` +
+                            `📌 *Tipo de Solución:* ${projectTypeName}\n` +
+                            `⚙️ *Complejidad:* ${complexityText}\n` +
+                            `💳 *Esquema Preferido:* ${paymentModeName}\n\n` +
+                            `Quisiera agendar una breve asesoría para recibir una cotización previa con tarifa favorable.`;
             
             calcWhatsAppBtn.onclick = () => {
                 const encodedMsg = encodeURIComponent(message);
@@ -138,9 +108,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    if (projectTypeSelect) projectTypeSelect.addEventListener('change', calculateEstimate);
-    if (complexityInput) complexityInput.addEventListener('input', calculateEstimate);
-    if (supportSelect) supportSelect.addEventListener('change', calculateEstimate);
+    if (projectTypeSelect) projectTypeSelect.addEventListener('change', updateEvaluatorState);
+    if (complexityInput) complexityInput.addEventListener('input', updateEvaluatorState);
+    if (paymentModeSelect) paymentModeSelect.addEventListener('change', updateEvaluatorState);
 
-    calculateEstimate();
+    updateEvaluatorState();
 });

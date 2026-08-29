@@ -1,32 +1,33 @@
-# 🚀 OPIA Software - Landing Page
+# 🚀 O&P IA Software - Landing Page
 
-Bienvenido al repositorio oficial de **OPIA Software**, la plataforma web para ofrecer servicios de desarrollo de software a la medida acelerados por Inteligencia Artificial y modelos de inversión flexibles para empresas en Colombia y Latinoamérica.
+Bienvenido al repositorio oficial de **O&P IA Software**, la plataforma web comercial para servicios de desarrollo de software a la medida con Inteligencia Artificial, Microsoft Azure, Amazon Web Services (AWS) y Microsoft Power Platform.
 
 ---
 
 ## 💡 Propuesta de Valor & Modelo de Negocio
 
-OPIA Software rompe la barrera del alto costo inicial en el desarrollo de software a la medida:
+O&P IA Software rompe la barrera del costo inicial ofreciendo máxima flexibilidad y tarifas altamente favorables:
 
-1. **Software a la Medida Impulsado por IA**: Sistemas ERP, CRM, Apps Móviles, Portales Web y Automatizaciones acelerados hasta 3x más rápido gracias al uso de IA.
-2. **Planes de Pago Adaptables**:
-   - **Suscripción Mensual (SaaS a la medida)**: Cuotas accesibles desde **$500.000 COP/mes**, reduciendo el desembolso inicial.
-   - **Pago Único / Proyecto Completo**: Adquisición directa del código fuente (proyectos desde $10.000.000 COP).
-   - **Bolsa de Horas & Soporte**: Contratación por horas para soporte técnico, auditoría o desarrollo bajo demanda.
-3. **Contacto Directo por WhatsApp**: Integración completa para atención inmediata a través del celular **+57 300 237 4114**.
+1. **Software a la Medida + Cloud + IA**: Sistemas ERP, CRM, Apps Móviles, Portales Web y Automatizaciones con IA, Azure, AWS y Power Platform.
+2. **Evaluación Previa & Tarifas Favorables**: Todos los proyectos son evaluados previamente para acordar una propuesta económica personalizada y accesible.
+3. **Modalidades de Pago Adaptadas**:
+   - **Facilidades de Crédito & Financiación**: Planes diferidos a la medida de cada cliente.
+   - **Pagos por Mensualidad**: Cuotas recurrentes para preservar el flujo de caja.
+   - **Pago por Proyecto (Propiedad Total)**: Cotización por entregables e hitos con propiedad 100% del código fuente.
+   - **Bolsa de Horas & Soporte**: Contratación flexible por horas de ingeniería bajo demanda.
+4. **Contacto Directo por WhatsApp**: Atención directa en el celular **+57 300 237 4114**.
 
 ---
 
-## 🛠️ Tecnologías Utilizadas
+## 🛠️ Tecnologías
 
-- **HTML5 Semántico**: Estructura limpia y optimizada para SEO.
-- **CSS3 Personalizado**: Variables de diseño, modo oscuro de lujo, efectos de *glassmorphic*, micro-animaciones y diseño 100% responsivo.
-- **JavaScript (ES6+)**: Módulo interactivo con Calculadora de Inversión en tiempo real y generador dinámico de mensajes para WhatsApp.
-- **Remixicon**: Colección de íconos vectoriales modernos.
+- **HTML5 & CSS3 Mobile-First**: Diseño moderno, responsivo y adaptado para celulares y escritorios.
+- **JavaScript (ES6+)**: Módulo interactivo para evaluación de requerimientos y generación de mensajes dinámicos a WhatsApp.
+- **Cloud & Automation Stack**: Microsoft Azure, Amazon Web Services (AWS) y Microsoft Power Platform (Power Apps, Power Automate, Power BI).
 
 ---
 
 ## 📞 Contacto
 
 - **WhatsApp**: [+57 300 237 4114](https://wa.me/573002374114)
-- **Sitio Web**: OPIA Software
+- **Repositorio**: [juanoviedo/opiasoftware](https://github.com/juanoviedo/opiasoftware)
