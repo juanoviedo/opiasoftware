@@ -1,12 +1,12 @@
-# 🚀 O&P IA Software - Landing Page
+# 🚀 OPIA Software - Landing Page
 
-Bienvenido al repositorio oficial de **O&P IA Software**, la plataforma web comercial para servicios de desarrollo de software a la medida con Inteligencia Artificial, Microsoft Azure, Amazon Web Services (AWS) y Microsoft Power Platform.
+Bienvenido al repositorio oficial de **OPIA Software**, la plataforma web comercial para servicios de desarrollo de software a la medida con Inteligencia Artificial, Microsoft Azure, Amazon Web Services (AWS) y Microsoft Power Platform.
 
 ---
 
 ## 💡 Propuesta de Valor & Modelo de Negocio
 
-O&P IA Software rompe la barrera del costo inicial ofreciendo máxima flexibilidad y tarifas altamente favorables:
+OPIA Software rompe la barrera del costo inicial ofreciendo máxima flexibilidad y tarifas altamente favorables:
 
 1. **Software a la Medida + Cloud + IA**: Sistemas ERP, CRM, Apps Móviles, Portales Web y Automatizaciones con IA, Azure, AWS y Power Platform.
 2. **Evaluación Previa & Tarifas Favorables**: Todos los proyectos son evaluados previamente para acordar una propuesta económica personalizada y accesible.

@@ -1,5 +1,5 @@
 /**
- * O&P IA SOFTWARE - MAIN JAVASCRIPT MODULE
+ * OPIA SOFTWARE - MAIN JAVASCRIPT MODULE
  * Mobile Drawer Navigation, Project Evaluator, FAQ Accordion, WhatsApp Messaging
  */
 
@@ -95,7 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Configure custom WhatsApp request message
         if (calcWhatsAppBtn) {
-            const message = `Hola O&P IA Software, me gustaría solicitar la evaluación de un proyecto:\n\n` +
+            const message = `Hola OPIA Software, me gustaría solicitar la evaluación de un proyecto:\n\n` +
                             `📌 *Tipo de Solución:* ${projectTypeName}\n` +
                             `⚙️ *Complejidad:* ${complexityText}\n` +
                             `💳 *Esquema Preferido:* ${paymentModeName}\n\n` +
