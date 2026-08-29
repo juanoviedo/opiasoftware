@@ -95,11 +95,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Configure custom WhatsApp request message
         if (calcWhatsAppBtn) {
-            const message = `Hola OPIA Software, me gustaría solicitar la evaluación de un proyecto:\n\n` +
+            const message = `Hola OPIA Software, me gustaría evaluar un proyecto para mi empresa:\n\n` +
                             `📌 *Tipo de Solución:* ${projectTypeName}\n` +
                             `⚙️ *Complejidad:* ${complexityText}\n` +
                             `💳 *Esquema Preferido:* ${paymentModeName}\n\n` +
-                            `Quisiera agendar una breve asesoría para recibir una cotización previa con tarifa favorable.`;
+                            `Quisiera agendar una breve asesoría para recibir una propuesta con tarifa favorable.`;
             
             calcWhatsAppBtn.onclick = () => {
                 const encodedMsg = encodeURIComponent(message);
