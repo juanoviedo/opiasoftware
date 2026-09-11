@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (toggleBtn) {
             toggleBtn.addEventListener('click', () => {
                 const isActive = card.classList.contains('active');
-                
+
                 // Close other cards
                 faqCards.forEach(other => other.classList.remove('active'));
 
@@ -63,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
        ========================================================================== */
     const projectTypeSelect = document.getElementById('projectTypeSelect');
     const complexityInput = document.getElementById('complexityInput');
-    const paymentModeSelect = document.getElementById('paymentModeSelect');
+    const projectPrioritySelect = document.getElementById('projectPrioritySelect');
     const calcWhatsAppBtn = document.getElementById('calcWhatsAppBtn');
 
     const lblBase = document.getElementById('lblBase');
@@ -71,10 +71,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const lblAdv = document.getElementById('lblAdv');
 
     function updateEvaluatorState() {
-        if (!projectTypeSelect || !complexityInput || !paymentModeSelect) return;
+        if (!projectTypeSelect || !complexityInput || !projectPrioritySelect) return;
 
         const projectTypeName = projectTypeSelect.value;
-        const paymentModeName = paymentModeSelect.value;
+        const projectPriorityName = projectPrioritySelect.value;
         const complexityVal = parseInt(complexityInput.value);
         let complexityText = "Medio (5-8 Módulos)";
 
@@ -98,9 +98,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const message = `Hola OPIA Software, me gustaría evaluar un proyecto para mi empresa:\n\n` +
                             `📌 *Tipo de Solución:* ${projectTypeName}\n` +
                             `⚙️ *Complejidad:* ${complexityText}\n` +
-                            `💳 *Esquema Preferido:* ${paymentModeName}\n\n` +
-                            `Quisiera agendar una breve asesoría para recibir una propuesta con tarifa favorable.`;
-            
+                            `🎯 *Prioridad del Proyecto:* ${projectPriorityName}\n\n` +
+                            `Quisiera conversar sobre los objetivos, los criterios de calidad y la implementación de esta solución.`;
+
             calcWhatsAppBtn.onclick = () => {
                 const encodedMsg = encodeURIComponent(message);
                 window.open(`https://wa.me/${WHATSAPP_PHONE}?text=${encodedMsg}`, '_blank');
@@ -110,7 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (projectTypeSelect) projectTypeSelect.addEventListener('change', updateEvaluatorState);
     if (complexityInput) complexityInput.addEventListener('input', updateEvaluatorState);
-    if (paymentModeSelect) paymentModeSelect.addEventListener('change', updateEvaluatorState);
+    if (projectPrioritySelect) projectPrioritySelect.addEventListener('change', updateEvaluatorState);
 
     updateEvaluatorState();
 });

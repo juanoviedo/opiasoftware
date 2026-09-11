@@ -4,18 +4,15 @@ Bienvenido al repositorio oficial de **OPIA Software**, la plataforma web comerc
 
 ---
 
-## 💡 Propuesta de Valor & Modelo de Negocio
+## Propuesta de Valor
 
-OPIA Software rompe la barrera del costo inicial ofreciendo máxima flexibilidad y tarifas altamente favorables:
+OPIA Software desarrolla soluciones digitales a la medida, con foco en la calidad, la confiabilidad y los resultados para cada negocio.
 
-1. **Software a la Medida + Cloud + IA**: Sistemas ERP, CRM, Apps Móviles, Portales Web y Automatizaciones con IA, Azure, AWS y Power Platform.
-2. **Evaluación Previa & Tarifas Favorables**: Todos los proyectos son evaluados previamente para acordar una propuesta económica personalizada y accesible.
-3. **Modalidades de Pago Adaptadas**:
-   - **Facilidades de Crédito & Financiación**: Planes diferidos a la medida de cada cliente.
-   - **Pagos por Mensualidad**: Cuotas recurrentes para preservar el flujo de caja.
-   - **Pago por Proyecto (Propiedad Total)**: Cotización por entregables e hitos con propiedad 100% del código fuente.
-   - **Bolsa de Horas & Soporte**: Contratación flexible por horas de ingeniería bajo demanda.
-4. **Contacto Directo por WhatsApp**: Atención directa en el celular **+57 300 237 4114**.
+1. **Entender la operación**: Procesos, usuarios, integraciones y objetivos claros antes de desarrollar.
+2. **Desarrollar y validar**: Experiencia de uso, pruebas de los flujos de trabajo y criterios de aceptación acordados con el cliente.
+3. **Acompañar la evolución**: Puesta en marcha, documentación, transferencia de conocimiento y planificación del soporte.
+4. **Soluciones digitales**: ERP, CRM, aplicaciones web y móviles, análisis de datos, automatización y servicios cloud.
+5. **Asesoría personalizada**: El evaluador recoge el tipo de solución, su alcance y la prioridad del proyecto para preparar una conversación por WhatsApp.
 
 ---
 
