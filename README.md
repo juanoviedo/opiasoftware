@@ -1,30 +1,19 @@
-# 🚀 OPIA Software - Landing Page
+# OPIA Software
 
-Bienvenido al repositorio oficial de **OPIA Software**, la plataforma web comercial para servicios de desarrollo de software a la medida con Inteligencia Artificial, Microsoft Azure, Amazon Web Services (AWS) y Microsoft Power Platform.
+Web comercial publicada en https://www.opiasoftware.com/.
 
----
+## Versión publicada
 
-## Propuesta de Valor
+Importada de `OPIA-web-oficial.zip`, entregado por el usuario el 6 de octubre de 2026. Incluye inicio, servicios, software, marketing, nosotros, contacto y cuatro páginas de especialidades. El contacto de esta versión es WhatsApp **+57 333 278 2483**.
 
-OPIA Software desarrolla soluciones digitales a la medida, con foco en la calidad, la confiabilidad y los resultados para cada negocio.
+El archivo recibido contiene la web ya compilada: HTML prerenderizado, JavaScript de React, CSS e imágenes. No incluye el proyecto fuente ni un comando de compilación. Para cambios estructurales posteriores conviene conservar u obtener el proyecto fuente que generó este paquete. Los archivos anteriores en `assets/brand`, `assets/images`, `css/styles.css` y `js/` se mantienen para conservar referencias antiguas; las nuevas páginas utilizan los recursos del paquete.
 
-1. **Entender la operación**: Procesos, usuarios, integraciones y objetivos claros antes de desarrollar.
-2. **Desarrollar y validar**: Experiencia de uso, pruebas de los flujos de trabajo y criterios de aceptación acordados con el cliente.
-3. **Acompañar la evolución**: Puesta en marcha, documentación, transferencia de conocimiento y planificación del soporte.
-4. **Soluciones digitales**: ERP, CRM, aplicaciones web y móviles, análisis de datos, automatización y servicios cloud.
-5. **Asesoría personalizada**: El evaluador recoge el tipo de solución, su alcance y la prioridad del proyecto para preparar una conversación por WhatsApp.
+## Publicación
 
----
+Vercel publica la rama `main` del repositorio `juanoviedo/opiasoftware`. Se conserva `CNAME` para la configuración existente de GitHub Pages. `vercel.json` mantiene las cabeceras de seguridad y configura la caché de los recursos compilados. Las rutas tienen su propio `index.html` y existe una página `404.html`.
 
-## 🛠️ Tecnologías
+Se conserva Meta Pixel `1096286453264873` en producción; las vistas previas locales no generan eventos. `css/site-preferences.css` oculta las flechas nativas de todos los campos numéricos, incluidos los añadidos dinámicamente, sin cambiar su validación.
 
-- **HTML5 & CSS3 Mobile-First**: Diseño moderno, responsivo y adaptado para celulares y escritorios.
-- **JavaScript (ES6+)**: Módulo interactivo para evaluación de requerimientos y generación de mensajes dinámicos a WhatsApp.
-- **Cloud & Automation Stack**: Microsoft Azure, Amazon Web Services (AWS) y Microsoft Power Platform (Power Apps, Power Automate, Power BI).
+## Revisión local
 
----
-
-## 📞 Contacto
-
-- **WhatsApp**: [+57 300 237 4114](https://wa.me/573002374114)
-- **Repositorio**: [juanoviedo/opiasoftware](https://github.com/juanoviedo/opiasoftware)
+Servir la raíz con un servidor HTTP estático y revisar inicio, navegación entre páginas, enlaces de WhatsApp y menú móvil. No es necesario instalar dependencias ni compilar el ZIP.

@@ -1,3 +1,5 @@
+> Documento histórico del rediseño de septiembre de 2026. La publicación actual corresponde a `OPIA-web-oficial.zip`, entregado y autorizado por el usuario el 6 de octubre de 2026; su contenido y contacto sustituyen esta propuesta. Consulte `README.md`.
+
 # OPIA Software — propuesta de rediseño corporativo
 
 ## Estado
