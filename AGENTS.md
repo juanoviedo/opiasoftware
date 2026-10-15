@@ -28,13 +28,14 @@ No hay tests automatizados ni linter: verificar con curl (`/api/health`, `/priva
 - **Despliegue = `git push origin main`.** Un timer systemd en el servidor ejecuta `deploy-from-github.sh` cada 5 min (fetch + rebuild + health check en `/api/health`). No hay entorno de pruebas: main es producción.
 - Datos vivos (visitas, leads, admin, secret.key) en `server/data/`, montado como volumen. Nunca se commitea (retención 90 días).
 - Variables del contenedor: `OPIA_TRUST_PROXY=1`, `OPIA_PUBLIC_URL=https://opiasoftware.com`.
-- Contraseña del panel: `docker exec -it opiasoftware-home-app-1 node server/scripts/set-password.js` en el servidor.
+- Contraseña del panel: `docker exec -it opiasoftware-home-app-1 node server/scripts/set-password.js` en el servidor. Mientras no exista contraseña, el panel queda **abierto** (decisión del dueño): apenas se configure una, el login vuelve a ser obligatorio.
+- Cambios de DNS/rutas del túnel de Cloudflare: usar la API con el token de `server/cf-config.json` (archivo gitignored, creado 2026-10-15). Mucho más rápido que el dashboard.
 
 **Acceso SSH al servidor**: está documentado en `AGENTS.local.md` (ignorado por git; contiene IP y usuario). Si el archivo no existe en tu máquina, pídeselo al usuario.
 
 ## Reglas de seguridad
 
-- Secretos ignorados por git: `server/meta-config.json` (credenciales Meta), `server/ads-config.json` (IDs de pauta), `server/data/*` (datos personales, Ley 1581 de 2012).
+- Secretos ignorados por git: `server/meta-config.json` (credenciales Meta), `server/ads-config.json` (IDs de pauta), `server/cf-config.json` (token de Cloudflare), `server/data/*` (datos personales, Ley 1581 de 2012).
 - Meta Marketing API: las campañas se crean **PAUSED**; `--activate` es el único paso que gasta dinero real.
 - El token de acceso de Meta se compartió por chat en el pasado: debe rotarse tras lanzar la campaña.
 - Formulario de leads: trampa honeypot (`website`/`url_field`) y consentimiento explícito obligatorio.

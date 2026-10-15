@@ -3,6 +3,7 @@ node_modules
 server/data
 server/ads-config.json
 server/meta-config.json
+server/cf-config.json
 api
 supabase
 opadmin

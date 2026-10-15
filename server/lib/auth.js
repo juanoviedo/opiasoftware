@@ -109,9 +109,11 @@ function destroySession(res) {
 function currentUser(req) {
   const cookies = parseCookies(req.headers.cookie);
   const payload = unsign(cookies[COOKIE_NAME]);
-  if (!payload) return null;
   const admin = loadAdmin();
-  if (!admin) return null;
+  // Modo abierto a pedido del dueño: sin contraseña configurada el panel no exige
+  // login. En cuanto exista admin.json, la sesión vuelve a ser obligatoria.
+  if (!admin) return config.adminUser;
+  if (!payload) return null;
   return payload.u === admin.user ? payload.u : null;
 }
 

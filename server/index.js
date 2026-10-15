@@ -305,7 +305,7 @@ async function handleLogin(req, res) {
   if (!admin) {
     return H.sendJson(res, 503, {
       ok: false,
-      error: 'El panel aún no tiene contraseña. Ejecuta: node server/scripts/set-password.js',
+      error: 'El panel está abierto sin contraseña. Para protegerlo ejecuta: node server/scripts/set-password.js',
     });
   }
 
@@ -468,7 +468,7 @@ function start() {
     shown.push(`  Proxy de confianza: ${config.trustProxy ? 'sí' : 'no'}`);
     shown.push('');
     if (!admin) {
-      shown.push('  ⚠ Sin contraseña de administrador. Ejecuta:');
+      shown.push('  ⚠ Panel ABIERTO sin contraseña. Protégelo con:');
       shown.push('     node server/scripts/set-password.js');
       shown.push('');
     }
