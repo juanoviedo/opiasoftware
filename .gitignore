@@ -17,6 +17,7 @@ server/ads-config.json
 server/data/*
 !server/data/.gitignore
 server/meta-config.json
+server/meta-config.old.json
 server/cf-config.json
 
 # Bytecode de Python
