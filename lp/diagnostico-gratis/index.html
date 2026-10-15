@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#071E3D" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Diagnóstico gratuito de procesos y captación · OPIA Software</title>
+    <meta
+      name="description"
+      content="30 minutos con OPIA Software para identificar qué proceso te consume tiempo y qué está frenando tus consultas. Sales con un plan escrito, sin costo y sin compromiso."
+    />
+
+    <!-- Meta Pixel Code -->
+    <script>
+      if (!['localhost', '127.0.0.1', '::1', '[::1]'].includes(window.location.hostname)) {
+        !(function (f, b, e, v, n, t, s) {
+          if (f.fbq) return;
+          n = f.fbq = function () { n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments); };
+          if (!f._fbq) f._fbq = n;
+          n.push = n; n.loaded = true; n.version = '2.0'; n.queue = [];
+          t = b.createElement(e); t.async = true; t.src = v;
+          s = b.getElementsByTagName(e)[0]; s.parentNode.insertBefore(t, s);
+        })(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
+        fbq('init', '1096286453264873');
+        fbq('track', 'PageView');
+      }
+    </script>
+    <noscript>
+      <img
+        height="1" width="1" style="display:none" alt=""
+        src="https://www.facebook.com/tr?id=1096286453264873&ev=PageView&noscript=1"
+      />
+    </noscript>
+    <!-- End Meta Pixel Code -->
+
+    <style>
+      :root {
+        --navy: #071e3d;
+        --navy-2: #0b2b50;
+        --blue: #087ef5;
+        --blue-dark: #1768b3;
+        --sky: #15b8f4;
+        --text: #eaf2fa;
+        --muted: #9db2c8;
+        --line: rgba(255, 255, 255, 0.12);
+        --card: rgba(255, 255, 255, 0.05);
+        --ok: #2ecc8f;
+      }
+      * { box-sizing: border-box; }
+      html { -webkit-text-size-adjust: 100%; }
+      body {
+        margin: 0;
+        font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(1000px 620px at 8% -12%, #123a68 0%, transparent 58%),
+          radial-gradient(820px 520px at 108% 4%, #0a4a72 0%, transparent 52%),
+          var(--navy);
+        line-height: 1.55;
+      }
+      h1, h2, h3, .brandname { font-family: Montserrat, Inter, system-ui, sans-serif; }
+      .wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+
+      header.bar {
+        display: flex; align-items: center; justify-content: space-between; gap: 16px;
+        padding: 18px 0; border-bottom: 1px solid var(--line);
+      }
+      .brand { display: flex; align-items: baseline; gap: 8px; text-decoration: none; color: var(--text); }
+      .brandname { font-size: 20px; letter-spacing: .07em; font-weight: 700; }
+      .brand small { font-size: 10px; letter-spacing: .2em; color: var(--sky); text-transform: uppercase; }
+      .bar a.wa {
+        color: var(--muted); text-decoration: none; font-size: 13.5px;
+        border: 1px solid var(--line); padding: 8px 13px; border-radius: 9px;
+      }
+      .bar a.wa:hover { color: #fff; border-color: var(--sky); }
+
+      .hero { display: grid; grid-template-columns: 1.08fr .92fr; gap: 40px; padding: 46px 0 40px; align-items: start; }
+      .eyebrow {
+        display: inline-block; font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase;
+        color: var(--sky); border: 1px solid rgba(21,184,244,.34); background: rgba(21,184,244,.09);
+        padding: 5px 11px; border-radius: 20px; margin-bottom: 18px;
+      }
+      h1 { font-size: clamp(28px, 4.4vw, 44px); line-height: 1.14; margin: 0 0 16px; letter-spacing: -.02em; font-weight: 700; }
+      h1 em { font-style: normal; color: var(--sky); }
+      .lead { font-size: 16.5px; color: var(--muted); margin: 0 0 26px; max-width: 54ch; }
+
+      ul.gains { list-style: none; padding: 0; margin: 0 0 26px; display: grid; gap: 12px; }
+      ul.gains li { display: flex; gap: 11px; align-items: flex-start; font-size: 14.5px; }
+      ul.gains li svg { flex: 0 0 auto; margin-top: 3px; color: var(--ok); }
+      .promise { font-size: 13px; color: var(--muted); border-left: 2px solid var(--blue); padding-left: 12px; }
+
+      form.card, .done {
+        background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 26px 24px;
+        box-shadow: 0 26px 60px rgba(0,0,0,.34); backdrop-filter: blur(6px);
+      }
+      form.card h2 { margin: 0 0 4px; font-size: 19px; }
+      form.card .sub { margin: 0 0 20px; color: var(--muted); font-size: 13.5px; }
+      .field { margin-bottom: 15px; }
+      label { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 6px; letter-spacing: .02em; }
+      label .req { color: var(--sky); }
+      input, select, textarea {
+        width: 100%; padding: 11px 13px; border-radius: 10px; border: 1px solid var(--line);
+        background: rgba(4,16,32,.55); color: #fff; font: inherit; font-size: 15px;
+      }
+      textarea { min-height: 84px; resize: vertical; }
+      input:focus, select:focus, textarea:focus { outline: 2px solid var(--blue); outline-offset: 1px; border-color: transparent; }
+      select { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
+      .two { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
+      .err { color: #ffb4b4; font-size: 12.5px; margin-top: 5px; display: none; }
+      .field.bad input, .field.bad select { border-color: rgba(255,107,107,.6); }
+      .field.bad .err { display: block; }
+
+      .consent { display: flex; gap: 10px; align-items: flex-start; font-size: 12.5px; color: var(--muted); margin: 4px 0 18px; }
+      .consent input { width: 17px; height: 17px; margin-top: 2px; flex: 0 0 auto; }
+      .consent a { color: var(--sky); }
+
+      button.submit {
+        width: 100%; padding: 14px; border: 0; border-radius: 11px; cursor: pointer;
+        background: linear-gradient(135deg, var(--blue), var(--sky)); color: #fff;
+        font: inherit; font-size: 15.5px; font-weight: 650; letter-spacing: .01em;
+      }
+      button.submit:hover { filter: brightness(1.07); }
+      button.submit:disabled { opacity: .65; cursor: progress; }
+      .formnote { text-align: center; font-size: 12px; color: var(--muted); margin: 12px 0 0; }
+      .formerror {
+        display: none; margin-bottom: 15px; padding: 11px 13px; border-radius: 10px; font-size: 13px;
+        background: rgba(255,107,107,.11); border: 1px solid rgba(255,107,107,.34); color: #ffd7d7;
+      }
+      .formerror[data-show="1"] { display: block; }
+
+      /* Campo trampa: invisible para personas, visible para bots. */
+      .hp { position: absolute !important; left: -9999px !important; width: 1px; height: 1px; overflow: hidden; }
+
+      .done { display: none; text-align: center; }
+      .done[data-show="1"] { display: block; }
+      .done .tick {
+        width: 54px; height: 54px; border-radius: 50%; margin: 0 auto 16px;
+        display: grid; place-items: center; background: rgba(46,204,143,.15);
+        border: 1px solid rgba(46,204,143,.4); color: var(--ok);
+      }
+      .done h2 { margin: 0 0 10px; font-size: 21px; }
+      .done p { color: var(--muted); font-size: 14.5px; margin: 0 auto 20px; max-width: 40ch; }
+      .done a.wa-big {
+        display: inline-block; padding: 13px 20px; border-radius: 11px; text-decoration: none;
+        background: rgba(46,204,143,.14); border: 1px solid rgba(46,204,143,.4); color: #d6ffe9;
+        font-size: 14.5px; font-weight: 600;
+      }
+
+      section.band { border-top: 1px solid var(--line); padding: 38px 0; }
+      h2.sec { font-size: clamp(21px, 2.6vw, 27px); margin: 0 0 8px; letter-spacing: -.01em; }
+      p.seclead { color: var(--muted); margin: 0 0 26px; max-width: 62ch; font-size: 15px; }
+      .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(232px, 1fr)); gap: 14px; }
+      .tile { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
+      .tile b { display: block; font-family: Montserrat, Inter, sans-serif; font-size: 14.5px; margin-bottom: 7px; }
+      .tile span { color: var(--muted); font-size: 13.5px; }
+      .steps { display: grid; gap: 12px; counter-reset: s; }
+      .step { display: grid; grid-template-columns: 34px 1fr; gap: 13px; align-items: start; background: var(--card); border: 1px solid var(--line); border-radius: 13px; padding: 15px 17px; }
+      .step i { font-style: normal; font-family: Montserrat, sans-serif; font-weight: 700; color: var(--sky); font-size: 15px; }
+      .step b { display: block; font-size: 14.5px; margin-bottom: 3px; }
+      .step span { color: var(--muted); font-size: 13.5px; }
+
+      footer.foot { border-top: 1px solid var(--line); padding: 26px 0 40px; color: var(--muted); font-size: 12.5px; }
+      footer.foot a { color: var(--muted); }
+      .clients { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 14px; }
+      .clients span { font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; border: 1px solid var(--line); border-radius: 20px; padding: 4px 11px; color: var(--muted); }
+
+      @media (max-width: 880px) {
+        .hero { grid-template-columns: 1fr; gap: 28px; padding: 32px 0 28px; }
+        .two { grid-template-columns: 1fr; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * { transition: none !important; animation: none !important; }
+      }
+    </style>
+  <script src="/__opia/beacon.js" defer></script>
+<script src="/__opia/conversions.js" defer></script>
+<!-- Google tag --><script async src="https://www.googletagmanager.com/gtag/js?id=G-1QLZPMND5D"></script><script>if(!['localhost','127.0.0.1','::1','[::1]'].includes(window.location.hostname)){window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-1QLZPMND5D');window.opiaAds={lead:'',contact:'',currency:'COP'};window.opiaConvert=function(kind,value){try{var to=window.opiaAds[kind];if(to)gtag('event','conversion',{send_to:to,value:value||0,currency:window.opiaAds.currency});gtag('event',kind==='lead'?'generate_lead':'contact',{value:value||0,currency:window.opiaAds.currency});}catch(e){}};}</script><!-- End Google tag -->
+</head>
+
+  <body>
+    <div class="wrap">
+      <header class="bar">
+        <a class="brand" href="/">
+          <span class="brandname">OPIA</span><small>Software</small>
+        </a>
+        <a class="wa" id="waTop" href="https://wa.me/573332782483?text=Hola%2C%20quiero%20agendar%20el%20diagn%C3%B3stico%20gratuito.">
+          ¿Prefieres escribir ya? WhatsApp
+        </a>
+      </header>
+
+      <main>
+        <div class="hero">
+          <div>
+            <span class="eyebrow">Cupo limitado · Sin costo</span>
+            <h1>Descubre qué proceso te está costando dinero y <em>qué haría falta para arreglarlo</em></h1>
+            <p class="lead">
+              30 minutos con alguien de OPIA Software. Revisamos cómo trabajas hoy, detectamos dónde se pierde
+              tiempo o se caen las consultas, y te entregamos por escrito qué conviene hacer primero.
+            </p>
+
+            <ul class="gains">
+              <li>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+                <span><b>Un diagnóstico claro</b> del proceso que más te está costando, sin tecnicismos.</span>
+              </li>
+              <li>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+                <span><b>Qué automatizar y qué no.</b> A veces la solución no es software.</span>
+              </li>
+              <li>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+                <span><b>Por qué no llegan consultas</b> si hoy inviertes en publicidad y no ves retorno.</span>
+              </li>
+              <li>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+                <span><b>Un plan por escrito</b> con el primer paso concreto y su alcance estimado.</span>
+              </li>
+            </ul>
+
+            <p class="promise">
+              No es una llamada de ventas disfrazada. Si concluimos que no te conviene, te lo decimos y hasta ahí llega.
+            </p>
+          </div>
+
+          <div>
+            <form class="card" id="leadForm" data-lead-form="true" novalidate>
+              <h2>Agenda tu diagnóstico</h2>
+              <p class="sub">Respondemos en menos de un día hábil.</p>
+
+              <div class="formerror" id="formError" role="alert"></div>
+
+              <!-- Campo trampa para bots. Las personas no lo ven ni lo llenan. -->
+              <div class="hp" aria-hidden="true">
+                <label for="website">No llenes este campo</label>
+                <input id="website" name="website" type="text" tabindex="-1" autocomplete="off" />
+              </div>
+
+              <div class="field" id="f-name">
+                <label for="name">Nombre y apellido <span class="req">*</span></label>
+                <input id="name" name="name" type="text" autocomplete="name" required maxlength="120" />
+                <div class="err">Escribe tu nombre.</div>
+              </div>
+
+              <div class="two">
+                <div class="field" id="f-email">
+                  <label for="email">Correo <span class="req">*</span></label>
+                  <input id="email" name="email" type="email" autocomplete="email" maxlength="160" />
+                  <div class="err">Revisa el correo.</div>
+                </div>
+                <div class="field" id="f-phone">
+                  <label for="phone">WhatsApp <span class="req">*</span></label>
+                  <input id="phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" maxlength="40" placeholder="+57 300 000 0000" />
+                  <div class="err">Necesitamos un correo o un teléfono.</div>
+                </div>
+              </div>
+
+              <div class="two">
+                <div class="field">
+                  <label for="company">Empresa</label>
+                  <input id="company" name="company" type="text" autocomplete="organization" maxlength="160" />
+                </div>
+                <div class="field">
+                  <label for="role">Tu cargo</label>
+                  <input id="role" name="role" type="text" autocomplete="organization-title" maxlength="120" />
+                </div>
+              </div>
+
+              <div class="field" id="f-service">
+                <label for="service">¿Qué quieres revisar? <span class="req">*</span></label>
+                <select id="service" name="service" required>
+                  <option value="">Elige una opción</option>
+                  <option>Un proceso manual que quiero automatizar</option>
+                  <option>Power Platform (Power Apps, Automate, BI)</option>
+                  <option>Software o aplicación a la medida</option>
+                  <option>Publicidad digital que no trae consultas</option>
+                  <option>Necesito una landing page o sitio web</option>
+                  <option>Estrategia de marketing completa</option>
+                  <option>Todavía no lo tengo claro</option>
+                </select>
+                <div class="err">Elige la opción más cercana.</div>
+              </div>
+
+              <div class="field">
+                <label for="urgency">¿Para cuándo lo necesitas?</label>
+                <select id="urgency" name="urgency">
+                  <option value="">Prefiero no decirlo</option>
+                  <option>Es urgente, este mes</option>
+                  <option>En los próximos 1 a 3 meses</option>
+                  <option>Estoy explorando opciones</option>
+                </select>
+              </div>
+
+              <div class="field" id="f-message">
+                <label for="message">Cuéntanos brevemente qué está pasando <span class="req">*</span></label>
+                <textarea id="message" name="message" maxlength="2000" placeholder="Ej: llevamos las aprobaciones en Excel y por correo, se nos pierden solicitudes y no sabemos cuánto tarda cada una."></textarea>
+                <div class="err">Cuéntanos al menos una línea.</div>
+              </div>
+
+              <div class="consent" id="f-consent">
+                <input id="consent" name="consent" type="checkbox" required />
+                <label for="consent" style="margin:0">
+                  Autorizo a OPIA Software a tratar mis datos para responder esta solicitud, según la
+                  Ley 1581 de 2012 de Colombia. <span class="req">*</span>
+                </label>
+              </div>
+
+              <button class="submit" type="submit" id="submitBtn">Quiero mi diagnóstico gratuito</button>
+              <p class="formnote">Sin costo y sin compromiso. No compartimos tus datos con terceros.</p>
+            </form>
+
+            <div class="done" id="done" role="status">
+              <div class="tick">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+              </div>
+              <h2>Recibimos tu solicitud</h2>
+              <p>Te escribimos en menos de un día hábil para coordinar la sesión. Si prefieres adelantarlo, escríbenos ya.</p>
+              <a class="wa-big" id="waDone" href="https://wa.me/573332782483?text=Hola%2C%20acabo%20de%20pedir%20el%20diagn%C3%B3stico%20gratuito%20en%20la%20web.">
+                Continuar por WhatsApp
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <section class="band">
+          <h2 class="sec">Cómo es la sesión</h2>
+          <p class="seclead">Media hora, por videollamada o por WhatsApp según te quede mejor. Sin presentación corporativa de 40 diapositivas.</p>
+          <div class="steps">
+            <div class="step"><i>01</i><div><b>Entendemos el proceso</b><span>Quién participa, qué herramientas usan hoy y dónde se atasca la información.</span></div></div>
+            <div class="step"><i>02</i><div><b>Revisamos la captación</b><span>De dónde llegan las consultas, qué se hace con ellas y dónde se pierden.</span></div></div>
+            <div class="step"><i>03</i><div><b>Te entregamos el plan</b><span>Qué conviene hacer primero, qué alcance tendría y qué no vale la pena tocar todavía.</span></div></div>
+          </div>
+        </section>
+
+        <section class="band">
+          <h2 class="sec">Qué hacemos</h2>
+          <p class="seclead">Dos áreas que pueden trabajar por separado o conectadas cuando el reto lo necesita.</p>
+          <div class="grid3">
+            <div class="tile"><b>Software a la medida</b><span>Aplicaciones, automatizaciones e integraciones para ventas, inventarios, facturación y procesos propios.</span></div>
+            <div class="tile"><b>Power Platform</b><span>Power Apps, Power Automate y Power BI sobre el Microsoft 365 que tu empresa ya paga.</span></div>
+            <div class="tile"><b>Automatización con IA</b><span>Extraer datos de documentos, clasificar solicitudes y resumir conversaciones con revisión humana.</span></div>
+            <div class="tile"><b>Publicidad digital</b><span>Google Ads y Meta Ads con oferta, página de destino y seguimiento, no solo anuncios sueltos.</span></div>
+            <div class="tile"><b>Landing pages</b><span>Páginas construidas para una campaña concreta, con un solo siguiente paso y medición real.</span></div>
+            <div class="tile"><b>Medición</b><span>Tableros para saber qué campaña trae consultas y cuáles solo traen clics.</span></div>
+          </div>
+          <div class="clients">
+            <span>EvidenLab</span><span>Haztek</span><span>Oasis Plaza</span><span>ObraLive</span><span>Volartech</span><span>DataCompra</span>
+          </div>
+        </section>
+
+        <section class="band">
+          <h2 class="sec">Preguntas antes de agendar</h2>
+          <div class="grid3">
+            <div class="tile"><b>¿Tiene algún costo?</b><span>No. El diagnóstico y el plan escrito son gratuitos, y no te obligan a contratar nada.</span></div>
+            <div class="tile"><b>¿Necesito tener el proyecto definido?</b><span>No. Basta con que sepas qué proceso te molesta o qué resultado no estás logrando.</span></div>
+            <div class="tile"><b>¿Y si solo necesito una de las dos áreas?</b><span>Perfecto. Software y marketing son independientes; trabajamos solo lo que haga falta.</span></div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="foot">
+        <div>
+          © 2026 OPIA Software · Software a la medida y marketing digital ·
+          <a href="/">opiasoftware.com</a> ·
+          <a href="https://wa.me/573332782483">+57 333 278 2483</a>
+        </div>
+      </footer>
+    </div>
+
+    <script>
+      (function () {
+        'use strict';
+
+        var WA_NUMBER = '573332782483';
+        var form = document.getElementById('leadForm');
+        var done = document.getElementById('done');
+        var errorBox = document.getElementById('formError');
+        var submitBtn = document.getElementById('submitBtn');
+
+        function pixel(event, data) {
+          try {
+            if (typeof window.fbq === 'function') window.fbq('track', event, data || {});
+          } catch (e) {}
+        }
+
+        function analytics(event, data) {
+          try {
+            if (typeof window.opiaTrack === 'function') window.opiaTrack(event, data || {});
+          } catch (e) {}
+        }
+
+        function markField(id, bad) {
+          var box = document.getElementById(id);
+          if (!box) return;
+          if (bad) box.classList.add('bad');
+          else box.classList.remove('bad');
+        }
+
+        function waLink(text) {
+          return 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(text);
+        }
+
+        function fallbackToWhatsApp(values) {
+          // Si el backend no responde (por ejemplo, sitio servido sin el servidor Node),
+          // no perdemos el lead: lo llevamos a WhatsApp con el contexto.
+          var text =
+            'Hola, quiero el diagnóstico gratuito de OPIA Software.\n' +
+            '• Nombre: ' + values.name + '\n' +
+            '• Empresa: ' + (values.company || '—') + '\n' +
+            '• Necesidad: ' + (values.service || '—') + '\n' +
+            '• Contexto: ' + (values.message || '—');
+          window.location.href = waLink(text);
+        }
+
+        form.addEventListener('submit', function (event) {
+          event.preventDefault();
+          errorBox.removeAttribute('data-show');
+
+          var values = {
+            name: document.getElementById('name').value.trim(),
+            email: document.getElementById('email').value.trim(),
+            phone: document.getElementById('phone').value.trim(),
+            company: document.getElementById('company').value.trim(),
+            role: document.getElementById('role').value.trim(),
+            service: document.getElementById('service').value,
+            urgency: document.getElementById('urgency').value,
+            message: document.getElementById('message').value.trim(),
+            consent: document.getElementById('consent').checked,
+            website: document.getElementById('website').value,
+          };
+
+          var emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(values.email);
+          markField('f-name', values.name.length < 2);
+          markField('f-email', !!values.email && !emailOk);
+          markField('f-phone', !values.email && !values.phone);
+          markField('f-service', !values.service);
+          markField('f-message', values.message.length < 5);
+
+          var consentBad = !values.consent;
+          document.getElementById('f-consent').style.color = consentBad ? '#ffb4b4' : '';
+          if (consentBad) {
+            errorBox.textContent = 'Necesitamos tu autorización para poder responderte.';
+            errorBox.setAttribute('data-show', '1');
+            return;
+          }
+
+          var invalid = ['f-name', 'f-email', 'f-phone', 'f-service', 'f-message'].some(function (id) {
+            return document.getElementById(id).classList.contains('bad');
+          });
+          if (invalid) {
+            errorBox.textContent = 'Faltan datos por completar.';
+            errorBox.setAttribute('data-show', '1');
+            return;
+          }
+
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Enviando…';
+          analytics('form_submit');
+
+          fetch('/api/leads', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+              name: values.name,
+              email: values.email,
+              phone: values.phone,
+              company: values.company,
+              role: values.role,
+              service: values.service,
+              urgency: values.urgency,
+              message: values.message,
+              consent: true,
+              page: window.location.pathname + window.location.search,
+              ft: window.opiaFirstTouch || {},
+              vid: (function () { try { return localStorage.getItem('opia_vid') || ''; } catch (e) { return ''; } })(),
+              sid: (function () { try { return sessionStorage.getItem('opia_sid') || ''; } catch (e) { return ''; } })(),
+            }),
+          })
+            .then(function (res) {
+              return res.json().catch(function () { return { ok: res.ok }; });
+            })
+            .then(function (data) {
+              if (data && data.ok) {
+                // El evento Lead solo se dispara cuando el registro existe de verdad.
+                var leadData = { content_name: 'Diagnóstico gratuito', content_category: values.service || '' };
+                if (typeof window.opiaLeadSent === 'function') window.opiaLeadSent(leadData);
+                else pixel('Lead', leadData);
+                analytics('lead', { service: values.service });
+                form.style.display = 'none';
+                done.setAttribute('data-show', '1');
+                document.getElementById('waDone').href = waLink(
+                  'Hola, soy ' + values.name + '. Acabo de pedir el diagnóstico gratuito en la web sobre: ' + (values.service || 'una necesidad') + '.'
+                );
+                done.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return;
+              }
+              var messages = data && data.errors ? Object.keys(data.errors).map(function (k) { return data.errors[k]; }) : [];
+              errorBox.textContent = messages.length
+                ? messages.join(' ')
+                : 'No pudimos enviarlo. Escríbenos por WhatsApp y lo revisamos contigo.';
+              errorBox.setAttribute('data-show', '1');
+              submitBtn.disabled = false;
+              submitBtn.textContent = 'Quiero mi diagnóstico gratuito';
+            })
+            .catch(function () {
+              fallbackToWhatsApp(values);
+            });
+        });
+
+        // FormStart y el Contact de WhatsApp los dispara /__opia/conversions.js,
+        // que el servidor inyecta en todas las páginas. No se repiten aquí.
+      })();
+    </script>
+  </body>
+</html>

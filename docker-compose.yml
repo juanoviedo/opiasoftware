@@ -1,0 +1,13 @@
+name: opiasoftware-home
+
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8160:3000"
+    environment:
+      OPIA_TRUST_PROXY: "1"
+      OPIA_PUBLIC_URL: https://opiasoftware.com
+    volumes:
+      - ./server/data:/app/server/data

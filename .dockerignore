@@ -1,0 +1,17 @@
+.git
+node_modules
+server/data
+server/ads-config.json
+server/meta-config.json
+api
+supabase
+opadmin
+js
+scripts
+marketing/plan-leads
+.tools
+.vercel
+vercel.json
+AGENTS.local.md
+.deployed-commit
+__pycache__

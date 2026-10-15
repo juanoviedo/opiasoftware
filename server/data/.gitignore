@@ -1,0 +1,4 @@
+# Los datos de visitantes y leads son información personal (Ley 1581 de 2012).
+# Nada de esta carpeta debe llegar a git.
+*
+!.gitignore

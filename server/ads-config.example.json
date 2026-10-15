@@ -1,0 +1,12 @@
+{
+  "_comentario": "Copia este archivo a ads-config.json y llena los IDs. Se leen al arrancar el servidor.",
+  "_donde_sacar_ga4": "Google Analytics > Admin > Propiedad > ID de medición (empieza por G-)",
+  "_donde_sacar_ads": "Google Ads > Herramientas > Administrador de conversiones, o la etiqueta global del sitio (empieza por AW-)",
+  "_donde_sacar_labels": "Google Ads > Conversiones > cada acción de conversión muestra su etiqueta",
+  "ga4Id": "",
+  "googleAdsId": "",
+  "googleAdsLeadLabel": "",
+  "googleAdsContactLabel": "",
+  "gtmId": "",
+  "currency": "COP"
+}

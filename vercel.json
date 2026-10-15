@@ -2,6 +2,12 @@
   "version": 2,
   "name": "opiasoftware",
   "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/__opia/:path*",
+      "destination": "/js/:path*"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",
@@ -21,6 +27,28 @@
         {
           "key": "Referrer-Policy",
           "value": "strict-origin-when-cross-origin"
+        }
+      ]
+    },
+    {
+      "source": "/opadmin/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        }
+      ]
+    },
+    {
+      "source": "/js/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600"
         }
       ]
     },

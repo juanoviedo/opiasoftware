@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>OPIA Admin · Tráfico y leads</title>
+    <style>
+      :root {
+        --navy: #071e3d;
+        --navy-2: #0b2b50;
+        --blue: #087ef5;
+        --sky: #15b8f4;
+        --ok: #2ecc8f;
+        --warn: #ffb020;
+        --bad: #ff6b6b;
+        --text: #eaf2fa;
+        --muted: #8fa6bd;
+        --line: rgba(255, 255, 255, 0.09);
+        --card: rgba(255, 255, 255, 0.04);
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(1200px 700px at 10% -15%, #10355e 0%, transparent 60%),
+          radial-gradient(900px 600px at 105% 5%, #0a4a72 0%, transparent 55%),
+          var(--navy);
+        background-attachment: fixed;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+      a { color: var(--sky); }
+      .wrap { max-width: 1360px; margin: 0 auto; padding: 0 20px 60px; }
+
+      header.top {
+        position: sticky; top: 0; z-index: 20;
+        display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+        padding: 14px 20px; margin-bottom: 22px;
+        background: rgba(7, 30, 61, 0.86);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid var(--line);
+      }
+      .brand { display: flex; align-items: baseline; gap: 7px; margin-right: auto; }
+      .brand b { font-family: Montserrat, Inter, sans-serif; font-size: 19px; letter-spacing: .06em; }
+      .brand span { font-size: 10px; letter-spacing: .2em; color: var(--sky); text-transform: uppercase; }
+
+      .seg { display: flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+      .seg button {
+        background: transparent; border: 0; color: var(--muted);
+        padding: 7px 13px; font: inherit; font-size: 13px; cursor: pointer;
+      }
+      .seg button[aria-pressed="true"] { background: var(--blue); color: #fff; }
+      .ghost {
+        background: rgba(255,255,255,.06); border: 1px solid var(--line); color: var(--text);
+        padding: 7px 13px; border-radius: 9px; font: inherit; font-size: 13px; cursor: pointer;
+        text-decoration: none; display: inline-block;
+      }
+      .ghost:hover { background: rgba(255,255,255,.12); }
+      #updated { color: var(--muted); font-size: 12.5px; }
+
+      h2 {
+        font-family: Montserrat, Inter, sans-serif;
+        font-size: 13px; letter-spacing: .12em; text-transform: uppercase;
+        color: var(--muted); margin: 30px 0 12px; font-weight: 600;
+      }
+
+      .alerts { display: grid; gap: 10px; margin-bottom: 6px; }
+      .alert {
+        display: flex; gap: 11px; align-items: flex-start;
+        padding: 12px 14px; border-radius: 12px; font-size: 13.5px; line-height: 1.5;
+        border: 1px solid var(--line); background: var(--card);
+      }
+      .alert i { font-style: normal; flex: 0 0 auto; }
+      .alert.bad { border-color: rgba(255,107,107,.4); background: rgba(255,107,107,.09); }
+      .alert.warn { border-color: rgba(255,176,32,.4); background: rgba(255,176,32,.09); }
+      .alert.ok { border-color: rgba(46,204,143,.4); background: rgba(46,204,143,.09); }
+      .alert.info { border-color: rgba(21,184,244,.35); background: rgba(21,184,244,.08); }
+
+      .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(168px, 1fr)); gap: 12px; }
+      .kpi { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 15px 16px; }
+      .kpi .n { font-size: 27px; font-weight: 650; letter-spacing: -.02em; font-family: Montserrat, Inter, sans-serif; }
+      .kpi .l { color: var(--muted); font-size: 12px; letter-spacing: .04em; text-transform: uppercase; margin-top: 3px; }
+      .kpi.accent .n { color: var(--sky); }
+      .kpi.good .n { color: var(--ok); }
+      .kpi.bad .n { color: var(--bad); }
+
+      .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; }
+      .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 17px 18px; }
+      .card > h3 { margin: 0 0 14px; font-size: 14px; font-weight: 600; font-family: Montserrat, Inter, sans-serif; }
+      .card > .hint { margin: -8px 0 14px; color: var(--muted); font-size: 12.5px; }
+
+      .rows { display: grid; gap: 9px; }
+      .row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 10px; align-items: center; font-size: 13.5px; }
+      .row .bar { position: relative; height: 26px; border-radius: 6px; background: rgba(255,255,255,.045); overflow: hidden; }
+      .row .bar > span { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, rgba(8,126,245,.5), rgba(21,184,244,.32)); border-radius: 6px; }
+      .row .bar > b { position: relative; display: block; padding: 4px 9px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .row .v { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12.5px; white-space: nowrap; }
+
+      .hourchart { display: flex; align-items: flex-end; gap: 3px; height: 132px; padding-top: 6px; }
+      .hourchart .col { flex: 1 1 0; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 5px; min-width: 0; }
+      .hourchart .stick { width: 100%; border-radius: 4px 4px 2px 2px; background: rgba(143,166,189,.42); min-height: 2px; }
+      .hourchart .col.win .stick { background: linear-gradient(180deg, var(--sky), var(--blue)); }
+      .hourchart .lb { font-size: 9.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+      .hourchart .col.win .lb { color: var(--sky); font-weight: 600; }
+      .winlabel { display: inline-block; margin-top: 10px; font-size: 12px; color: var(--sky); }
+
+      .trend svg { width: 100%; height: 150px; display: block; overflow: visible; }
+      .trend .axis { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; margin-top: 6px; }
+
+      table { width: 100%; border-collapse: collapse; font-size: 13px; }
+      th, td { text-align: left; padding: 8px 9px; border-bottom: 1px solid var(--line); vertical-align: top; }
+      th { color: var(--muted); font-size: 11px; letter-spacing: .07em; text-transform: uppercase; font-weight: 600; position: sticky; top: 0; background: #0a2444; }
+      td.mono { font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--muted); }
+      tbody tr:hover { background: rgba(255,255,255,.035); }
+      .scroll { max-height: 460px; overflow: auto; border-radius: 10px; border: 1px solid var(--line); }
+      .tag { display: inline-block; padding: 1px 7px; border-radius: 20px; font-size: 11px; background: rgba(21,184,244,.16); color: var(--sky); border: 1px solid rgba(21,184,244,.3); }
+      .tag.meta { background: rgba(8,126,245,.2); color: #9ecbff; border-color: rgba(8,126,245,.4); }
+      .tag.lead { background: rgba(46,204,143,.16); color: var(--ok); border-color: rgba(46,204,143,.35); }
+      .empty { color: var(--muted); padding: 22px 0; text-align: center; font-size: 13.5px; }
+      .foot { margin-top: 34px; color: var(--muted); font-size: 12.5px; line-height: 1.6; border-top: 1px solid var(--line); padding-top: 16px; }
+      @media (max-width: 640px) {
+        .kpi .n { font-size: 22px; }
+        .hourchart { height: 104px; }
+        th, td { padding: 6px 6px; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="top">
+      <div class="brand"><b>OPIA</b><span>Admin</span></div>
+      <div class="seg" id="range" role="group" aria-label="Rango de fechas"></div>
+      <span id="updated"></span>
+      <button class="ghost" id="refresh" type="button">Actualizar</button>
+      <a class="ghost" href="/" target="_blank" rel="noopener">Ver sitio</a>
+      <a class="ghost" href="/opadmin/logout">Salir</a>
+    </header>
+
+    <div class="wrap">
+      <div class="alerts" id="alerts"></div>
+
+      <h2>Resumen</h2>
+      <div class="kpis" id="kpis"></div>
+
+      <h2>Cuándo llega la gente <span id="tzname" style="text-transform:none;letter-spacing:0;color:var(--sky)"></span></h2>
+      <div class="card">
+        <h3>Visitas por hora del día</h3>
+        <p class="hint">
+          La franja resaltada es de 10:00 a 20:00, la que usas para pauta activa.
+          Si casi todas las barras quedan fuera de esa franja, estás pagando por anunciarte cuando tu público no está.
+        </p>
+        <div class="hourchart" id="hourchart"></div>
+        <div id="hoursummary"></div>
+      </div>
+
+      <h2>Evolución</h2>
+      <div class="card trend">
+        <h3>Visitas y visitantes únicos por día</h3>
+        <div id="trend"></div>
+        <div class="axis" id="trendaxis"></div>
+      </div>
+
+      <h2>De dónde son</h2>
+      <div class="grid2">
+        <div class="card"><h3>Países</h3><div class="rows" id="countries"></div></div>
+        <div class="card"><h3>Ciudades</h3><div class="rows" id="cities"></div></div>
+      </div>
+      <div class="grid2" style="margin-top:16px">
+        <div class="card"><h3>Proveedores de internet</h3><div class="rows" id="isps"></div></div>
+        <div class="card"><h3>Sitios de procedencia</h3><div class="rows" id="refhosts"></div></div>
+      </div>
+
+      <h2>Cómo llegan</h2>
+      <div class="grid2">
+        <div class="card"><h3>Fuente de tráfico</h3><div class="rows" id="sources"></div></div>
+        <div class="card"><h3>Campañas (UTM)</h3><div class="rows" id="campaigns"></div></div>
+      </div>
+
+      <h2>Qué ven y desde dónde</h2>
+      <div class="grid2">
+        <div class="card"><h3>Páginas</h3><div class="rows" id="pages"></div></div>
+        <div class="card">
+          <h3>Dispositivos</h3>
+          <div class="rows" id="devices"></div>
+          <h3 style="margin-top:20px">Navegadores</h3>
+          <div class="rows" id="browsers"></div>
+          <h3 style="margin-top:20px">Sistemas</h3>
+          <div class="rows" id="oses"></div>
+        </div>
+      </div>
+
+      <h2>Leads</h2>
+      <div class="card">
+        <div class="scroll"><table id="leadstable"></table></div>
+      </div>
+
+      <h2>Visitas recientes</h2>
+      <div class="card">
+        <p class="hint">Las IPs y ubicaciones son datos personales. No exportes ni compartas esta tabla sin necesidad.</p>
+        <div class="scroll"><table id="recenttable"></table></div>
+      </div>
+
+      <div class="foot" id="foot"></div>
+    </div>
+
+    <script>
+      (function () {
+        'use strict';
+
+        var DAYS = 30;
+        var AUTO_REFRESH_MS = 60000;
+        var RANGES = [7, 30, 90];
+        // 10:00 a.m. a 8:00 p.m. -> horas 10 a 19 (la franja de pauta activa)
+        var WINDOW_HOURS = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
+        var lastStats = null;
+
+        function el(tag, attrs, children) {
+          var node = document.createElement(tag);
+          if (attrs) {
+            Object.keys(attrs).forEach(function (k) {
+              if (k === 'class') node.className = attrs[k];
+              else if (k === 'html') node.innerHTML = attrs[k];
+              else if (k.slice(0, 2) === 'on') node.addEventListener(k.slice(2), attrs[k]);
+              else if (attrs[k] !== null && attrs[k] !== undefined) node.setAttribute(k, attrs[k]);
+            });
+          }
+          (Array.isArray(children) ? children : children === undefined ? [] : [children]).forEach(function (c) {
+            if (c === null || c === undefined) return;
+            node.appendChild(typeof c === 'string' || typeof c === 'number' ? document.createTextNode(String(c)) : c);
+          });
+          return node;
+        }
+
+        function fmt(n) {
+          return Number(n || 0).toLocaleString('es-CO');
+        }
+
+        function pct(part, total) {
+          if (!total) return '0 %';
+          return (100 * part / total).toFixed(part && total ? 1 : 0) + ' %';
+        }
+
+        function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
+
+        function renderRows(target, items, labelFn, valueFn, extraFn) {
+          var box = document.getElementById(target);
+          clear(box);
+          if (!items || !items.length) {
+            box.appendChild(el('div', { class: 'empty' }, 'Sin datos en este rango.'));
+            return;
+          }
+          var max = Math.max.apply(null, items.map(function (i) { return valueFn(i) || 0 })) || 1;
+          items.forEach(function (item) {
+            var value = valueFn(item) || 0;
+            var width = Math.max(2, Math.round(100 * value / max));
+            var label = el('b', null, labelFn(item));
+            if (extraFn) {
+              var extra = extraFn(item);
+              if (extra) label.appendChild(el('span', { class: 'tag', style: 'margin-left:7px' }, extra));
+            }
+            box.appendChild(
+              el('div', { class: 'row' }, [
+                el('div', { class: 'bar' }, [el('span', { style: 'width:' + width + '%' }), label]),
+                el('div', { class: 'v' }, fmt(value) + (item.uniques ? ' · ' + fmt(item.uniques) + ' ú.' : '')),
+              ])
+            );
+          });
+        }
+
+        /* ---------------------------------------------------------- alertas */
+
+        function buildAlerts(s) {
+          var out = [];
+          var t = s.totals;
+          var total = t.humanVisits + t.botVisits;
+          var paid = t.adClicksGoogle + t.adClicksMeta;
+
+          if (!t.humanVisits) {
+            out.push(['info', 'ℹ️', 'Todavía no hay visitas humanas registradas en este rango. El panel empieza a llenarse en cuanto el sitio reciba tráfico a través de este servidor.']);
+          }
+
+          if (t.humanVisits && paid === 0) {
+            out.push(['bad', '🚫', 'Ninguna visita llegó de publicidad pagada. No aparece gclid, fbclid ni utm_medium=cpc en ninguna URL: o las campañas no enviaron tráfico al sitio, o los enlaces finales no estaban etiquetados y por eso no se puede atribuir nada.']);
+          } else if (paid > 0) {
+            var origen = [];
+            if (t.adClicksGoogle) origen.push(fmt(t.adClicksGoogle) + ' de Google Ads');
+            if (t.adClicksMeta) origen.push(fmt(t.adClicksMeta) + ' de Meta');
+            out.push(['ok', '✅', fmt(paid) + ' visitas llegaron de pauta (' + origen.join(' y ') + ').']);
+
+            if (t.leads === 0) {
+              out.push(['bad', '📭', fmt(paid) + ' visitas pagadas y cero leads. El problema está en la landing o en la oferta, no en el anuncio: revisa eso antes de subir presupuesto.']);
+            } else {
+              var rate = 100 * t.leads / paid;
+              if (rate < 2) {
+                out.push(['warn', '⚠️', 'Conversión de pauta: ' + rate.toFixed(1) + ' %. En software B2B lo sano es 3–10 %. Estás pagando de más por cada lead.']);
+              } else {
+                out.push(['ok', '🎯', 'Conversión de pauta: ' + rate.toFixed(1) + ' % (' + fmt(t.leads) + ' leads de ' + fmt(paid) + ' visitas pagadas). Rango aceptable para B2B.']);
+              }
+            }
+          }
+
+          if (t.humanVisits && !paid && t.leads === 0) {
+            out.push(['bad', '📭', 'Cero leads con ' + fmt(t.humanVisits) + ' visitas orgánicas. El tráfico llega pero no convierte: falla la oferta o el mecanismo de captura.']);
+          }
+
+          if (t.humanVisits && t.whatsappClicks === 0) {
+            out.push(['warn', '💬', 'Ningún clic en el botón de WhatsApp. Siendo uno de los dos canales de contacto, esto indica que el llamado a la acción no se está viendo o no convence.']);
+          } else if (t.whatsappClicks) {
+            out.push(['info', '💬', fmt(t.whatsappClicks) + ' clics en WhatsApp. Es tu señal de interés más rápida de leer mientras el formulario coge volumen.']);
+          }
+
+          if (total && t.botVisits / total > 0.35) {
+            out.push(['warn', '🤖', pct(t.botVisits, total) + ' del tráfico son bots o crawlers. Ya están descontados de todas las métricas de arriba.']);
+          }
+          if (s.pendingGeo > 0) {
+            out.push(['info', '🌐', s.pendingGeo + ' IPs pendientes de geolocalizar. Se resuelven en segundo plano: vuelve a actualizar en unos segundos.']);
+          }
+          if (!s.admin.trustProxy && s.admin.publicUrl) {
+            out.push(['warn', '🔧', 'El servidor está detrás de un proxy público pero OPIA_TRUST_PROXY no está activo, así que todas las visitas se registran con la IP del proxy. Actívalo para ver ubicaciones reales.']);
+          }
+
+          var box = document.getElementById('alerts');
+          clear(box);
+          out.forEach(function (a) {
+            box.appendChild(el('div', { class: 'alert ' + a[0] }, [el('i', null, a[1]), el('div', null, a[2])]));
+          });
+        }
+
+        /* ------------------------------------------------------------- KPIs */
+
+        function renderKpis(s) {
+          var t = s.totals;
+          var cards = [
+            [fmt(t.humanVisits), 'Visitas', 'accent'],
+            [fmt(t.uniqueVisitors), 'Visitantes únicos', ''],
+            [fmt(t.sessions), 'Sesiones', ''],
+            [t.pagesPerSession, 'Páginas por sesión', ''],
+            [fmt(t.adClicksGoogle), 'Clics de Google Ads', t.adClicksGoogle ? 'good' : 'bad'],
+            [fmt(t.adClicksMeta), 'Clics de anuncio Meta', t.adClicksMeta ? 'good' : 'bad'],
+            [fmt(t.whatsappClicks), 'Clics de WhatsApp', t.whatsappClicks ? 'good' : 'bad'],
+            [fmt(t.leads), 'Leads', t.leads ? 'good' : 'bad'],
+            [fmt(t.botVisits), 'Bots descartados', ''],
+          ];
+          var box = document.getElementById('kpis');
+          clear(box);
+          cards.forEach(function (c) {
+            box.appendChild(el('div', { class: 'kpi ' + c[2] }, [el('div', { class: 'n' }, c[0]), el('div', { class: 'l' }, c[1])]));
+          });
+        }
+
+        /* ------------------------------------------------------- hora del día */
+
+        function renderHours(s) {
+          var box = document.getElementById('hourchart');
+          clear(box);
+          var max = Math.max.apply(null, s.hourly.map(function (h) { return h.visits })) || 1;
+          var winVisits = 0;
+          var winUniques = 0;
+
+          s.hourly.forEach(function (h) {
+            var inWindow = WINDOW_HOURS.indexOf(h.hour) >= 0;
+            if (inWindow) { winVisits += h.visits; winUniques += h.uniques; }
+            var height = Math.max(2, Math.round(100 * h.visits / max));
+            box.appendChild(
+              el('div', { class: 'col' + (inWindow ? ' win' : ''), title: h.hour + ':00 — ' + fmt(h.visits) + ' visitas, ' + fmt(h.uniques) + ' únicos' }, [
+                el('div', { class: 'stick', style: 'height:' + height + '%' }),
+                el('div', { class: 'lb' }, h.hour % 3 === 0 ? String(h.hour) : ''),
+              ])
+            );
+          });
+
+          var total = s.totals.humanVisits || 0;
+          var share = total ? 100 * winVisits / total : 0;
+          var expected = 100 * WINDOW_HOURS.length / 24;
+          var verdict;
+          if (!total) verdict = 'Aún no hay datos suficientes.';
+          else if (share >= expected * 1.4) verdict = 'Tu público sí se concentra en esa franja: la pauta de 5 a 9 pm tiene sentido.';
+          else if (share >= expected * 0.7) verdict = 'La franja se comporta como el promedio. Pautar solo ahí recorta alcance sin ganar precisión.';
+          else verdict = 'Casi nadie entra a esa hora. Estarías concentrando el presupuesto en el peor momento del día.';
+
+          var summary = document.getElementById('hoursummary');
+          clear(summary);
+          var firstHour = WINDOW_HOURS[0];
+          var lastHour = WINDOW_HOURS[WINDOW_HOURS.length - 1] + 1;
+          summary.appendChild(el('div', { class: 'winlabel' },
+            firstHour + ':00–' + lastHour + ':00 concentra ' + pct(winVisits, total) + ' de las visitas (' +
+            fmt(winVisits) + ' de ' + fmt(total) + ') · lo "normal" serían ' + expected.toFixed(1) + ' % · ' + verdict));
+        }
+
+        /* ------------------------------------------------------------ tendencia */
+
+        function renderTrend(s) {
+          var box = document.getElementById('trend');
+          var axis = document.getElementById('trendaxis');
+          clear(box); clear(axis);
+
+          var days = s.trend;
+          if (!days.length) {
+            box.appendChild(el('div', { class: 'empty' }, 'Sin datos en este rango.'));
+            return;
+          }
+
+          var W = 1000, Hh = 150, pad = 4;
+          var maxV = Math.max.apply(null, days.map(function (d) { return d.visits })) || 1;
+          var stepX = days.length > 1 ? (W - pad * 2) / (days.length - 1) : 0;
+
+          function point(i, value) {
+            return (pad + i * stepX).toFixed(2) + ',' + (Hh - pad - (Hh - pad * 2) * value / maxV).toFixed(2);
+          }
+
+          var lineVisits = days.map(function (d, i) { return point(i, d.visits) }).join(' ');
+          var lineUniques = days.map(function (d, i) { return point(i, d.uniques) }).join(' ');
+          var area = 'M' + point(0, 0).replace(',', ' ') + ' L' + lineVisits.split(' ').join(' L') + ' L' + point(days.length - 1, 0).replace(',', ' ') + ' Z';
+
+          var svgNS = 'http://www.w3.org/2000/svg';
+          var svg = document.createElementNS(svgNS, 'svg');
+          svg.setAttribute('viewBox', '0 0 ' + W + ' ' + Hh);
+          svg.setAttribute('preserveAspectRatio', 'none');
+
+          var defs = document.createElementNS(svgNS, 'defs');
+          defs.innerHTML = '<linearGradient id="g" x1="0" y1="0" x2="0" y2="1">' +
+            '<stop offset="0%" stop-color="#15b8f4" stop-opacity=".38"/>' +
+            '<stop offset="100%" stop-color="#087ef5" stop-opacity="0"/></linearGradient>';
+          svg.appendChild(defs);
+
+          function addPoly(points, stroke, width, fill, dash) {
+            var p = document.createElementNS(svgNS, 'polyline');
+            p.setAttribute('points', points);
+            p.setAttribute('fill', fill || 'none');
+            p.setAttribute('stroke', stroke);
+            p.setAttribute('stroke-width', width);
+            p.setAttribute('vector-effect', 'non-scaling-stroke');
+            if (dash) p.setAttribute('stroke-dasharray', dash);
+            svg.appendChild(p);
+          }
+
+          var areaPath = document.createElementNS(svgNS, 'path');
+          areaPath.setAttribute('d', area);
+          areaPath.setAttribute('fill', 'url(#g)');
+          svg.appendChild(areaPath);
+
+          addPoly(lineVisits, '#15b8f4', 2);
+          addPoly(lineUniques, '#8fa6bd', 1.5, 'none', '4 3');
+          box.appendChild(svg);
+
+          axis.appendChild(el('span', null, days[0].date));
+          axis.appendChild(el('span', null, 'pico: ' + fmt(maxV) + ' visitas'));
+          axis.appendChild(el('span', null, days[days.length - 1].date));
+        }
+
+        /* ------------------------------------------------------------- tablas */
+
+        function renderRecent(s) {
+          var table = document.getElementById('recenttable');
+          clear(table);
+          table.appendChild(el('thead', null, el('tr', null, [
+            el('th', null, 'Cuándo'), el('th', null, 'IP'), el('th', null, 'Ubicación'),
+            el('th', null, 'Proveedor'), el('th', null, 'Página'),
+            el('th', null, 'Fuente'), el('th', null, 'Dispositivo'),
+          ])));
+          var tbody = el('tbody');
+          if (!s.recent.length) {
+            tbody.appendChild(el('tr', null, el('td', { colspan: '7', class: 'empty' }, 'Sin visitas registradas todavía.')));
+          } else {
+            s.recent.forEach(function (r) {
+              var place = [r.city, r.region, r.country].filter(Boolean).join(', ') || 'Pendiente…';
+              var source = el('td', null, r.source || 'Directo');
+              if (r.ad === 'meta') source.appendChild(el('span', { class: 'tag meta', style: 'margin-left:6px' }, 'anuncio'));
+              tbody.appendChild(el('tr', null, [
+                el('td', { class: 'mono' }, r.local),
+                el('td', { class: 'mono' }, r.ip || ''),
+                el('td', null, place + (r.cc ? ' ' : '') ),
+                el('td', null, r.isp || ''),
+                el('td', null, r.path),
+                source,
+                el('td', null, (r.device || '') + ' · ' + (r.os || '')),
+              ]));
+            });
+          }
+          table.appendChild(tbody);
+        }
+
+        function renderLeads(s) {
+          var table = document.getElementById('leadstable');
+          clear(table);
+          table.appendChild(el('thead', null, el('tr', null, [
+            el('th', null, 'Cuándo'), el('th', null, 'Nombre'), el('th', null, 'Contacto'),
+            el('th', null, 'Empresa'), el('th', null, 'Servicio'), el('th', null, 'Urgencia'),
+            el('th', null, 'Origen'), el('th', null, 'Ubicación'), el('th', null, 'Mensaje'),
+          ])));
+          var tbody = el('tbody');
+          if (!s.leads.length) {
+            tbody.appendChild(el('tr', null, el('td', { colspan: '9', class: 'empty' },
+              'Todavía no hay leads. Aparecerán aquí en cuanto alguien envíe el formulario.')));
+          } else {
+            s.leads.forEach(function (l) {
+              var contact = [];
+              if (l.email) contact.push(l.email);
+              if (l.phone) contact.push(l.phone);
+              var origin = l.source || 'Directo';
+              var cellOrigin = el('td', null, origin);
+              if (l.ad === 'meta') cellOrigin.appendChild(el('span', { class: 'tag meta', style: 'margin-left:6px' }, 'anuncio'));
+              if (l.cmp) cellOrigin.appendChild(el('div', { style: 'color:var(--muted);font-size:11.5px;margin-top:2px' }, l.cmp));
+
+              var cellCompany = el('td', null, l.company || '—');
+              if (l.role) cellCompany.appendChild(el('div', { style: 'color:var(--muted);font-size:11.5px;margin-top:2px' }, l.role));
+
+              // La urgencia es el dato que decide a quién se llama primero.
+              var urgente = /urgente|este mes/i.test(l.urgency || '');
+              var cellUrgency = el('td', null, l.urgency
+                ? el('span', { class: 'tag' + (urgente ? ' lead' : ''), style: urgente ? '' : 'opacity:.7' }, l.urgency)
+                : '—');
+
+              tbody.appendChild(el('tr', null, [
+                el('td', { class: 'mono' }, l.local),
+                el('td', null, [el('span', { class: 'tag lead', style: 'margin-right:6px' }, l.status || 'nuevo'), l.name || '']),
+                el('td', null, contact.join(' · ') || '—'),
+                cellCompany,
+                el('td', null, l.service || '—'),
+                cellUrgency,
+                cellOrigin,
+                el('td', null, [l.geoCity, l.geoCountry].filter(Boolean).join(', ') || '—'),
+                el('td', null, l.message || '—'),
+              ]));
+            });
+          }
+          table.appendChild(tbody);
+        }
+
+        /* ----------------------------------------------------------- render */
+
+        function render(s) {
+          lastStats = s;
+          document.getElementById('tzname').textContent = '· hora ' + s.timezone.replace('_', ' ');
+          buildAlerts(s);
+          renderKpis(s);
+          renderHours(s);
+          renderTrend(s);
+
+          renderRows('countries', s.countries, function (c) { return c.country || 'Desconocido'; }, function (c) { return c.visits; }, function (c) { return c.cc; });
+          renderRows('cities', s.cities, function (c) { return c.city; }, function (c) { return c.visits; });
+          renderRows('isps', s.isps, function (c) { return c.key; }, function (c) { return c.visits; });
+          renderRows('refhosts', s.refHosts, function (c) { return c.key; }, function (c) { return c.visits; });
+          renderRows('sources', s.sources, function (c) { return c.key; }, function (c) { return c.visits; });
+          renderRows('campaigns', s.campaigns, function (c) { return c.key; }, function (c) { return c.visits; });
+          renderRows('pages', s.pages, function (c) { return c.key; }, function (c) { return c.visits; });
+          renderRows('devices', s.devices, function (c) { return c.key; }, function (c) { return c.visits; });
+          renderRows('browsers', s.browsers, function (c) { return c.key; }, function (c) { return c.visits; });
+          renderRows('oses', s.operatingSystems, function (c) { return c.key; }, function (c) { return c.visits; });
+
+          renderLeads(s);
+          renderRecent(s);
+
+          var a = s.admin;
+          document.getElementById('foot').textContent =
+            'Sesión: ' + a.user + ' · Registros guardados: ' + fmt(a.storedVisits) + ' visitas y ' + fmt(a.storedLeads) +
+            ' leads · IPs en caché: ' + fmt(a.cachedIps) + ' · Se borra lo anterior a ' + a.retentionDays +
+            ' días · Generado ' + new Date(s.generatedAt).toLocaleString('es-CO') + '.';
+
+          document.getElementById('updated').textContent =
+            'Actualizado ' + new Date().toLocaleTimeString('es-CO');
+        }
+
+        function load() {
+          document.getElementById('refresh').textContent = 'Cargando…';
+          fetch('/api/admin/stats?days=' + DAYS, { credentials: 'same-origin' })
+            .then(function (r) {
+              if (r.status === 401) { window.location.href = '/opadmin'; throw new Error('sesión terminada'); }
+              return r.json();
+            })
+            .then(render)
+            .catch(function (err) { console.error(err); })
+            .finally(function () { document.getElementById('refresh').textContent = 'Actualizar'; });
+        }
+
+        var rangeBox = document.getElementById('range');
+        RANGES.forEach(function (d) {
+          rangeBox.appendChild(el('button', {
+            type: 'button',
+            'aria-pressed': String(d === DAYS),
+            onclick: function () {
+              DAYS = d;
+              Array.prototype.forEach.call(rangeBox.children, function (b, i) {
+                b.setAttribute('aria-pressed', String(RANGES[i] === DAYS));
+              });
+              load();
+            },
+          }, d + ' días'));
+        });
+
+        document.getElementById('refresh').addEventListener('click', load);
+        setInterval(load, AUTO_REFRESH_MS);
+        load();
+      })();
+    </script>
+  </body>
+</html>

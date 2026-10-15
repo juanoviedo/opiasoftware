@@ -11,3 +11,17 @@ node_modules/
 dist/
 build/
 .cache/
+
+# Servidor local: configuración con IDs reales y datos de visitantes
+server/ads-config.json
+server/data/*
+!server/data/.gitignore
+server/meta-config.json
+
+# Bytecode de Python
+__pycache__/
+*.pyc
+
+# Privado: datos de conexión al servidor y estado del despliegue
+AGENTS.local.md
+.deployed-commit

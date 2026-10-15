@@ -1,0 +1,6 @@
+﻿Nombre del público,Edad,Género,Configuración,Nota
+PYME · Intereses de gestión,28-60,Todos,"Intereses: Administración de empresas, Emprendimiento, Pequeña y mediana empresa, Microsoft Power BI, Automatización","Excluir: estudiantes, 'busco empleo', marketing digital como interés (atrae colegas, no clientes)"
+Administradores de páginas de Facebook,28-60,Todos,Comportamientos > Actividades digitales > Administradores de páginas de Facebook (y de páginas de empresa),El mejor proxy B2B que tiene Meta: quien administra una página de empresa suele decidir o influir
+Cargos: gerencia y operaciones,30-62,Todos,"Datos demográficos > Trabajo > Cargos: Gerente general, Gerente de operaciones, Director de operaciones, Propietario, Fundador, Director de tecnología",Volumen bajo por país; agrupa 3-5 países por conjunto para que entregue
+Retargeting · Visitantes web 90 días,25-65,Todos,Público personalizado > Sitio web > Todas las personas que visitaron tu sitio web (90 días),Requiere el Pixel recibiendo tráfico. Encender recién con 500+ visitas acumuladas
+Retargeting · FormStart sin envío,25-65,Todos,"Público personalizado > Evento personalizado: FormStart (últimos 30 días), excluyendo el evento Lead",El de mayor intención de todos. Empieza a existir en cuanto el pixel registre FormStart
