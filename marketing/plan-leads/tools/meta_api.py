@@ -53,6 +53,7 @@ COPIES = [
         "name": "Diagnóstico gratuito de procesos",
         "description": "Plan escrito. Sin costo.",
         "link": "https://opiasoftware.com/lp/diagnostico-gratis?utm_source=meta&utm_medium=cpc&utm_campaign=meta_prospeccion&utm_content=dolor_excel",
+        "image": "anuncio1",
     },
     {
         "key": "plan_concreto",
@@ -60,6 +61,7 @@ COPIES = [
         "name": "Qué automatizar y qué no",
         "description": "Sesión gratis de 30 minutos.",
         "link": "https://opiasoftware.com/lp/diagnostico-gratis?utm_source=meta&utm_medium=cpc&utm_campaign=meta_prospeccion&utm_content=plan_concreto",
+        "image": "anuncio6",
     },
     {
         "key": "pauta_sin_retorno",
@@ -67,6 +69,7 @@ COPIES = [
         "name": "Por qué tu pauta no trae leads",
         "description": "Lo revisamos contigo. Gratis.",
         "link": "https://opiasoftware.com/lp/diagnostico-gratis?utm_source=meta&utm_medium=cpc&utm_campaign=meta_prospeccion&utm_content=pauta_sin_retorno",
+        "image": "anuncio5",
     },
     {
         "key": "licencia_ya_paga",
@@ -74,16 +77,28 @@ COPIES = [
         "name": "Aprovecha tu Microsoft 365",
         "description": "Apps sin licencias nuevas.",
         "link": "https://opiasoftware.com/lp/diagnostico-gratis?utm_source=meta&utm_medium=cpc&utm_campaign=meta_prospeccion&utm_content=licencia_ya_paga",
+        "image": "anuncio1",
     },
 ]
 
+# Hashes de los disenos de marketing/plan-leads/assets/ ya subidos a la cuenta
+# (todas las variantes las cargo la duena desde el Administrador de anuncios).
+# anuncio1: manual vs automatizado · anuncio5: dolor generico · anuncio6: 3 senales.
+IMAGES = {
+    "anuncio1": "d51e7f98a21e7b90421fee305050c64c",
+    "anuncio5": "199155decc35e3217030141c41f14c3e",
+    "anuncio6": "4c1df678d93f56e7edf0ada0501189e1",
+}
+
 FORM_PRIVACY_URL = "https://opiasoftware.com/privacidad"
+# v25: los tipos son el enum directo (FULL_NAME, EMAIL...), sin "key"; las
+# preguntas propias van con CUSTOM.
 FORM_QUESTIONS = [
-    {"type": "standard", "key": "full_name"},
-    {"type": "standard", "key": "email"},
-    {"type": "standard", "key": "phone_number"},
+    {"type": "FULL_NAME"},
+    {"type": "EMAIL"},
+    {"type": "PHONE"},
     {
-        "type": "custom",
+        "type": "CUSTOM",
         "label": "¿Cuántas personas trabajan en tu empresa?",
         "options": [
             {"key": "solo_yo", "value": "Solo yo"},
@@ -93,12 +108,17 @@ FORM_QUESTIONS = [
             {"key": "mas_200", "value": "Más de 200"},
         ],
     },
-    {"type": "custom", "label": "¿Qué proceso te gustaría resolver?"},
+    {"type": "CUSTOM", "label": "¿Qué proceso te gustaría resolver?"},
 ]
 
 AD_SET_NAME = "PYME LatAm · Prospección"
 CAMPAIGN_NAME = "PYME LatAm · Leads · OPIA 2026"
 CAMPAIGN_PREFIX = "PYME LatAm"
+
+# Publico "Leads frios" (~1.300 contactos del CRM) subido a Meta el 2026-10-15.
+# Se excluye de la prospeccion para no pagar por gente que ya conocemos; su
+# lugar es el conjunto de retargeting de la semana 2 del plan.
+EXCLUDED_CUSTOM_AUDIENCE = "52576763480518"
 
 
 class MetaError(Exception):
@@ -241,8 +261,11 @@ def create_lead_form(cli, page_id):
     El formulario se crea en la pagina (no en la cuenta). La URL de privacidad
     es obligatoria para Meta: por eso existia el bloqueo sin /privacidad.
     """
+    # El nombre debe ser unico: la pagina guarda cada formulario y la API
+    # rechaza duplicados (error 1892019). No existen borrado via API.
+    nombre = f"Diagnóstico gratuito · OPIA {datetime.now():%d-%m %H:%M}"
     r = cli.post(f"{page_id}/leadgen_forms", {
-        "name": "Diagnóstico gratuito · OPIA (API)",
+        "name": nombre,
         "locale": "es_ES",
         "questions": json.dumps(FORM_QUESTIONS),
         "privacy_policy": json.dumps({"url": FORM_PRIVACY_URL}),
@@ -250,8 +273,10 @@ def create_lead_form(cli, page_id):
             "title": "Solicitud recibida",
             "body": "Te contactaremos por WhatsApp o correo para agendar tu diagnóstico gratuito de 30 minutos.",
             "link_text": "Conocer OPIA Software",
-            "link_url": "https://opiasoftware.com",
         }),
+        # v25 exige follow_up_action_url: el link del boton de la pantalla de
+        # gratitud vive aqui, ya no dentro de thank_you_screen.
+        "follow_up_action_url": "https://opiasoftware.com",
     })
     return r["id"]
 
@@ -264,12 +289,12 @@ def cmd_create(cli, args, activate=False):
         print("ERROR: --create/--activate necesita --page-id <id>. Corre --validate para ver tus paginas.")
         sys.exit(1)
 
-    acct_info = cli.get(args.account, fields=["id", "name", "currency", "account_status", "timezone_name"])
+    acct_info = cli.get(args.account, fields=["id", "name", "currency", "account_status", "timezone_name", "timezone_offset_hours_utc"])
     moneda = acct_info.get("currency", "USD")
     budget = float(args.budget)
     print(f"Cuenta: {acct_info.get('name')} ({args.account})")
     print(f"Moneda de la cuenta: {moneda} · zona horaria: {acct_info.get('timezone_name')}")
-    print(f"Presupuesto del conjunto: {budget:.2f} {moneda} total · {args.days} dias · Lun-Vie 10:00-20:00 ({moneda} de la cuenta, no USD fijo)")
+    print(f"Presupuesto del conjunto: {budget:.2f} {moneda} total · {args.days} dias · entrega 08:00-19:00 hora Colombia ({moneda} de la cuenta, no USD fijo)")
     if moneda != "USD":
         print(f"ADVERTENCIA: el plan esta pensado en USD; {budget:.2f} se interpretara en {moneda}. Ajusta con --budget.")
 
@@ -280,8 +305,10 @@ def cmd_create(cli, args, activate=False):
         imgs = up.get("images", {})
         image_hash = next(iter(imgs.values())).get("hash") if imgs else None
         print(f"   Imagen subida. hash={image_hash}")
-    if not image_hash:
-        print("ERROR: falta --image-hash o --image-url. Corre --validate para ver los hashes existentes.")
+    faltan = [cp["key"] for cp in COPIES if not (IMAGES.get(cp.get("image")) or image_hash)]
+    if faltan:
+        print(f"ERROR: falta imagen para {', '.join(faltan)}. Sube el diseno a la cuenta")
+        print("publicitaria y registra su hash en IMAGES, o pasa --image-hash global.")
         sys.exit(1)
 
     print("\n== Resolviendo ciudades ==")
@@ -295,48 +322,75 @@ def cmd_create(cli, args, activate=False):
         "objective": "OUTCOME_LEADS",
         "buying_type": "AUCTION",
         "special_ad_categories": json.dumps([]),
+        # Exigido por la API desde v25: sin esto rechaza campañas con presupuesto
+        # por conjunto (no CBO) con error_subcode 4834011.
+        "is_adset_budget_sharing_enabled": "False",
         "status": "PAUSED",
     })
     campaign_id = camp["id"]
     print(f"   campana {campaign_id} (PAUSADA)")
 
-    # La franja horaria exige presupuesto total (lifetime), no diario.
-    start = datetime.now(timezone.utc) + timedelta(minutes=20)
-    end = start + timedelta(days=args.days)
+    print("\n== Creando formulario instantaneo ==")
+    form_id = create_lead_form(cli, args.page_id)
+    print(f"   formulario {form_id} · privacidad: {FORM_PRIVACY_URL}")
+
+    # Entrega solo de 08:00 a 19:00 hora Colombia. Arranca manana a las 8:00
+    # para no desperdiciar media jornada de hoy.
+    bogota = timezone(timedelta(hours=-5))
+    ahora = datetime.now(bogota)
+    start_bog = (ahora + timedelta(days=1)).replace(hour=8, minute=0, second=0, microsecond=0)
+    end_bog = start_bog.replace(hour=19, minute=0, second=0, microsecond=0) + timedelta(days=args.days - 1)
+    start = start_bog.astimezone(timezone.utc)
+    end = end_bog.astimezone(timezone.utc)
     fmt = "%Y-%m-%dT%H:%M:%S%z"
+
+    # adset_schedule se interpreta en la zona horaria de la CUENTA (America/
+    # Adak, no Colombia): se convierte la franja con el offset vivo de la API.
+    acct_tz = timezone(timedelta(hours=acct_info.get("timezone_offset_hours_utc", -10)))
+    franja = {
+        "start_minute": start_bog.astimezone(acct_tz).hour * 60,
+        "end_minute": end_bog.astimezone(acct_tz).hour * 60,
+        "days": [0, 1, 2, 3, 4, 5, 6],
+    }
     adset = cli.post(f"{args.account}/adsets", {
         "name": AD_SET_NAME,
         "campaign_id": campaign_id,
         "lifetime_budget": str(int(round(budget * 100))),
         "start_time": start.strftime(fmt),
         "end_time": end.strftime(fmt),
-        "adset_schedule": json.dumps([{"start_minute": 600, "end_minute": 1200, "days": [1, 2, 3, 4, 5]}]),
+        # v25: con franja horaria el pacing debe ser day_parting (error 1487675,
+        # que Meta traduce como "tipo de frecuencia incompatible"); el control
+        # de frecuencia solo se permite con objetivo REACH (error 1815211).
+        "pacing_type": json.dumps(["day_parting"]),
+        "adset_schedule": json.dumps([franja]),
+        "bid_strategy": "LOWEST_COST_WITHOUT_CAP",
         "optimization_goal": "LEAD_GENERATION",
         "billing_event": "IMPRESSIONS",
+        # v25: los creativos con formulario exigen destino ON_AD en el conjunto
+        # (error 1892040) y optimizacion LEAD_GENERATION.
+        "destination_type": "ON_AD",
         "targeting": json.dumps({
             "age_min": 28,
             "age_max": 60,
             "geo_locations": {"cities": [{"key": c["key"]} for c in cities]},
+            "excluded_custom_audiences": [{"id": EXCLUDED_CUSTOM_AUDIENCE}],
+            # v25 exige declarar advantage_audience (0/1). Con 1 la edad minima no
+            # puede superar 25 y Meta expande el publico; el plan quiere 28-60 exacto.
+            "targeting_automation": {"advantage_audience": 0},
         }),
         "promoted_object": json.dumps({"page_id": args.page_id}),
         "status": "PAUSED",
     })
     adset_id = adset["id"]
-    print(f"   conjunto {adset_id} (PAUSADO) · {budget:.2f} {moneda} · {start.date()} -> {end.date()}")
-
-    print("\n== Creando formulario instantaneo ==")
-    form_id = create_lead_form(cli, args.page_id)
-    print(f"   formulario {form_id} · privacidad: {FORM_PRIVACY_URL}")
+    print(f"   conjunto {adset_id} (PAUSADO) · {budget:.2f} {moneda} · {start_bog:%d-%m %H:%M} -> {end_bog:%H:%M} hora Colombia")
+    print(f"   excluye el publico 'Leads frios' ({EXCLUDED_CUSTOM_AUDIENCE})")
 
     print("\n== Creando anuncios ==")
     ads = []
     for cp in COPIES:
-        # object_id + object_type LEAD_GEN enlaza el formulario con el creativo;
-        # sin object_id el anuncio no sabe que formulario abrir.
+        hash_copy = IMAGES.get(cp.get("image")) or image_hash
         creative = cli.post(f"{args.account}/adcreatives", {
             "name": f"OPIA · {cp['key']}",
-            "object_id": form_id,
-            "object_type": "LEAD_GEN",
             "object_story_spec": json.dumps({
                 "page_id": args.page_id,
                 "link_data": {
@@ -344,8 +398,14 @@ def cmd_create(cli, args, activate=False):
                     "name": cp["name"],
                     "description": cp["description"],
                     "link": cp["link"],
-                    "image_hash": image_hash,
-                    "call_to_action": {"type": "LEARN_MORE"},
+                    "image_hash": hash_copy,
+                    # v25: el formulario se enlaza en el valor del CTA del
+                    # creativo; object_id + object_story_spec ya no coexisten
+                    # (error 1487929).
+                    "call_to_action": {
+                        "type": "SIGN_UP",
+                        "value": {"lead_gen_form_id": form_id},
+                    },
                 },
             }),
         })
@@ -356,7 +416,7 @@ def cmd_create(cli, args, activate=False):
             "status": "PAUSED",
         })
         ads.append(ad["id"])
-        print(f"   anuncio {ad['id']} [{cp['key']}] (PAUSADO)")
+        print(f"   anuncio {ad['id']} [{cp['key']} · {cp.get('image')}] (PAUSADO)")
 
     print("\n== RESUMEN (todo PAUSADO, no gasta) ==")
     print(f"   campana:   {campaign_id}")
@@ -364,8 +424,10 @@ def cmd_create(cli, args, activate=False):
     print(f"   formulario:{form_id}")
     for aid in ads:
         print(f"   anuncio:   {aid}")
-    print(f"\nRevisalo en el Administrador de anuncios. Si esta bien, activa con:")
-    print(f"   python {os.path.basename(__file__)} --activate --account {args.account} --page-id {args.page_id} --image-hash {image_hash}")
+    print("\nRevisalo en el Administrador de anuncios. Para activar (gasta dinero")
+    print("real) NO uses --activate: crearia una campana nueva duplicada. La")
+    print("activacion es un cambio de estado directo sobre estos IDs (POST {id}")
+    print("{'status':'ACTIVE'}), solo con confirmacion explicita del dueno.")
     print("\nNOTA: el conjunto de retargeting NO se crea todavia: necesita que el Pixel")
     print("acumule trafico (el plan lo enciende con 500+ visitas). Se agrega despues.")
 
@@ -378,7 +440,7 @@ def cmd_create(cli, args, activate=False):
     for aid in ads:
         cli.post(aid, {"status": "ACTIVE"})
     print(f"   campana {campaign_id} ACTIVA · conjunto ACTIVO · {len(ads)} anuncios ACTIVOS")
-    print(f"   Entrega: Lun-Vie 10:00-20:00 hora de la cuenta ({acct_info.get('timezone_name')}), {budget:.2f} {moneda} total.")
+    print(f"   Entrega: todo el dia, {budget:.2f} {moneda} total.")
 
 
 def main():
