@@ -14,6 +14,7 @@ const TOKEN_MINUTOS = 15;
 const SESION_DIAS = 7;
 
 const CLIENTE_FIELDS = ['nombre', 'sector', 'zona', 'notas'];
+const NOTA_FIELDS = ['clienteId', 'texto'];
 const CONTACTO_FIELDS = [
   'clienteId', 'nombres', 'apellidos', 'cargo', 'email', 'email2', 'email3',
   'celular', 'telefono', 'telefono2', 'descripcion', 'sector', 'zona', 'origen',
@@ -21,7 +22,7 @@ const CONTACTO_FIELDS = [
   'observaciones', 'notas', 'idExterno',
 ];
 const LIMITES = {
-  nombre: 200, sector: 120, zona: 120, notas: 1000, nombres: 120, apellidos: 120,
+  nombre: 200, sector: 120, zona: 120, notas: 1000, texto: 2000, nombres: 120, apellidos: 120,
   cargo: 160, email: 160, email2: 160, email3: 160, celular: 40, telefono: 40,
   telefono2: 40, descripcion: 400, origen: 120, estado: 60, etapa: 120,
   propietario: 120, leadScoring: 20, ultimoContacto: 40, tags: 200,
@@ -167,18 +168,21 @@ class Tabla {
 
 const clientes = new Tabla('clientes.json');
 const contactos = new Tabla('contactos.json');
+const notas = new Tabla('notas.json');
 
 function siguienteId(prefijo) {
-  let meta = { seqCliente: 0, seqContacto: 0 };
+  let meta = { seqCliente: 0, seqContacto: 0, seqNota: 0 };
   try {
     meta = { ...meta, ...JSON.parse(fs.readFileSync(path.join(CRM_DIR, 'meta.json'), 'utf8')) };
   } catch {
     // primer arranque
   }
-  const campo = prefijo === 'c' ? 'seqCliente' : 'seqContacto';
+  const campos = { c: 'seqCliente', p: 'seqContacto', n: 'seqNota' };
+  const rellenos = { c: 5, p: 6, n: 6 };
+  const campo = campos[prefijo];
   meta[campo] += 1;
   fs.writeFileSync(path.join(CRM_DIR, 'meta.json'), JSON.stringify(meta, null, 2), 'utf8');
-  return prefijo === 'c' ? `c${String(meta[campo]).padStart(5, '0')}` : `p${String(meta[campo]).padStart(6, '0')}`;
+  return `${prefijo}${String(meta[campo]).padStart(rellenos[prefijo], '0')}`;
 }
 
 function normaliza(cadena) {
@@ -213,6 +217,14 @@ function validarContacto(data) {
     if (c[campo] && !EMAIL_RE.test(c[campo])) errores[campo] = 'Ese correo no parece válido.';
   }
   return { datos: c, errores };
+}
+
+function validarNota(data) {
+  const n = limpiarCampos(data, NOTA_FIELDS);
+  const errores = {};
+  if (!clientes.porId(n.clienteId)) errores.clienteId = 'El cliente no existe.';
+  if (n.texto.length < 2) errores.texto = 'Escribe la nota (mínimo 2 caracteres).';
+  return { datos: n, errores };
 }
 
 /* ------------------------------------------------------------------- auth */
@@ -305,10 +317,12 @@ function sesionActual(req) {
 module.exports = {
   clientes,
   contactos,
+  notas,
   siguienteId,
   normaliza,
   validarCliente,
   validarContacto,
+  validarNota,
   solicitarAcceso,
   verificarAcceso,
   crearCookieSesion,

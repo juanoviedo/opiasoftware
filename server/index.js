@@ -514,7 +514,10 @@ async function handleCrmApi(req, res, pathname, url) {
       const restantes = crm.contactos.todas().filter((k) => k.clienteId !== id);
       const borrados = crm.contactos.todas().length - restantes.length;
       crm.contactos.guardar(restantes);
-      return H.sendJson(res, 200, { ok: true, contactosBorrados: borrados });
+      const notasRestantes = crm.notas.todas().filter((n) => n.clienteId !== id);
+      const notasBorradas = crm.notas.todas().length - notasRestantes.length;
+      crm.notas.guardar(notasRestantes);
+      return H.sendJson(res, 200, { ok: true, contactosBorrados: borrados, notasBorradas });
     }
   }
 
@@ -536,6 +539,34 @@ async function handleCrmApi(req, res, pathname, url) {
     }
     if (metodo === 'DELETE') {
       crm.contactos.eliminar(id);
+      return H.sendJson(res, 200, { ok: true });
+    }
+  }
+
+  if (coleccion === 'notas') {
+    if (!id && metodo === 'GET') {
+      const clienteId = url.searchParams.get('clienteId') || '';
+      if (!crm.clientes.porId(clienteId)) return H.sendJson(res, 404, { ok: false, error: 'Cliente no encontrado.' });
+      // más nueva primero: la galería se lee de arriba hacia abajo
+      const suyas = crm.notas.todas().filter((n) => n.clienteId === clienteId).sort((a, b) => b.creadoEl.localeCompare(a.creadoEl));
+      return H.sendJson(res, 200, { ok: true, notas: suyas.slice(0, 500) });
+    }
+    if (!id && metodo === 'POST') {
+      const { datos, errores } = crm.validarNota(body);
+      if (Object.keys(errores).length) return H.sendJson(res, 422, { ok: false, errors: errores });
+      const ahora = new Date().toISOString();
+      const creada = crm.notas.agregar({ id: crm.siguienteId('n'), ...datos, creadoEl: ahora, actualizadoEl: ahora });
+      return H.sendJson(res, 201, { ok: true, nota: creada });
+    }
+    const nota = crm.notas.porId(id);
+    if (!nota) return H.sendJson(res, 404, { ok: false, error: 'Nota no encontrada.' });
+    if (metodo === 'PUT') {
+      const { datos, errores } = crm.validarNota({ ...nota, ...body });
+      if (Object.keys(errores).length) return H.sendJson(res, 422, { ok: false, errors: errores });
+      return H.sendJson(res, 200, { ok: true, nota: crm.notas.actualizar(id, datos) });
+    }
+    if (metodo === 'DELETE') {
+      crm.notas.eliminar(id);
       return H.sendJson(res, 200, { ok: true });
     }
   }
