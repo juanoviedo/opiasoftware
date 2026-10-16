@@ -13,7 +13,10 @@ const COOKIE_CRM = 'opia_crm';
 const TOKEN_MINUTOS = 15;
 const SESION_DIAS = 7;
 
-const CLIENTE_FIELDS = ['nombre', 'sector', 'zona', 'notas', 'numEmpleadosAprox'];
+const CLIENTE_FIELDS = [
+  'nombre', 'sector', 'zona', 'notas', 'numEmpleadosAprox',
+  'direccion', 'departamento', 'sitioWeb', 'telefono', 'email',
+];
 const NOTA_FIELDS = ['clienteId', 'texto'];
 const CONTACTO_FIELDS = [
   'clienteId', 'nombres', 'apellidos', 'cargo', 'email', 'email2', 'email3',
@@ -24,6 +27,7 @@ const CONTACTO_FIELDS = [
 const LIMITES = {
   nombre: 200, sector: 120, zona: 120, notas: 1000, texto: 2000, nombres: 120, apellidos: 120,
   numEmpleadosAprox: 8,
+  direccion: 200, departamento: 60, sitioWeb: 200, telefono: 40, email: 160,
   cargo: 160, email: 160, email2: 160, email3: 160, celular: 40, telefono: 40,
   telefono2: 40, descripcion: 400, origen: 120, estado: 60, etapa: 120,
   propietario: 120, leadScoring: 20, ultimoContacto: 40, tags: 200,
@@ -212,6 +216,8 @@ function validarCliente(data) {
   } else {
     c.numEmpleadosAprox = null;
   }
+  if (c.email && !EMAIL_RE.test(c.email)) errores.email = 'Ese correo no parece válido.';
+  if (c.sitioWeb && !/^https?:\/\//i.test(c.sitioWeb)) c.sitioWeb = 'https://' + c.sitioWeb;
   return { datos: c, errores };
 }
 

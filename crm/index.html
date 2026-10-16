@@ -116,7 +116,7 @@
         text-transform: uppercase; color: var(--muted); font-weight: 600;
       }
       #tabla-clientes td:nth-child(2)::before { content: 'Sector'; }
-      #tabla-clientes td:nth-child(3)::before { content: 'Zona'; }
+      #tabla-clientes td:nth-child(3)::before { content: 'Ciudad/Zona'; }
       #tabla-clientes td:nth-child(4)::before { content: 'Empleados'; }
       #tabla-clientes td:nth-child(5)::before { content: 'Contactos'; }
       #tabla-contactos td:nth-child(2)::before { content: 'Cargo'; }
@@ -241,7 +241,7 @@
           </div>
           <table>
             <thead>
-              <tr><th>Empresa</th><th>Sector</th><th>Zona</th><th style="text-align:right">Empleados</th><th style="text-align:right">Contactos</th><th></th></tr>
+              <tr><th>Empresa</th><th>Sector</th><th>Ciudad/Zona</th><th style="text-align:right">Empleados</th><th style="text-align:right">Contactos</th><th></th></tr>
             </thead>
             <tbody id="tabla-clientes"></tbody>
           </table>
@@ -344,7 +344,7 @@
       return { status: resp.status, ...datos };
     }
 
-    const CAMPOS_CLIENTE = ['nombre', 'sector', 'zona', 'numEmpleadosAprox', 'notas'];
+    const CAMPOS_CLIENTE = ['nombre', 'sector', 'zona', 'numEmpleadosAprox', 'notas', 'direccion', 'departamento', 'sitioWeb', 'telefono', 'email'];
     const CAMPOS_CONTACTO = [
       ['nombres', 'Nombres'], ['apellidos', 'Apellidos'], ['cargo', 'Cargo'],
       ['email', 'Correo principal'], ['email2', 'Correo 2'], ['email3', 'Correo 3'],
@@ -510,13 +510,35 @@
       $('#ficha-cliente').appendChild(h2);
       const ficha = el('div');
       ficha.className = 'ficha';
-      const pares = [['Sector', cliente.sector], ['Zona', cliente.zona], ['Empleados aprox.', cliente.numEmpleadosAprox != null ? String(cliente.numEmpleadosAprox) : ''], ['Notas', cliente.notas]];
+      const pares = [
+        ['Sector', cliente.sector], ['Ciudad / Zona', cliente.zona],
+        ['Departamento', cliente.departamento], ['Dirección', cliente.direccion],
+        ['Teléfono', cliente.telefono], ['Correo', cliente.email],
+        ['Empleados aprox.', cliente.numEmpleadosAprox != null ? String(cliente.numEmpleadosAprox) : ''],
+        ['Notas', cliente.notas],
+      ];
       for (const [k, v] of pares) {
         if (!v) continue;
         const p = el('span');
         p.appendChild(el('span', k + ': '));
-        const b = el('b', v);
+        let b;
+        if (k === 'Correo') {
+          b = el('a', v);
+          b.href = 'mailto:' + v;
+        } else {
+          b = el('b', v);
+        }
         p.appendChild(b);
+        ficha.appendChild(p);
+      }
+      if (cliente.sitioWeb) {
+        const p = el('span');
+        p.appendChild(el('span', 'Página web: '));
+        const a = el('a', cliente.sitioWeb);
+        a.href = cliente.sitioWeb;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        p.appendChild(a);
         ficha.appendChild(p);
       }
       $('#ficha-cliente').appendChild(ficha);
@@ -680,7 +702,10 @@
     function formularioCliente(cliente) {
       const valores = cliente || {};
       const campos = [
-        ['nombre', 'Empresa *'], ['sector', 'Sector'], ['zona', 'Zona'], ['numEmpleadosAprox', 'Empleados aprox.'],
+        ['nombre', 'Empresa *'], ['sector', 'Sector'], ['zona', 'Ciudad / Zona'],
+        ['numEmpleadosAprox', 'Empleados aprox.'], ['direccion', 'Dirección'],
+        ['departamento', 'Departamento'], ['telefono', 'Teléfono'], ['email', 'Correo de la empresa'],
+        ['sitioWeb', 'Página web'],
       ];
       const { form, refs } = formularioGenerico(campos, valores);
       const divNotas = el('div');

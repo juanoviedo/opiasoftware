@@ -45,6 +45,36 @@ ROLES_CONTACTO = [
     ('fac_nombre', 'fac_cargo', 'fac_tel'),
 ]
 NOMBRES_BASURA = {'N/A', 'NA', '0', '-', '--', 'NINGUNA', 'NINGUNO', 'NO', 'X', 'XXX'}
+MARCA_NOTA = 'Importado de la base antigua (bog_norte)'
+
+# municipio (sin tildes, en mayúsculas) -> departamento, para el top de ciudades
+# del archivo; lo que no se reconozca queda sin departamento.
+CIUDAD_DEPTO = {
+    'CALI': 'Valle del Cauca', 'PALMIRA': 'Valle del Cauca', 'YUMBO': 'Valle del Cauca',
+    'TULUA': 'Valle del Cauca', 'BUENAVENTURA': 'Valle del Cauca',
+    'GUADALAJARA DE BUGA': 'Valle del Cauca', 'BUGA': 'Valle del Cauca',
+    'CANDELARIA': 'Valle del Cauca', 'JAMUNDI': 'Valle del Cauca',
+    'FLORIDA': 'Valle del Cauca', 'PRADERA': 'Valle del Cauca', 'EL CERRITO': 'Valle del Cauca',
+    'ZARZAL': 'Valle del Cauca', 'CALOTO': 'Cauca', 'SANTANDER DE QUILICHAO': 'Cauca',
+    'VILLA RICA': 'Cauca', 'PUERTO TEJADA': 'Cauca', 'POPAYAN': 'Cauca',
+    'BOGOTA': 'Bogotá D.C.', 'MEDELLIN': 'Antioquia', 'ITAGUI': 'Antioquia',
+    'ENVIGADO': 'Antioquia', 'BELLO': 'Antioquia', 'RIONEGRO': 'Antioquia',
+    'SABANETA': 'Antioquia', 'LA ESTRELLA': 'Antioquia', 'COPACABANA': 'Antioquia',
+    'BARRANQUILLA': 'Atlántico', 'SOLEDAD': 'Atlántico', 'MALAMBO': 'Atlántico',
+    'BUCARAMANGA': 'Santander', 'FLORIDABLANCA': 'Santander', 'GIRON': 'Santander',
+    'PIEDECUESTA': 'Santander', 'PEREIRA': 'Risaralda', 'DOSQUEBRADAS': 'Risaralda',
+    'SANTA ROSA DE CABAL': 'Risaralda', 'PASTO': 'Nariño', 'TUMACO': 'Nariño',
+    'CARTAGENA': 'Bolívar', 'SINCELEJO': 'Sucre', 'MONTERIA': 'Córdoba',
+    'IBAGUE': 'Tolima', 'ESPINAL': 'Tolima', 'NEIVA': 'Huila', 'GARZON': 'Huila',
+    'MANIZALES': 'Caldas', 'VILLAMARIA': 'Caldas', 'ARMENIA': 'Quindío',
+    'CUCUTA': 'Norte de Santander', 'VILLAVICENCIO': 'Meta', 'VALLEDUPAR': 'Cesar',
+    'RIOHACHA': 'La Guajira', 'SANTA MARTA': 'Magdalena', 'BARRANCABERMEJA': 'Santander',
+    'CALIMA': 'Valle del Cauca', 'DAGUA': 'Valle del Cauca', 'LA UNION': 'Valle del Cauca',
+    'ROLDANILLO': 'Valle del Cauca', 'SEVILLA': 'Valle del Cauca', 'TORO': 'Valle del Cauca',
+    'TRUJILLO': 'Valle del Cauca', 'ANDALUCIA': 'Valle del Cauca', 'BUGALAGRANDE': 'Valle del Cauca',
+    'GINEBRA': 'Valle del Cauca',
+}
+CIUDAD_SUCA_RE = re.compile(r'^\d|[:"]|.{31,}')
 
 
 def normaliza(s):
@@ -97,6 +127,20 @@ def limpiar(valor, limite):
     return re.sub(r'\s+', ' ', str(valor or '')).strip()[:limite]
 
 
+def ciudad_valida(valor):
+    """La columna ciudad viene con filas desplazadas: teléfonos, notas largas…"""
+    c = limpiar(valor, 60)
+    if not c or normaliza(c) in NOMBRES_BASURA:
+        return ''
+    if CIUDAD_SUCA_RE.search(c):
+        return ''
+    return c[:120]
+
+
+def departamento_de(ciudad):
+    return CIUDAD_DEPTO.get(normaliza(ciudad), '') if ciudad else ''
+
+
 def contactos_de_fila(row):
     """Contactos de la empresa deduplicados por nombre normalizado."""
     vistos = set()
@@ -117,18 +161,12 @@ def contactos_de_fila(row):
     return salida
 
 
-def notas_de_fila(row, correos):
-    pedazos = ['Importado de la base antigua (bog_norte)']
-    telefonos = [limpiar(celda(row, IDX[k]), 40) for k in ('telefono', 'telefono2', 'celular')]
-    telefonos = [t for t in telefonos if t and normaliza(t) not in NOMBRES_BASURA]
-    if telefonos:
-        pedazos.append('Tel: ' + ', '.join(telefonos))
-    if correos:
-        pedazos.append('Correos: ' + ' / '.join(correos))
-    direccion = limpiar(celda(row, IDX['direccion']), 200)
-    if direccion and normaliza(direccion) not in NOMBRES_BASURA:
-        pedazos.append('Dir: ' + direccion)
-    return ' · '.join(pedazos)[:1000]
+def telefono_de_fila(row):
+    for k in ('telefono', 'telefono2', 'celular'):
+        t = limpiar(celda(row, IDX[k]), 40)
+        if t and normaliza(t) not in NOMBRES_BASURA and not t.startswith('0'):
+            return t
+    return ''
 
 
 def leer_empresas(ruta_csv):
@@ -187,20 +225,38 @@ def main(ruta_csv, directorio):
         correos = dividir_correos(celda(row, IDX['email']))
         num = numero_empleados(celda(row, IDX['numtrabajadores']))
         actividad = limpiar(celda(row, IDX['actividad']), 120)
-        ciudad = limpiar(celda(row, IDX['ciudad']), 120)
-        if normaliza(ciudad) in NOMBRES_BASURA:
-            ciudad = ''
+        ciudad = ciudad_valida(celda(row, IDX['ciudad']))
+        depto = departamento_de(ciudad)
+        direccion = limpiar(celda(row, IDX['direccion']), 200)
+        if normaliza(direccion) in NOMBRES_BASURA:
+            direccion = ''
+        telefono = telefono_de_fila(row)
+        email = correos[0] if correos else ''
 
         cliente = por_nombre.get(clave)
         if cliente:
             c_reutilizados += 1
             if not cliente.get('sector') and actividad:
                 cliente['sector'] = actividad
-            if not cliente.get('zona') and ciudad:
-                cliente['zona'] = ciudad
+            zona_actual = cliente.get('zona') or ''
+            if not zona_actual:
+                if ciudad:
+                    cliente['zona'] = ciudad
+            elif not ciudad_valida(zona_actual) and cliente.get('notas', '').startswith(MARCA_NOTA):
+                cliente['zona'] = ciudad  # ciudad basura del primer paso: se corrige
             if cliente.get('numEmpleadosAprox') in (None, '') and num is not None:
                 cliente['numEmpleadosAprox'] = num
                 cliente['actualizadoEl'] = ahora_utc()
+            for campo, valor in (('direccion', direccion), ('departamento', depto),
+                                 ('telefono', telefono), ('email', email)):
+                if valor and not cliente.get(campo):
+                    cliente[campo] = valor
+                    cliente['actualizadoEl'] = ahora_utc()
+            # la primera versión metía teléfonos/correos/dirección en notas;
+            # ya viven en campos propios, se deja solo la marca de origen
+            notas = cliente.get('notas') or ''
+            if notas.startswith(MARCA_NOTA) and ' · ' in notas:
+                cliente['notas'] = MARCA_NOTA
         else:
             c_nuevos += 1
             seq_cliente += 1
@@ -209,8 +265,13 @@ def main(ruta_csv, directorio):
                 'nombre': nombre,
                 'sector': actividad,
                 'zona': ciudad,
-                'notas': notas_de_fila(row, correos),
+                'notas': MARCA_NOTA,
                 'numEmpleadosAprox': num,
+                'direccion': direccion,
+                'departamento': depto,
+                'sitioWeb': '',
+                'telefono': telefono,
+                'email': email,
                 'creadoEl': ahora_utc(),
                 'actualizadoEl': ahora_utc(),
             }
