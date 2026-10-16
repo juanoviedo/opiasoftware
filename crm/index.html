@@ -174,7 +174,7 @@
 
       /* ---------- escritorio: se restaura la vista clásica ---------- */
       @media (min-width: 700px) {
-        header.barra { flex-wrap: nowrap; padding: 14px 22px; }
+        header.barra { flex-wrap: nowrap; padding: 14px 22px; height: 56px; }
         header.barra nav { order: 0; flex-basis: auto; margin-left: 18px; overflow-x: visible; }
         header.barra nav button { flex: 0 0 auto; min-height: 0; padding: 8px 12px; }
         main { padding: 22px; }
@@ -188,6 +188,13 @@
         tbody tr { border: none; border-radius: 0; margin-bottom: 0; background: transparent; padding: 0; }
         tbody tr:hover { background: rgba(255, 255, 255, 0.035); }
         td::before { content: none; display: none; }
+
+        /* encabezados de la tabla de clientes: fijos al hacer scroll y ordenables */
+        thead th { position: sticky; top: 56px; background: var(--navy-2); z-index: 2; }
+        th[data-orden] { cursor: pointer; user-select: none; white-space: nowrap; }
+        th[data-orden]:hover { color: var(--text); }
+        th[data-orden][data-dir] { color: var(--text); }
+        .orden-flecha { color: var(--sky); font-size: 10px; }
 
         input, select, textarea { padding: 10px 13px; font-size: 14px; }
         .herramientas input[type="search"], .herramientas input[type="email"] { max-width: 340px; flex: 0 1 auto; }
@@ -241,7 +248,14 @@
           </div>
           <table>
             <thead>
-              <tr><th>Empresa</th><th>Sector</th><th>Ciudad/Zona</th><th style="text-align:right">Empleados</th><th style="text-align:right">Contactos</th><th></th></tr>
+              <tr>
+                <th data-orden="nombre">Empresa <span class="orden-flecha"></span></th>
+                <th data-orden="sector">Sector <span class="orden-flecha"></span></th>
+                <th data-orden="zona">Ciudad/Zona <span class="orden-flecha"></span></th>
+                <th data-orden="empleados" style="text-align:right">Empleados <span class="orden-flecha"></span></th>
+                <th data-orden="contactos" style="text-align:right">Contactos <span class="orden-flecha"></span></th>
+                <th></th>
+              </tr>
             </thead>
             <tbody id="tabla-clientes"></tbody>
           </table>
@@ -388,6 +402,7 @@
       email: null,
       clienteActual: null,
       vista: 'clientes',
+      orden: { columna: '', dir: '' },
     };
 
     function mostrarLogin() {
@@ -464,9 +479,28 @@
 
     /* ---------------- clientes ---------------- */
     let busquedaClientesTimer = null;
+    function pintarOrden() {
+      for (const th of document.querySelectorAll('#tabla-clientes thead th[data-orden]')) {
+        const activa = th.dataset.orden === estado.orden.columna;
+        th.dataset.dir = activa ? estado.orden.dir : '';
+        th.querySelector('.orden-flecha').textContent =
+          activa ? (estado.orden.dir === 'asc' ? '▲' : '▼') : '';
+      }
+    }
+    function alternarOrden(columna) {
+      if (estado.orden.columna !== columna) estado.orden = { columna, dir: 'asc' };
+      else if (estado.orden.dir === 'asc') estado.orden.dir = 'desc';
+      else estado.orden = { columna: '', dir: '' };
+      pintarOrden();
+      cargarClientes();
+    }
     async function cargarClientes() {
       const q = encodeURIComponent($('#buscar-cliente').value.trim());
-      const { clientes, total } = await api('/api/crm/clientes?q=' + q);
+      let ruta = '/api/crm/clientes?q=' + q;
+      if (estado.orden.columna) {
+        ruta += '&orden=' + estado.orden.columna + '&dir=' + estado.orden.dir;
+      }
+      const { clientes, total } = await api(ruta);
       $('#contador-clientes').textContent = total + (total === 1 ? ' empresa' : ' empresas');
       const tabla = $('#tabla-clientes');
       tabla.textContent = '';
@@ -835,6 +869,10 @@
       clearTimeout(busquedaClientesTimer);
       busquedaClientesTimer = setTimeout(cargarClientes, 250);
     });
+    for (const th of document.querySelectorAll('#tabla-clientes thead th[data-orden]')) {
+      th.addEventListener('click', () => alternarOrden(th.dataset.orden));
+    }
+    pintarOrden();
     let busquedaContactosTimer = null;
     $('#buscar-contacto').addEventListener('input', () => {
       clearTimeout(busquedaContactosTimer);

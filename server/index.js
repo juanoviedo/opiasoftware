@@ -406,18 +406,42 @@ function handleCrmSalir(req, res) {
 
 function listadoClientes(url) {
   const q = crm.normaliza(H.clean(url.searchParams.get('q'), 120));
+  const orden = H.clean(url.searchParams.get('orden') || '', 20);
+  const dir = H.clean(url.searchParams.get('dir') || '', 4) === 'desc' ? -1 : 1;
   const todas = crm.clientes.todas();
   const filtradas = q
     ? todas.filter((c) =>
         [c.nombre, c.sector, c.zona].some((v) => crm.normaliza(v).includes(q))
       )
     : todas;
-  filtradas.sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es'));
+  const conteos = new Map();
+  for (const k of crm.contactos.todas()) {
+    conteos.set(k.clienteId, (conteos.get(k.clienteId) || 0) + 1);
+  }
+  const valor = {
+    nombre: (c) => String(c.nombre || ''),
+    sector: (c) => String(c.sector || ''),
+    zona: (c) => String(c.zona || ''),
+    empleados: (c) => (c.numEmpleadosAprox == null ? null : Number(c.numEmpleadosAprox)),
+    contactos: (c) => conteos.get(c.id) || 0,
+  }[orden];
+  filtradas.sort((a, b) => {
+    if (!valor) return String(a.nombre).localeCompare(String(b.nombre), 'es');
+    const va = valor(a);
+    const vb = valor(b);
+    if (va === null && vb === null) return 0;
+    if (va === null) return 1; // empleados sin dato van siempre al final
+    if (vb === null) return -1;
+    const cmp = typeof va === 'number' && typeof vb === 'number'
+      ? va - vb
+      : String(va).localeCompare(String(vb), 'es');
+    return cmp * dir;
+  });
   return {
     total: filtradas.length,
     clientes: filtradas.slice(0, 500).map((c) => ({
       ...c,
-      contactos: crm.contactos.contar((k) => k.clienteId === c.id),
+      contactos: conteos.get(c.id) || 0,
     })),
   };
 }
