@@ -36,7 +36,7 @@ No hay tests automatizados ni linter: verificar con curl (`/api/health`, `/priva
 
 ## Reglas de seguridad
 
-- Secretos ignorados por git: `server/meta-config.json` (credenciales Meta), `server/ads-config.json` (IDs de pauta), `server/cf-config.json` (token de Cloudflare), `server/crm-config.json` (SMTP y correos permitidos del CRM), `server/data/*` (datos personales, Ley 1581 de 2012), `DatosInicialesCRM/` (Excel de origen con datos personales del CRM viejo: se importan, nunca se commitean).
+- Secretos ignorados por git: `server/meta-config.json` (credenciales Meta), `server/ads-config.json` (IDs de pauta), `server/cf-config.json` (token de Cloudflare), `server/data/*` (datos personales, Ley 1581 de 2012, incluye crm-config.json con el SMTP del CRM y los correos permitidos), `DatosInicialesCRM/` (Excel de origen con datos personales del CRM viejo: se importan, nunca se commitean).
 - Meta Marketing API: las campañas se crean **PAUSED**; `--activate` es el único paso que gasta dinero real.
 - El token de acceso de Meta se compartió por chat en el pasado: debe rotarse tras lanzar la campaña.
 - Formulario de leads: trampa honeypot (`website`/`url_field`) y consentimiento explícito obligatorio.

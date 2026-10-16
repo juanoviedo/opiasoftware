@@ -19,7 +19,7 @@ server/data/*
 server/meta-config.json
 server/meta-config.old.json
 server/cf-config.json
-server/crm-config.json
+# (la config del CRM va en server/data/crm-config.json, cubierta por server/data/*)
 
 # Datos personales de origen (Ley 1581): se importan, nunca se commitean
 DatosInicialesCRM/

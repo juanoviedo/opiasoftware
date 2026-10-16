@@ -32,7 +32,9 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 /* ------------------------------------------------------------- configuración */
 
 function leerCrmConfig() {
-  const archivo = path.join(config.serverDir, 'crm-config.json');
+  // Dentro de dataDir (volumen en producción): así el contenedor lo ve sin
+  // tocar la imagen, y vive junto a secret.key y los datos del CRM.
+  const archivo = path.join(config.dataDir, 'crm-config.json');
   try {
     const raw = JSON.parse(fs.readFileSync(archivo, 'utf8'));
     if (raw && typeof raw === 'object') return raw;
