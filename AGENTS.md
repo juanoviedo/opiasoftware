@@ -18,6 +18,7 @@ node server/index.js              # servidor local → http://localhost:3000
 node server/scripts/set-password.js        # contraseña del panel /opadmin (interactivo)
 node scripts/inject-tags.js       # hornea GA4/Pixel/beacon en los HTML desde server/ads-config.json
 python marketing/plan-leads/tools/meta_api.py --validate   # valida credenciales de Meta Marketing API
+python scripts/importar-crm.py    # importa los Excel de DatosInicialesCRM/ al CRM (server/data/crm/)
 ```
 
 No hay tests automatizados ni linter: verificar con curl (`/api/health`, `/privacidad`, `/lp/diagnostico-gratis`) y revisando el HTML servido.
@@ -35,7 +36,7 @@ No hay tests automatizados ni linter: verificar con curl (`/api/health`, `/priva
 
 ## Reglas de seguridad
 
-- Secretos ignorados por git: `server/meta-config.json` (credenciales Meta), `server/ads-config.json` (IDs de pauta), `server/cf-config.json` (token de Cloudflare), `server/data/*` (datos personales, Ley 1581 de 2012).
+- Secretos ignorados por git: `server/meta-config.json` (credenciales Meta), `server/ads-config.json` (IDs de pauta), `server/cf-config.json` (token de Cloudflare), `server/crm-config.json` (SMTP y correos permitidos del CRM), `server/data/*` (datos personales, Ley 1581 de 2012), `DatosInicialesCRM/` (Excel de origen con datos personales del CRM viejo: se importan, nunca se commitean).
 - Meta Marketing API: las campañas se crean **PAUSED**; `--activate` es el único paso que gasta dinero real.
 - El token de acceso de Meta se compartió por chat en el pasado: debe rotarse tras lanzar la campaña.
 - Formulario de leads: trampa honeypot (`website`/`url_field`) y consentimiento explícito obligatorio.

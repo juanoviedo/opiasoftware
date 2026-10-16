@@ -13,6 +13,7 @@ const { isBot, isSocialPreview } = require('./lib/bots');
 const { parseUserAgent } = require('./lib/ua');
 const { buildStats, classifyTraffic } = require('./lib/analytics');
 const auth = require('./lib/auth');
+const crm = require('./lib/crm');
 const { serveStatic } = require('./lib/static');
 
 const visits = new JsonlStore(path.join(config.dataDir, 'visits.jsonl'));
@@ -52,11 +53,15 @@ function makeLimiter(max, windowMs) {
 const trackLimiter = makeLimiter(60, 60_000);
 const leadLimiter = makeLimiter(6, 60 * 60_000);
 const statsLimiter = makeLimiter(120, 60_000);
+const crmLoginLimiter = makeLimiter(5, 15 * 60_000);
+const crmApiLimiter = makeLimiter(600, 60 * 60_000);
 
 setInterval(() => {
   trackLimiter.sweep();
   leadLimiter.sweep();
   statsLimiter.sweep();
+  crmLoginLimiter.sweep();
+  crmApiLimiter.sweep();
 }, 5 * 60_000).unref();
 
 /* ------------------------------------------------------------------ útiles */
@@ -147,7 +152,12 @@ async function handleTrack(req, res) {
 
   const { pathname, search } = safePath(body.p);
   // No rastrear el propio panel ni los endpoints: inflaría las métricas.
-  if (pathname.startsWith('/opadmin') || pathname.startsWith('/api/') || pathname.startsWith('/__opia/')) {
+  if (
+    pathname.startsWith('/opadmin') ||
+    pathname.startsWith('/crm') ||
+    pathname.startsWith('/api/') ||
+    pathname.startsWith('/__opia/')
+  ) {
     return H.sendJson(res, 202, { ok: true, skipped: true });
   }
 
@@ -355,6 +365,169 @@ function handleStats(req, res, url) {
   H.sendJson(res, 200, stats);
 }
 
+/* ---------------------------------------------------------------- /crm */
+
+function segmentos(pathname) {
+  return pathname.split('/').filter(Boolean);
+}
+
+async function handleCrmSolicitar(req, res) {
+  const ip = H.clientIp(req, config.trustProxy);
+  if (!crmLoginLimiter(ip)) {
+    return H.sendJson(res, 429, { ok: false, error: 'Demasiados intentos. Espera 15 minutos.' });
+  }
+  let body;
+  try {
+    body = await readFormOrJson(req);
+  } catch {
+    return H.sendJson(res, 400, { ok: false, error: 'Solicitud inválida.' });
+  }
+  const resultado = await crm.solicitarAcceso(body.email);
+  if (!resultado.ok) return H.sendJson(res, resultado.status || 500, { ok: false, error: resultado.error });
+  H.sendJson(res, 200, { ok: true });
+}
+
+function handleCrmVerificar(req, res, url) {
+  const token = String(url.searchParams.get('token') || '');
+  const resultado = crm.verificarAcceso(token);
+  if (!resultado.ok) {
+    res.writeHead(303, { Location: '/crm?error=' + encodeURIComponent(resultado.error) });
+    return res.end();
+  }
+  crm.crearCookieSesion(res, resultado.sesion, resultado.exp, isSecureRequest(req));
+  res.writeHead(303, { Location: '/crm' });
+  res.end();
+}
+
+function handleCrmSalir(req, res) {
+  crm.borrarCookieSesion(res);
+  H.sendJson(res, 200, { ok: true });
+}
+
+function listadoClientes(url) {
+  const q = crm.normaliza(H.clean(url.searchParams.get('q'), 120));
+  const todas = crm.clientes.todas();
+  const filtradas = q
+    ? todas.filter((c) =>
+        [c.nombre, c.sector, c.zona].some((v) => crm.normaliza(v).includes(q))
+      )
+    : todas;
+  filtradas.sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es'));
+  return {
+    total: filtradas.length,
+    clientes: filtradas.slice(0, 500).map((c) => ({
+      ...c,
+      contactos: crm.contactos.contar((k) => k.clienteId === c.id),
+    })),
+  };
+}
+
+function listadoContactos(url) {
+  const q = crm.normaliza(H.clean(url.searchParams.get('q'), 120));
+  const clienteId = H.clean(url.searchParams.get('clienteId'), 20);
+  const nombreCliente = new Map(crm.clientes.todas().map((c) => [c.id, c.nombre]));
+  let filas = crm.contactos.todas();
+  if (clienteId) filas = filas.filter((k) => k.clienteId === clienteId);
+  if (q) {
+    filas = filas.filter((k) =>
+      [k.nombres, k.apellidos, k.email, k.cargo, nombreCliente.get(k.clienteId)]
+        .some((v) => crm.normaliza(v).includes(q))
+    );
+  }
+  filas = filas.slice(0, 500).map((k) => ({ ...k, empresa: nombreCliente.get(k.clienteId) || '' }));
+  return { total: filas.length, contactos: filas };
+}
+
+async function handleCrmApi(req, res, pathname, url) {
+  const email = crm.sesionActual(req);
+  if (!email) return H.sendJson(res, 401, { ok: false, error: 'unauthorized' });
+  if (!crmApiLimiter(email)) return H.sendJson(res, 429, { ok: false, error: 'rate_limited' });
+
+  const partes = segmentos(pathname); // ['api','crm',...resto]
+  const coleccion = partes[2];
+  const id = partes[3];
+  const metodo = req.method;
+
+  if (pathname === '/api/crm/sesion' && metodo === 'GET') {
+    return H.sendJson(res, 200, { ok: true, email, emailConfigurado: crm.emailConfigurado() });
+  }
+  if (pathname === '/api/crm/resumen' && metodo === 'GET') {
+    const porEstado = {};
+    for (const k of crm.contactos.todas()) {
+      const e = k.estado || 'sin estado';
+      porEstado[e] = (porEstado[e] || 0) + 1;
+    }
+    return H.sendJson(res, 200, {
+      ok: true,
+      clientes: crm.clientes.todas().length,
+      contactos: crm.contactos.todas().length,
+      porEstado,
+    });
+  }
+
+  let body = {};
+  if (metodo === 'POST' || metodo === 'PUT') {
+    try {
+      body = await readFormOrJson(req);
+    } catch {
+      return H.sendJson(res, 400, { ok: false, error: 'Solicitud inválida.' });
+    }
+  }
+
+  if (coleccion === 'clientes') {
+    if (!id && metodo === 'GET') return H.sendJson(res, 200, { ok: true, ...listadoClientes(url) });
+    if (!id && metodo === 'POST') {
+      const { datos, errores } = crm.validarCliente(body);
+      if (Object.keys(errores).length) return H.sendJson(res, 422, { ok: false, errors: errores });
+      const ahora = new Date().toISOString();
+      const creado = crm.clientes.agregar({ id: crm.siguienteId('c'), ...datos, creadoEl: ahora, actualizadoEl: ahora });
+      return H.sendJson(res, 201, { ok: true, cliente: creado });
+    }
+    const cliente = crm.clientes.porId(id);
+    if (!cliente) return H.sendJson(res, 404, { ok: false, error: 'Cliente no encontrado.' });
+    if (metodo === 'GET') {
+      const suyos = crm.contactos.todas().filter((k) => k.clienteId === id);
+      return H.sendJson(res, 200, { ok: true, cliente, contactos: suyos });
+    }
+    if (metodo === 'PUT') {
+      const { datos, errores } = crm.validarCliente(body);
+      if (Object.keys(errores).length) return H.sendJson(res, 422, { ok: false, errors: errores });
+      return H.sendJson(res, 200, { ok: true, cliente: crm.clientes.actualizar(id, datos) });
+    }
+    if (metodo === 'DELETE') {
+      crm.clientes.eliminar(id);
+      const restantes = crm.contactos.todas().filter((k) => k.clienteId !== id);
+      const borrados = crm.contactos.todas().length - restantes.length;
+      crm.contactos.guardar(restantes);
+      return H.sendJson(res, 200, { ok: true, contactosBorrados: borrados });
+    }
+  }
+
+  if (coleccion === 'contactos') {
+    if (!id && metodo === 'GET') return H.sendJson(res, 200, { ok: true, ...listadoContactos(url) });
+    if (!id && metodo === 'POST') {
+      const { datos, errores } = crm.validarContacto(body);
+      if (Object.keys(errores).length) return H.sendJson(res, 422, { ok: false, errors: errores });
+      const ahora = new Date().toISOString();
+      const creado = crm.contactos.agregar({ id: crm.siguienteId('p'), ...datos, creadoEl: ahora, actualizadoEl: ahora });
+      return H.sendJson(res, 201, { ok: true, contacto: creado });
+    }
+    const contacto = crm.contactos.porId(id);
+    if (!contacto) return H.sendJson(res, 404, { ok: false, error: 'Contacto no encontrado.' });
+    if (metodo === 'PUT') {
+      const { datos, errores } = crm.validarContacto({ ...contacto, ...body });
+      if (Object.keys(errores).length) return H.sendJson(res, 422, { ok: false, errors: errores });
+      return H.sendJson(res, 200, { ok: true, contacto: crm.contactos.actualizar(id, datos) });
+    }
+    if (metodo === 'DELETE') {
+      crm.contactos.eliminar(id);
+      return H.sendJson(res, 200, { ok: true });
+    }
+  }
+
+  return H.sendJson(res, 404, { ok: false, error: 'not_found' });
+}
+
 /* ---------------------------------------------------------------- servidor */
 
 const server = http.createServer((req, res) => {
@@ -396,6 +569,11 @@ const server = http.createServer((req, res) => {
       if (req.method === 'POST' && pathname === '/api/track') return await handleTrack(req, res);
       if (req.method === 'POST' && pathname === '/api/leads') return await handleLead(req, res);
       if (req.method === 'POST' && pathname === '/opadmin/login') return await handleLogin(req, res);
+
+      if (req.method === 'POST' && pathname === '/api/crm/auth/solicitar') return await handleCrmSolicitar(req, res);
+      if (req.method === 'GET' && pathname === '/api/crm/auth/verificar') return handleCrmVerificar(req, res, url);
+      if (req.method === 'POST' && pathname === '/api/crm/auth/salir') return handleCrmSalir(req, res);
+      if (pathname.startsWith('/api/crm/')) return await handleCrmApi(req, res, pathname, url);
 
       if (pathname === '/opadmin/logout') {
         auth.destroySession(res);
@@ -463,6 +641,7 @@ function start() {
     shown.push('  OPIA Software — servidor local');
     shown.push(`  Sitio:    http://localhost:${config.port}`);
     shown.push(`  Panel:    http://localhost:${config.port}/opadmin`);
+    shown.push(`  CRM:      http://localhost:${config.port}/crm`);
     shown.push(`  Datos:    ${config.dataDir}`);
     shown.push(`  Retención: ${config.retentionDays} días   Zona: ${config.timezone}`);
     shown.push(`  Proxy de confianza: ${config.trustProxy ? 'sí' : 'no'}`);

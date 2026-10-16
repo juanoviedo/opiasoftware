@@ -19,6 +19,10 @@ server/data/*
 server/meta-config.json
 server/meta-config.old.json
 server/cf-config.json
+server/crm-config.json
+
+# Datos personales de origen (Ley 1581): se importan, nunca se commitean
+DatosInicialesCRM/
 
 # Bytecode de Python
 __pycache__/

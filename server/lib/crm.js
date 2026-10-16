@@ -1,0 +1,282 @@
+'use strict';
+
+const crypto = require('node:crypto');
+const fs = require('node:fs');
+const path = require('node:path');
+const config = require('./config');
+const auth = require('./auth');
+const H = require('./http');
+const { sendMail } = require('./mail');
+
+const CRM_DIR = path.join(config.dataDir, 'crm');
+const COOKIE_CRM = 'opia_crm';
+const TOKEN_MINUTOS = 15;
+const SESION_DIAS = 7;
+
+const CLIENTE_FIELDS = ['nombre', 'sector', 'zona', 'notas'];
+const CONTACTO_FIELDS = [
+  'clienteId', 'nombres', 'apellidos', 'cargo', 'email', 'email2', 'email3',
+  'celular', 'telefono', 'telefono2', 'descripcion', 'sector', 'zona', 'origen',
+  'estado', 'etapa', 'propietario', 'leadScoring', 'ultimoContacto', 'tags',
+  'observaciones', 'notas', 'idExterno',
+];
+const LIMITES = {
+  nombre: 200, sector: 120, zona: 120, notas: 1000, nombres: 120, apellidos: 120,
+  cargo: 160, email: 160, email2: 160, email3: 160, celular: 40, telefono: 40,
+  telefono2: 40, descripcion: 400, origen: 120, estado: 60, etapa: 120,
+  propietario: 120, leadScoring: 20, ultimoContacto: 40, tags: 200,
+  observaciones: 500, idExterno: 64,
+};
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+/* ------------------------------------------------------------- configuración */
+
+function leerCrmConfig() {
+  const archivo = path.join(config.serverDir, 'crm-config.json');
+  try {
+    const raw = JSON.parse(fs.readFileSync(archivo, 'utf8'));
+    if (raw && typeof raw === 'object') return raw;
+  } catch {
+    // sin archivo: el CRM avisa qué falta, no falla
+  }
+  return {};
+}
+
+function emailConfigurado() {
+  const c = leerCrmConfig();
+  return Boolean(c.smtp && c.smtp.host && c.smtp.user && c.from);
+}
+
+function correosPermitidos() {
+  const c = leerCrmConfig();
+  return Array.isArray(c.adminEmails) ? c.adminEmails.map((e) => String(e).toLowerCase().trim()) : [];
+}
+
+/* ----------------------------------------------------------------- almacén */
+
+class Tabla {
+  constructor(archivo) {
+    this.archivo = path.join(CRM_DIR, archivo);
+    this.filas = null;
+    this.sello = null;
+    fs.mkdirSync(CRM_DIR, { recursive: true });
+  }
+
+  #estampa() {
+    try {
+      const st = fs.statSync(this.archivo);
+      return `${st.mtimeMs}:${st.size}`;
+    } catch {
+      return 'none';
+    }
+  }
+
+  leer() {
+    const estampa = this.#estampa();
+    if (this.filas && this.sello === estampa) return this.filas;
+    try {
+      this.filas = JSON.parse(fs.readFileSync(this.archivo, 'utf8'));
+    } catch {
+      this.filas = [];
+    }
+    this.sello = estampa;
+    return this.filas;
+  }
+
+  guardar(filas) {
+    const tmp = `${this.archivo}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify(filas, null, 1), 'utf8');
+    fs.renameSync(tmp, this.archivo);
+    this.filas = filas;
+    this.sello = this.#estampa();
+  }
+
+  todas() {
+    return this.leer();
+  }
+
+  porId(id) {
+    return this.leer().find((f) => f.id === id) || null;
+  }
+
+  agregar(fila) {
+    const filas = this.leer().slice();
+    filas.push(fila);
+    this.guardar(filas);
+    return fila;
+  }
+
+  actualizar(id, cambios) {
+    const filas = this.leer().slice();
+    const i = filas.findIndex((f) => f.id === id);
+    if (i < 0) return null;
+    filas[i] = { ...filas[i], ...cambios, id, actualizadoEl: new Date().toISOString() };
+    this.guardar(filas);
+    return filas[i];
+  }
+
+  eliminar(id) {
+    const filas = this.leer();
+    const restantes = filas.filter((f) => f.id !== id);
+    if (restantes.length === filas.length) return false;
+    this.guardar(restantes);
+    return true;
+  }
+
+  contar(predicado) {
+    return this.leer().reduce((n, f) => (predicado(f) ? n + 1 : n), 0);
+  }
+}
+
+const clientes = new Tabla('clientes.json');
+const contactos = new Tabla('contactos.json');
+
+function siguienteId(prefijo) {
+  let meta = { seqCliente: 0, seqContacto: 0 };
+  try {
+    meta = { ...meta, ...JSON.parse(fs.readFileSync(path.join(CRM_DIR, 'meta.json'), 'utf8')) };
+  } catch {
+    // primer arranque
+  }
+  const campo = prefijo === 'c' ? 'seqCliente' : 'seqContacto';
+  meta[campo] += 1;
+  fs.writeFileSync(path.join(CRM_DIR, 'meta.json'), JSON.stringify(meta, null, 2), 'utf8');
+  return prefijo === 'c' ? `c${String(meta[campo]).padStart(5, '0')}` : `p${String(meta[campo]).padStart(6, '0')}`;
+}
+
+function normaliza(cadena) {
+  return String(cadena || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+/* --------------------------------------------------------------- validación */
+
+function limpiarCampos(data, campos) {
+  const out = {};
+  for (const campo of campos) {
+    out[campo] = H.clean(data[campo], LIMITES[campo] || 300).trim();
+  }
+  return out;
+}
+
+function validarCliente(data) {
+  const c = limpiarCampos(data, CLIENTE_FIELDS);
+  const errores = {};
+  if (c.nombre.length < 2) errores.nombre = 'Escribe el nombre de la empresa.';
+  return { datos: c, errores };
+}
+
+function validarContacto(data) {
+  const c = limpiarCampos(data, CONTACTO_FIELDS);
+  const errores = {};
+  if (!clientes.porId(c.clienteId)) errores.clienteId = 'El cliente no existe.';
+  if (c.nombres.length < 2 && !c.email && !c.celular) {
+    errores.nombres = 'Escribe al menos un nombre, correo o celular.';
+  }
+  for (const campo of ['email', 'email2', 'email3']) {
+    if (c[campo] && !EMAIL_RE.test(c[campo])) errores[campo] = 'Ese correo no parece válido.';
+  }
+  return { datos: c, errores };
+}
+
+/* ------------------------------------------------------------------- auth */
+
+const tokens = new Map(); // jti -> { email, exp } ; el enlace es de un solo uso
+
+function solicitarAcceso(emailCrudo) {
+  const email = H.clean(emailCrudo, 160).trim().toLowerCase();
+  if (!EMAIL_RE.test(email)) return { ok: false, error: 'Ese correo no parece válido.', status: 422 };
+  if (!emailConfigurado()) {
+    return {
+      ok: false,
+      status: 503,
+      error: 'El correo del CRM no está configurado todavía. Avisa al administrador.',
+    };
+  }
+  const permitidos = correosPermitidos();
+  if (!permitidos.includes(email)) {
+    // Respuesta igual que el caso exitoso: no revelar qué correos tienen acceso.
+    return { ok: true, enviado: false };
+  }
+  const jti = crypto.randomBytes(16).toString('hex');
+  const exp = Date.now() + TOKEN_MINUTOS * 60 * 1000;
+  tokens.set(jti, { email, exp });
+  const token = auth.sign({ e: email, exp, jti });
+  const base = config.publicUrl || `http://localhost:${config.port}`;
+  const enlace = `${base}/api/crm/auth/verificar?token=${encodeURIComponent(token)}`;
+  const c = leerCrmConfig();
+  return sendMail({
+    host: c.smtp.host,
+    port: Number(c.smtp.port) || (c.smtp.secure === false ? 587 : 465),
+    secure: c.smtp.secure !== false,
+    user: c.smtp.user,
+    pass: c.smtp.pass,
+    from: c.from,
+    to: email,
+    subject: 'Tu enlace de acceso al CRM de OPIA',
+    text:
+      `Hola,\n\nAbre este enlace para entrar al CRM (vence en ${TOKEN_MINUTOS} minutos y solo sirve una vez):\n\n` +
+      `${enlace}\n\nSi no lo pediste, ignora este mensaje.\n— OPIA Software`,
+  }).then(() => ({ ok: true, enviado: true })).catch((err) => {
+    console.error('[crm] falló el envío del correo:', err.message);
+    tokens.delete(jti);
+    return { ok: false, status: 502, error: 'No pudimos enviar el correo. Intenta de nuevo en unos minutos.' };
+  });
+}
+
+function verificarAcceso(token) {
+  const payload = auth.unsign(token);
+  if (!payload) return { ok: false, error: 'El enlace es inválido o venció. Pide uno nuevo.' };
+  const guardado = tokens.get(payload.jti);
+  if (!guardado || guardado.email !== payload.e || guardado.exp < Date.now()) {
+    return { ok: false, error: 'El enlace es inválido o venció. Pide uno nuevo.' };
+  }
+  tokens.delete(payload.jti); // un solo uso
+  const exp = Date.now() + SESION_DIAS * 86_400_000;
+  const sesion = auth.sign({ e: payload.e, exp, jti: crypto.randomBytes(8).toString('hex') });
+  return { ok: true, email: payload.e, sesion, exp };
+}
+
+function crearCookieSesion(res, sesion, exp, secure) {
+  res.setHeader(
+    'Set-Cookie',
+    H.serializeCookie(COOKIE_CRM, sesion, {
+      maxAgeSeconds: Math.max(0, Math.floor((exp - Date.now()) / 1000)),
+      path: '/',
+      httpOnly: true,
+      sameSite: 'Lax',
+      secure,
+    })
+  );
+}
+
+function borrarCookieSesion(res) {
+  res.setHeader(
+    'Set-Cookie',
+    H.serializeCookie(COOKIE_CRM, '', { maxAgeSeconds: 0, path: '/', httpOnly: true, sameSite: 'Lax' })
+  );
+}
+
+function sesionActual(req) {
+  const cookies = H.parseCookies(req.headers.cookie);
+  const payload = auth.unsign(cookies[COOKIE_CRM]);
+  if (!payload) return null;
+  const permitidos = correosPermitidos();
+  if (permitidos.length && !permitidos.includes(String(payload.e).toLowerCase())) return null;
+  return payload.e;
+}
+
+module.exports = {
+  clientes,
+  contactos,
+  siguienteId,
+  normaliza,
+  validarCliente,
+  validarContacto,
+  solicitarAcceso,
+  verificarAcceso,
+  crearCookieSesion,
+  borrarCookieSesion,
+  sesionActual,
+  emailConfigurado,
+  COOKIE_CRM,
+};

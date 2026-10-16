@@ -148,4 +148,6 @@ module.exports = {
   currentUser,
   loginAllowed,
   loginSucceeded,
+  sign,
+  unsign,
 };

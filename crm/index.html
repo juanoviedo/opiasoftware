@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>CRM · OPIA Software</title>
+    <style>
+      :root {
+        --navy: #071e3d;
+        --navy-2: #0b2b50;
+        --blue: #087ef5;
+        --sky: #15b8f4;
+        --ok: #2ecc8f;
+        --warn: #ffb020;
+        --bad: #ff6b6b;
+        --text: #eaf2fa;
+        --muted: #8fa6bd;
+        --line: rgba(255, 255, 255, 0.09);
+        --card: rgba(255, 255, 255, 0.04);
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(1200px 700px at 10% -15%, #10355e 0%, transparent 60%),
+          radial-gradient(900px 600px at 105% 5%, #0a4a72 0%, transparent 55%),
+          var(--navy);
+        min-height: 100vh;
+      }
+      a { color: var(--sky); }
+      button {
+        font-family: inherit;
+        cursor: pointer;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text);
+        border-radius: 9px;
+        padding: 8px 14px;
+        font-size: 13px;
+      }
+      button:hover { background: rgba(255, 255, 255, 0.12); }
+      button.primario { background: var(--blue); border-color: transparent; color: #fff; font-weight: 600; }
+      button.primario:hover { background: #2b90ff; }
+      button.peligro { color: var(--bad); }
+      button.chico { padding: 4px 9px; font-size: 12px; border-radius: 7px; }
+      input, select, textarea {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 9px;
+        border: 1px solid var(--line);
+        background: rgba(4, 16, 32, 0.6);
+        color: #fff;
+        font-size: 14px;
+        font-family: inherit;
+      }
+      input:focus, select:focus, textarea:focus { outline: 2px solid var(--blue); outline-offset: 1px; border-color: transparent; }
+      label { display: block; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 12px 0 5px; }
+
+      /* ---------- login ---------- */
+      .login-envoltura { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+      .tarjeta-login {
+        width: 100%;
+        max-width: 400px;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 32px 28px;
+        backdrop-filter: blur(8px);
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
+      }
+      .marca { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+      .marca b { font-size: 22px; letter-spacing: 0.06em; }
+      .marca span { font-size: 11px; letter-spacing: 0.22em; color: var(--sky); text-transform: uppercase; }
+      p.sub { margin: 0 0 22px; color: var(--muted); font-size: 14px; line-height: 1.5; }
+      .aviso { border-radius: 10px; padding: 11px 13px; font-size: 13.5px; line-height: 1.5; margin-top: 16px; }
+      .aviso.ok { background: rgba(46, 204, 143, 0.12); border: 1px solid rgba(46, 204, 143, 0.35); }
+      .aviso.error { background: rgba(255, 107, 107, 0.12); border: 1px solid rgba(255, 107, 107, 0.35); }
+
+      /* ---------- app ---------- */
+      header.barra {
+        display: flex; align-items: center; gap: 14px;
+        padding: 14px 22px; border-bottom: 1px solid var(--line);
+        background: rgba(4, 14, 28, 0.55); position: sticky; top: 0; z-index: 5;
+        backdrop-filter: blur(8px);
+      }
+      header.barra .marca { margin: 0; }
+      header.barra nav { display: flex; gap: 6px; margin-left: 18px; }
+      header.barra nav button { border: none; background: transparent; color: var(--muted); font-size: 14px; padding: 8px 12px; }
+      header.barra nav button.activo { color: #fff; background: rgba(255, 255, 255, 0.08); border-radius: 9px; }
+      header.barra .espacio { flex: 1; }
+      header.barra .quien { color: var(--muted); font-size: 13px; }
+      main { padding: 22px; max-width: 1200px; margin: 0 auto; }
+      .herramientas { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+      .herramientas input[type="search"] { max-width: 340px; }
+      .contador { color: var(--muted); font-size: 13px; }
+      table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+      th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+      th { color: var(--muted); font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase; font-weight: 600; }
+      tbody tr:hover { background: rgba(255, 255, 255, 0.035); }
+      tbody tr.clicable { cursor: pointer; }
+      .tarjeta {
+        background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+        padding: 18px 20px; margin-bottom: 18px;
+      }
+      .tarjeta h2 { margin: 0 0 4px; font-size: 19px; }
+      .ficha { display: flex; flex-wrap: wrap; gap: 6px 22px; color: var(--muted); font-size: 13px; margin-top: 8px; }
+      .ficha b { color: var(--text); font-weight: 500; }
+      .estado {
+        display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11.5px;
+        background: rgba(255, 255, 255, 0.08); color: var(--text); white-space: nowrap;
+      }
+      .estado.cliente { background: rgba(46, 204, 143, 0.18); color: #7fe6bb; }
+      .estado.oportunidad { background: rgba(255, 176, 32, 0.18); color: #ffd37f; }
+      .estado.caliente { background: rgba(255, 107, 107, 0.2); color: #ff9d9d; }
+      .estado.frio { background: rgba(143, 166, 189, 0.18); color: #b9cbdd; }
+      .estado.perdido { background: rgba(255, 255, 255, 0.05); color: var(--muted); text-decoration: line-through; }
+      .mut { color: var(--muted); }
+      .mini { font-size: 12px; }
+
+      /* ---------- modal ---------- */
+      .modal-fondo {
+        position: fixed; inset: 0; background: rgba(2, 8, 18, 0.75);
+        display: grid; place-items: center; padding: 20px; z-index: 20;
+      }
+      .modal {
+        width: 100%; max-width: 640px; max-height: 88vh; overflow: auto;
+        background: #0a2340; border: 1px solid var(--line); border-radius: 16px; padding: 24px;
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+      }
+      .modal h3 { margin: 0 0 4px; }
+      .rejilla { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+      .rejilla .ancho { grid-column: 1 / -1; }
+      .modal .acciones { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+      .campo-error { color: var(--bad); font-size: 12px; margin-top: 4px; }
+      [hidden] { display: none !important; }
+      @media (max-width: 700px) { .rejilla { grid-template-columns: 1fr; } main { padding: 14px; } }
+    </style>
+  </head>
+  <body>
+    <!-- LOGIN -->
+    <div id="vista-login" class="login-envoltura" hidden>
+      <div class="tarjeta-login">
+        <div class="marca"><b>OPIA</b><span>CRM</span></div>
+        <p class="sub">Escribe tu correo y te enviamos un enlace para entrar. Sin contraseñas.</p>
+        <form id="form-login">
+          <label for="login-email">Correo electrónico</label>
+          <input id="login-email" type="email" required autocomplete="email" placeholder="tucorreo@empresa.com" />
+          <div style="height:16px"></div>
+          <button class="primario" type="submit" id="btn-login">Enviarme el enlace</button>
+        </form>
+        <div id="login-aviso" class="aviso" hidden></div>
+      </div>
+    </div>
+
+    <!-- APP -->
+    <div id="vista-app" hidden>
+      <header class="barra">
+        <div class="marca"><b>OPIA</b><span>CRM</span></div>
+        <nav>
+          <button id="tab-clientes" class="activo">Clientes</button>
+          <button id="tab-contactos">Contactos</button>
+        </nav>
+        <div class="espacio"></div>
+        <span class="quien" id="quien"></span>
+        <button id="btn-salir" class="chico">Salir</button>
+      </header>
+      <main>
+        <!-- lista de clientes -->
+        <section id="panel-clientes">
+          <div class="herramientas">
+            <input type="search" id="buscar-cliente" placeholder="Buscar por nombre, sector o zona…" />
+            <span class="contador" id="contador-clientes"></span>
+            <div style="flex:1"></div>
+            <button class="primario" id="btn-nuevo-cliente">+ Nuevo cliente</button>
+          </div>
+          <table>
+            <thead>
+              <tr><th>Empresa</th><th>Sector</th><th>Zona</th><th style="text-align:right">Contactos</th><th></th></tr>
+            </thead>
+            <tbody id="tabla-clientes"></tbody>
+          </table>
+        </section>
+
+        <!-- detalle de cliente -->
+        <section id="panel-cliente" hidden>
+          <p><button class="chico" id="btn-volver">← Volver a clientes</button></p>
+          <div class="tarjeta" id="ficha-cliente"></div>
+          <div class="herramientas">
+            <h3 style="margin:0">Contactos</h3>
+            <div style="flex:1"></div>
+            <button class="primario" id="btn-nuevo-contacto">+ Nuevo contacto</button>
+          </div>
+          <table>
+            <thead>
+              <tr><th>Nombre</th><th>Cargo</th><th>Correo</th><th>Celular</th><th>Estado</th><th></th></tr>
+            </thead>
+            <tbody id="tabla-contactos"></tbody>
+          </table>
+        </section>
+
+        <!-- buscador global de contactos -->
+        <section id="panel-contactos" hidden>
+          <div class="herramientas">
+            <input type="search" id="buscar-contacto" placeholder="Buscar contactos por nombre, correo, cargo o empresa…" />
+            <span class="contador" id="contador-contactos"></span>
+          </div>
+          <table>
+            <thead>
+              <tr><th>Nombre</th><th>Empresa</th><th>Cargo</th><th>Correo</th><th>Celular</th><th>Estado</th></tr>
+            </thead>
+            <tbody id="tabla-contactos-global"></tbody>
+          </table>
+        </section>
+      </main>
+    </div>
+
+    <!-- MODAL -->
+    <div id="modal" class="modal-fondo" hidden>
+      <div class="modal">
+        <h3 id="modal-titulo"></h3>
+        <div id="modal-cuerpo"></div>
+        <div id="modal-errores"></div>
+        <div class="acciones">
+          <button id="modal-cancelar">Cancelar</button>
+          <button class="primario" id="modal-guardar">Guardar</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+    'use strict';
+
+    /* ---------------- utilidades ---------------- */
+    const $ = (sel) => document.querySelector(sel);
+    const el = (tag, texto) => {
+      const n = document.createElement(tag);
+      if (texto !== undefined) n.textContent = texto;
+      return n;
+    };
+
+    async function api(ruta, opciones = {}) {
+      const resp = await fetch(ruta, {
+        credentials: 'same-origin',
+        headers: opciones.body ? { 'Content-Type': 'application/json' } : undefined,
+        ...opciones,
+      });
+      let datos = {};
+      try { datos = await resp.json(); } catch { /* sin cuerpo */ }
+      if (resp.status === 401 && !ruta.includes('/auth/')) {
+        mostrarLogin();
+        throw new Error('sesión expirada');
+      }
+      return { status: resp.status, ...datos };
+    }
+
+    const CAMPOS_CLIENTE = ['nombre', 'sector', 'zona', 'notas'];
+    const CAMPOS_CONTACTO = [
+      ['nombres', 'Nombres'], ['apellidos', 'Apellidos'], ['cargo', 'Cargo'],
+      ['email', 'Correo principal'], ['email2', 'Correo 2'], ['email3', 'Correo 3'],
+      ['celular', 'Celular'], ['telefono', 'Teléfono'], ['telefono2', 'Teléfono 2'],
+      ['estado', 'Estado'], ['etapa', 'Etapa'], ['propietario', 'Propietario'],
+      ['sector', 'Sector'], ['zona', 'Zona'], ['origen', 'Origen'],
+      ['leadScoring', 'Lead scoring'], ['ultimoContacto', 'Último contacto (AAAA-MM-DD)'],
+      ['tags', 'Tags'], ['idExterno', 'ID externo'],
+    ];
+    const TEXTOS_LARGOS = ['notas', 'observaciones', 'descripcion'];
+
+    const ESTADOS = ['lead frío', 'lead templado', 'lead caliente', 'en oportunidad', 'cliente', 'lead perdido'];
+
+    function claseEstado(estado) {
+      const e = (estado || '').toLowerCase();
+      if (e === 'cliente') return 'cliente';
+      if (e === 'en oportunidad') return 'oportunidad';
+      if (e === 'lead caliente') return 'caliente';
+      if (e === 'lead perdido') return 'perdido';
+      return 'frio';
+    }
+
+    function estadoBadge(estado) {
+      const s = el('span', estado || 'sin estado');
+      s.className = 'estado ' + claseEstado(estado);
+      return s;
+    }
+
+    function celdaEmail(email) {
+      const td = el('td');
+      if (email) {
+        const a = el('a', email);
+        a.href = 'mailto:' + email;
+        td.appendChild(a);
+      }
+      return td;
+    }
+
+    /* ---------------- estado de la interfaz ---------------- */
+    const estado = {
+      email: null,
+      clienteActual: null,
+      vista: 'clientes',
+    };
+
+    function mostrarLogin() {
+      $('#vista-app').hidden = true;
+      $('#vista-login').hidden = false;
+    }
+
+    function mostrarApp() {
+      $('#vista-login').hidden = true;
+      $('#vista-app').hidden = false;
+      $('#quien').textContent = estado.email;
+      irA('clientes');
+    }
+
+    function irA(vista) {
+      estado.vista = vista;
+      $('#tab-clientes').classList.toggle('activo', vista !== 'contactos');
+      $('#tab-contactos').classList.toggle('activo', vista === 'contactos');
+      $('#panel-clientes').hidden = vista !== 'clientes';
+      $('#panel-cliente').hidden = vista !== 'cliente';
+      $('#panel-contactos').hidden = vista !== 'contactos';
+      if (vista === 'clientes') cargarClientes();
+      if (vista === 'contactos') cargarContactosGlobales();
+    }
+
+    /* ---------------- clientes ---------------- */
+    let busquedaClientesTimer = null;
+    async function cargarClientes() {
+      const q = encodeURIComponent($('#buscar-cliente').value.trim());
+      const { clientes, total } = await api('/api/crm/clientes?q=' + q);
+      $('#contador-clientes').textContent = total + (total === 1 ? ' empresa' : ' empresas');
+      const tabla = $('#tabla-clientes');
+      tabla.textContent = '';
+      for (const c of clientes) {
+        const tr = el('tr');
+        tr.className = 'clicable';
+        const nombre = el('td');
+        const b = el('b', c.nombre);
+        nombre.appendChild(b);
+        tr.appendChild(nombre);
+        tr.appendChild(el('td', c.sector));
+        tr.appendChild(el('td', c.zona));
+        const n = el('td', String(c.contactos));
+        n.style.textAlign = 'right';
+        tr.appendChild(n);
+        const acciones = el('td');
+        const editar = el('button', 'Editar');
+        editar.className = 'chico';
+        editar.addEventListener('click', (ev) => { ev.stopPropagation(); formularioCliente(c); });
+        const borrar = el('button', 'Borrar');
+        borrar.className = 'chico peligro';
+        borrar.addEventListener('click', (ev) => { ev.stopPropagation(); borrarCliente(c); });
+        acciones.appendChild(editar);
+        acciones.appendChild(document.createTextNode(' '));
+        acciones.appendChild(borrar);
+        tr.appendChild(acciones);
+        tr.addEventListener('click', () => abrirCliente(c.id));
+        tabla.appendChild(tr);
+      }
+      if (!clientes.length) tabla.appendChild(el('tr')).appendChild(el('td', 'Sin resultados.'));
+    }
+
+    async function abrirCliente(id) {
+      const { cliente, contactos } = await api('/api/crm/clientes/' + id);
+      estado.clienteActual = cliente;
+      $('#ficha-cliente').textContent = '';
+      const h2 = el('h2', cliente.nombre);
+      $('#ficha-cliente').appendChild(h2);
+      const ficha = el('div');
+      ficha.className = 'ficha';
+      const pares = [['Sector', cliente.sector], ['Zona', cliente.zona], ['Notas', cliente.notas]];
+      for (const [k, v] of pares) {
+        if (!v) continue;
+        const p = el('span');
+        p.appendChild(el('span', k + ': '));
+        const b = el('b', v);
+        p.appendChild(b);
+        ficha.appendChild(p);
+      }
+      $('#ficha-cliente').appendChild(ficha);
+      const tabla = $('#tabla-contactos');
+      tabla.textContent = '';
+      for (const k of contactos) {
+        const tr = el('tr');
+        tr.className = 'clicable';
+        tr.appendChild(el('td', [k.nombres, k.apellidos].filter(Boolean).join(' ') || '—'));
+        tr.appendChild(el('td', k.cargo));
+        tr.appendChild(celdaEmail(k.email));
+        tr.appendChild(el('td', k.celular));
+        const tdEstado = el('td');
+        tdEstado.appendChild(estadoBadge(k.estado));
+        tr.appendChild(tdEstado);
+        const acciones = el('td');
+        const editar = el('button', 'Editar');
+        editar.className = 'chico';
+        editar.addEventListener('click', (ev) => { ev.stopPropagation(); formularioContacto(k); });
+        const borrar = el('button', 'Borrar');
+        borrar.className = 'chico peligro';
+        borrar.addEventListener('click', (ev) => { ev.stopPropagation(); borrarContacto(k); });
+        acciones.appendChild(editar);
+        acciones.appendChild(document.createTextNode(' '));
+        acciones.appendChild(borrar);
+        tr.appendChild(acciones);
+        tr.addEventListener('click', () => formularioContacto(k));
+        tabla.appendChild(tr);
+      }
+      if (!contactos.length) tabla.appendChild(el('tr')).appendChild(el('td', 'Este cliente no tiene contactos todavía.'));
+      irA('cliente');
+    }
+
+    /* ---------------- contactos globales ---------------- */
+    async function cargarContactosGlobales() {
+      const q = encodeURIComponent($('#buscar-contacto').value.trim());
+      const { contactos, total } = await api('/api/crm/contactos?q=' + q);
+      $('#contador-contactos').textContent = total + (total === 1 ? ' contacto' : ' contactos');
+      const tabla = $('#tabla-contactos-global');
+      tabla.textContent = '';
+      for (const k of contactos) {
+        const tr = el('tr');
+        tr.className = 'clicable';
+        tr.appendChild(el('td', [k.nombres, k.apellidos].filter(Boolean).join(' ') || '—'));
+        tr.appendChild(el('td', k.empresa));
+        tr.appendChild(el('td', k.cargo));
+        tr.appendChild(celdaEmail(k.email));
+        tr.appendChild(el('td', k.celular));
+        const tdEstado = el('td');
+        tdEstado.appendChild(estadoBadge(k.estado));
+        tr.appendChild(tdEstado);
+        tr.addEventListener('click', () => abrirCliente(k.clienteId));
+        tabla.appendChild(tr);
+      }
+      if (!contactos.length) tabla.appendChild(el('tr')).appendChild(el('td', 'Sin resultados. Escribe para buscar.'));
+    }
+
+    /* ---------------- modal y formularios ---------------- */
+    let modalGuardar = null;
+
+    function abrirModal(titulo, nodoFormulario, alGuardar) {
+      $('#modal-titulo').textContent = titulo;
+      const cuerpo = $('#modal-cuerpo');
+      cuerpo.textContent = '';
+      cuerpo.appendChild(nodoFormulario);
+      $('#modal-errores').textContent = '';
+      modalGuardar = alGuardar;
+      $('#modal').hidden = false;
+    }
+
+    function cerrarModal() {
+      $('#modal').hidden = true;
+      modalGuardar = null;
+    }
+
+    function formularioGenerico(campos, valores) {
+      const form = el('form');
+      form.className = 'rejilla';
+      const refs = {};
+      for (const [campo, etiqueta] of campos) {
+        const div = el('div');
+        if (TEXTOS_LARGOS.includes(campo)) div.className = 'ancho';
+        let input;
+        if (campo === 'estado') {
+          input = el('select');
+          input.appendChild(el('option', ''));
+          for (const e of ESTADOS) input.appendChild(el('option', e));
+          input.value = valores[campo] || '';
+        } else {
+          input = el('input');
+          input.type = 'text';
+          input.value = valores[campo] || '';
+        }
+        input.name = campo;
+        input.id = 'f-' + campo;
+        const etiquetaNodo = el('label', etiqueta);
+        etiquetaNodo.htmlFor = input.id;
+        div.appendChild(etiquetaNodo);
+        div.appendChild(input);
+        refs[campo] = input;
+        form.appendChild(div);
+      }
+      form.addEventListener('submit', (ev) => ev.preventDefault());
+      return { form, refs };
+    }
+
+    function recolectar(refs) {
+      const datos = {};
+      for (const [campo, input] of Object.entries(refs)) datos[campo] = input.value;
+      return datos;
+    }
+
+    function mostrarErrores(errors) {
+      const caja = $('#modal-errores');
+      caja.textContent = '';
+      for (const msg of Object.values(errors || {})) {
+        const p = el('p', msg);
+        p.className = 'campo-error';
+        caja.appendChild(p);
+      }
+    }
+
+    function formularioCliente(cliente) {
+      const valores = cliente || {};
+      const campos = [
+        ['nombre', 'Empresa *'], ['sector', 'Sector'], ['zona', 'Zona'],
+      ];
+      const { form, refs } = formularioGenerico(campos, valores);
+      const divNotas = el('div');
+      divNotas.className = 'ancho';
+      divNotas.appendChild(el('label', 'Notas'));
+      const notas = el('textarea');
+      notas.rows = 3;
+      notas.value = valores.notas || '';
+      divNotas.appendChild(notas);
+      form.appendChild(divNotas);
+      abrirModal(cliente ? 'Editar cliente' : 'Nuevo cliente', form, async () => {
+        const datos = { ...recolectar(refs), notas: notas.value };
+        const ruta = cliente ? '/api/crm/clientes/' + cliente.id : '/api/crm/clientes';
+        const resp = await api(ruta, { method: cliente ? 'PUT' : 'POST', body: JSON.stringify(datos) });
+        if (!resp.ok) return mostrarErrores(resp.errors || { _: resp.error || 'No se pudo guardar.' });
+        cerrarModal();
+        if (estado.vista === 'cliente' && estado.clienteActual) abrirCliente(cliente ? cliente.id : estado.clienteActual.id);
+        else cargarClientes();
+      });
+    }
+
+    function formularioContacto(contacto) {
+      const valores = contacto || { clienteId: estado.clienteActual.id };
+      const { form, refs } = formularioGenerico(CAMPOS_CONTACTO, valores);
+      for (const largo of ['descripcion', 'observaciones', 'notas']) {
+        const div = el('div');
+        div.className = 'ancho';
+        div.appendChild(el('label', largo[0].toUpperCase() + largo.slice(1)));
+        const t = el('textarea');
+        t.rows = 2;
+        t.value = valores[largo] || '';
+        div.appendChild(t);
+        form.appendChild(div);
+        refs[largo] = t;
+      }
+      const titulo = (contacto ? 'Editar contacto' : 'Nuevo contacto') + ' · ' + estado.clienteActual.nombre;
+      abrirModal(titulo, form, async () => {
+        const datos = recolectar(refs);
+        datos.clienteId = estado.clienteActual.id;
+        const ruta = contacto ? '/api/crm/contactos/' + contacto.id : '/api/crm/contactos';
+        const resp = await api(ruta, { method: contacto ? 'PUT' : 'POST', body: JSON.stringify(datos) });
+        if (!resp.ok) return mostrarErrores(resp.errors || { _: resp.error || 'No se pudo guardar.' });
+        cerrarModal();
+        abrirCliente(estado.clienteActual.id);
+      });
+    }
+
+    async function borrarCliente(cliente) {
+      if (!confirm('¿Borrar "' + cliente.nombre + '" y todos sus contactos? Esta acción no se puede deshacer.')) return;
+      const resp = await api('/api/crm/clientes/' + cliente.id, { method: 'DELETE' });
+      if (!resp.ok) return alert(resp.error || 'No se pudo borrar.');
+      cargarClientes();
+    }
+
+    async function borrarContacto(contacto) {
+      const nombre = [contacto.nombres, contacto.apellidos].filter(Boolean).join(' ');
+      if (!confirm('¿Borrar el contacto "' + nombre + '"?')) return;
+      const resp = await api('/api/crm/contactos/' + contacto.id, { method: 'DELETE' });
+      if (!resp.ok) return alert(resp.error || 'No se pudo borrar.');
+      abrirCliente(estado.clienteActual.id);
+    }
+
+    /* ---------------- login ---------------- */
+    async function iniciar() {
+      // ¿Venimos de un enlace fallido?
+      const params = new URLSearchParams(location.search);
+      const error = params.get('error');
+      if (error) {
+        mostrarLogin();
+        const aviso = $('#login-aviso');
+        aviso.textContent = error;
+        aviso.className = 'aviso error';
+        aviso.hidden = false;
+        history.replaceState(null, '', '/crm');
+        return;
+      }
+      const { ok, email } = await api('/api/crm/sesion');
+      if (ok) {
+        estado.email = email;
+        mostrarApp();
+      } else {
+        mostrarLogin();
+      }
+    }
+
+    $('#form-login').addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const boton = $('#btn-login');
+      const aviso = $('#login-aviso');
+      boton.disabled = true;
+      aviso.hidden = true;
+      const resp = await api('/api/crm/auth/solicitar', {
+        method: 'POST',
+        body: JSON.stringify({ email: $('#login-email').value.trim() }),
+      });
+      boton.disabled = false;
+      aviso.hidden = false;
+      if (resp.ok) {
+        aviso.textContent = 'Listo. Revisa tu correo: te enviamos un enlace para entrar (vence en 15 minutos).';
+        aviso.className = 'aviso ok';
+      } else {
+        aviso.textContent = resp.error || 'No pudimos enviar el correo. Intenta de nuevo.';
+        aviso.className = 'aviso error';
+      }
+    });
+
+    /* ---------------- eventos ---------------- */
+    $('#btn-salir').addEventListener('click', async () => {
+      await api('/api/crm/auth/salir', { method: 'POST' });
+      location.href = '/crm';
+    });
+    $('#tab-clientes').addEventListener('click', () => irA('clientes'));
+    $('#tab-contactos').addEventListener('click', () => irA('contactos'));
+    $('#btn-volver').addEventListener('click', () => irA('clientes'));
+    $('#btn-nuevo-cliente').addEventListener('click', () => formularioCliente(null));
+    $('#btn-nuevo-contacto').addEventListener('click', () => formularioContacto(null));
+    $('#modal-cancelar').addEventListener('click', cerrarModal);
+    $('#modal-guardar').addEventListener('click', () => { if (modalGuardar) modalGuardar(); });
+    $('#buscar-cliente').addEventListener('input', () => {
+      clearTimeout(busquedaClientesTimer);
+      busquedaClientesTimer = setTimeout(cargarClientes, 250);
+    });
+    let busquedaContactosTimer = null;
+    $('#buscar-contacto').addEventListener('input', () => {
+      clearTimeout(busquedaContactosTimer);
+      busquedaContactosTimer = setTimeout(cargarContactosGlobales, 250);
+    });
+
+    iniciar();
+    </script>
+  </body>
+</html>
