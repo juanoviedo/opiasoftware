@@ -38,22 +38,23 @@
         background: rgba(255, 255, 255, 0.06);
         color: var(--text);
         border-radius: 9px;
-        padding: 8px 14px;
-        font-size: 13px;
+        padding: 10px 16px;
+        font-size: 14px;
+        min-height: 40px;
       }
       button:hover { background: rgba(255, 255, 255, 0.12); }
       button.primario { background: var(--blue); border-color: transparent; color: #fff; font-weight: 600; }
       button.primario:hover { background: #2b90ff; }
       button.peligro { color: var(--bad); }
-      button.chico { padding: 4px 9px; font-size: 12px; border-radius: 7px; }
+      button.chico { padding: 6px 11px; font-size: 12px; border-radius: 7px; min-height: 32px; }
       input, select, textarea {
         width: 100%;
-        padding: 10px 12px;
+        padding: 12px 13px;
         border-radius: 9px;
         border: 1px solid var(--line);
         background: rgba(4, 16, 32, 0.6);
         color: #fff;
-        font-size: 14px;
+        font-size: 16px; /* <16px hace zoom el iPhone al enfocar */
         font-family: inherit;
       }
       input:focus, select:focus, textarea:focus { outline: 2px solid var(--blue); outline-offset: 1px; border-color: transparent; }
@@ -81,26 +82,51 @@
 
       /* ---------- app ---------- */
       header.barra {
-        display: flex; align-items: center; gap: 14px;
-        padding: 14px 22px; border-bottom: 1px solid var(--line);
+        display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px;
+        padding: 12px 14px; border-bottom: 1px solid var(--line);
         background: rgba(4, 14, 28, 0.55); position: sticky; top: 0; z-index: 5;
         backdrop-filter: blur(8px);
       }
       header.barra .marca { margin: 0; }
-      header.barra nav { display: flex; gap: 6px; margin-left: 18px; }
-      header.barra nav button { border: none; background: transparent; color: var(--muted); font-size: 14px; padding: 8px 12px; }
+      header.barra nav { display: flex; gap: 4px; order: 3; flex-basis: 100%; overflow-x: auto; }
+      header.barra nav button { border: none; background: transparent; color: var(--muted); font-size: 14px; padding: 10px 14px; flex: 1 0 auto; min-height: 44px; }
       header.barra nav button.activo { color: #fff; background: rgba(255, 255, 255, 0.08); border-radius: 9px; }
       header.barra .espacio { flex: 1; }
-      header.barra .quien { color: var(--muted); font-size: 13px; }
-      main { padding: 22px; max-width: 1200px; margin: 0 auto; }
+      header.barra .quien {
+        color: var(--muted); font-size: 13px;
+        max-width: 38vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      }
+      main { padding: 14px; max-width: 1200px; margin: 0 auto; }
       .herramientas { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
-      .herramientas input[type="search"] { max-width: 340px; }
+      .herramientas input, .herramientas textarea { max-width: none; flex: 1 1 220px; }
       .contador { color: var(--muted); font-size: 13px; }
-      table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-      th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
-      th { color: var(--muted); font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase; font-weight: 600; }
-      tbody tr:hover { background: rgba(255, 255, 255, 0.035); }
+
+      /* Las tablas se leen como tarjetas en móvil; en escritorio vuelven a ser tabla.
+         Los rótulos de cada campo van con ::before para no tocar el HTML. */
+      table, thead, tbody, tr, th, td { display: block; }
+      thead { display: none; }
+      tbody tr {
+        border: 1px solid var(--line); border-radius: 12px; margin-bottom: 10px;
+        background: var(--card); padding: 6px 2px;
+      }
       tbody tr.clicable { cursor: pointer; }
+      td { border-bottom: none; padding: 5px 12px; font-size: 13.5px; text-align: left; vertical-align: top; }
+      td::before {
+        display: block; font-size: 10px; letter-spacing: 0.07em;
+        text-transform: uppercase; color: var(--muted); font-weight: 600;
+      }
+      #tabla-clientes td:nth-child(2)::before { content: 'Sector'; }
+      #tabla-clientes td:nth-child(3)::before { content: 'Zona'; }
+      #tabla-clientes td:nth-child(4)::before { content: 'Contactos'; }
+      #tabla-contactos td:nth-child(2)::before { content: 'Cargo'; }
+      #tabla-contactos td:nth-child(3)::before { content: 'Correo'; }
+      #tabla-contactos td:nth-child(4)::before { content: 'Celular'; }
+      #tabla-contactos td:nth-child(5)::before { content: 'Estado'; }
+      #tabla-contactos-global td:nth-child(2)::before { content: 'Empresa'; }
+      #tabla-contactos-global td:nth-child(3)::before { content: 'Cargo'; }
+      #tabla-contactos-global td:nth-child(4)::before { content: 'Correo'; }
+      #tabla-contactos-global td:nth-child(5)::before { content: 'Celular'; }
+      #tabla-contactos-global td:nth-child(6)::before { content: 'Estado'; }
       .tarjeta {
         background: var(--card); border: 1px solid var(--line); border-radius: 14px;
         padding: 18px 20px; margin-bottom: 18px;
@@ -132,20 +158,46 @@
       /* ---------- modal ---------- */
       .modal-fondo {
         position: fixed; inset: 0; background: rgba(2, 8, 18, 0.75);
-        display: grid; place-items: center; padding: 20px; z-index: 20;
+        display: grid; place-items: stretch; padding: 0; z-index: 20;
       }
       .modal {
-        width: 100%; max-width: 640px; max-height: 88vh; overflow: auto;
-        background: #0a2340; border: 1px solid var(--line); border-radius: 16px; padding: 24px;
-        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+        width: 100%; max-width: none; height: 100dvh; overflow: auto;
+        background: #0a2340; border: none; border-radius: 0; padding: 20px;
       }
       .modal h3 { margin: 0 0 4px; }
-      .rejilla { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+      .rejilla { display: grid; grid-template-columns: 1fr; gap: 0 16px; }
       .rejilla .ancho { grid-column: 1 / -1; }
       .modal .acciones { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
       .campo-error { color: var(--bad); font-size: 12px; margin-top: 4px; }
       [hidden] { display: none !important; }
-      @media (max-width: 700px) { .rejilla { grid-template-columns: 1fr; } main { padding: 14px; } }
+
+      /* ---------- escritorio: se restaura la vista clásica ---------- */
+      @media (min-width: 700px) {
+        header.barra { flex-wrap: nowrap; padding: 14px 22px; }
+        header.barra nav { order: 0; flex-basis: auto; margin-left: 18px; overflow-x: visible; }
+        header.barra nav button { flex: 0 0 auto; min-height: 0; padding: 8px 12px; }
+        main { padding: 22px; }
+
+        table { display: table; width: 100%; border-collapse: collapse; font-size: 13.5px; }
+        thead { display: table-header-group; }
+        tbody { display: table-row-group; }
+        tr { display: table-row; }
+        th, td { display: table-cell; text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+        th { color: var(--muted); font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase; font-weight: 600; }
+        tbody tr { border: none; border-radius: 0; margin-bottom: 0; background: transparent; padding: 0; }
+        tbody tr:hover { background: rgba(255, 255, 255, 0.035); }
+        td::before { content: none; display: none; }
+
+        input, select, textarea { padding: 10px 13px; font-size: 14px; }
+        .herramientas input[type="search"], .herramientas input[type="email"] { max-width: 340px; flex: 0 1 auto; }
+        .rejilla { grid-template-columns: 1fr 1fr; }
+
+        .modal-fondo { place-items: center; padding: 20px; }
+        .modal {
+          max-width: 640px; height: auto; max-height: 88vh;
+          border: 1px solid var(--line); border-radius: 16px; padding: 24px;
+        }
+      }
     </style>
   </head>
   <body>
@@ -243,7 +295,7 @@
               <tbody id="tabla-acceso"></tbody>
             </table>
             <div class="herramientas" style="margin-top:16px">
-              <input type="email" id="nuevo-correo" placeholder="nuevocorreo@empresa.com" style="max-width:340px" />
+              <input type="email" id="nuevo-correo" placeholder="nuevocorreo@empresa.com" />
               <button class="primario" id="btn-agregar-correo">Autorizar</button>
             </div>
             <div id="acceso-aviso" class="aviso" hidden></div>
