@@ -57,6 +57,12 @@ function cabecera(subject) {
   return `=?UTF-8?B?${base64(subject)}?=`;
 }
 
+/** El sobre SMTP solo lleva la dirección pura; "Nombre <correo>" lo rechaza Microsoft (5.1.7). */
+function direccionPura(valor) {
+  const m = /<([^<>\s]+@[^<>\s]+)>/.exec(String(valor).trim());
+  return m ? m[1] : String(valor).trim();
+}
+
 /**
  * Cliente SMTP mínimo (sin dependencias): soporta TLS directo (puerto 465) y
  * STARTTLS (puerto 587), con AUTH LOGIN. Suficiente para Gmail y similares.
@@ -115,9 +121,9 @@ async function sendMail({ host, port, secure, user, pass, from, to, subject, tex
     await esperar(235, 'auth_clave');
   }
 
-  enviar(socket, `MAIL FROM:<${from}>`);
+  enviar(socket, `MAIL FROM:<${direccionPura(from)}>`);
   await esperar(250, 'remitente');
-  enviar(socket, `RCPT TO:<${to}>`);
+  enviar(socket, `RCPT TO:<${direccionPura(to)}>`);
   await esperar(250, 'destinatario');
   enviar(socket, 'DATA');
   await esperar(354, 'datos');
