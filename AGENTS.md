@@ -20,6 +20,7 @@ node scripts/inject-tags.js       # hornea GA4/Pixel/beacon en los HTML desde se
 python marketing/plan-leads/tools/meta_api.py --validate   # valida credenciales de Meta Marketing API
 python scripts/importar-crm.py    # importa los Excel de DatosInicialesCRM/ al CRM (server/data/crm/)
 python scripts/asignar-empresas-por-dominio.py    # reagrupa contactos "sin empresa" bajo clientes nombrados por el dominio del correo
+python scripts/importar-bog-norte.py <csv>    # importa empresas_bognorte.csv con su número de trabajadores al CRM
 ```
 
 No hay tests automatizados ni linter: verificar con curl (`/api/health`, `/privacidad`, `/lp/diagnostico-gratis`) y revisando el HTML servido.

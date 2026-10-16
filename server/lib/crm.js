@@ -13,7 +13,7 @@ const COOKIE_CRM = 'opia_crm';
 const TOKEN_MINUTOS = 15;
 const SESION_DIAS = 7;
 
-const CLIENTE_FIELDS = ['nombre', 'sector', 'zona', 'notas'];
+const CLIENTE_FIELDS = ['nombre', 'sector', 'zona', 'notas', 'numEmpleadosAprox'];
 const NOTA_FIELDS = ['clienteId', 'texto'];
 const CONTACTO_FIELDS = [
   'clienteId', 'nombres', 'apellidos', 'cargo', 'email', 'email2', 'email3',
@@ -23,6 +23,7 @@ const CONTACTO_FIELDS = [
 ];
 const LIMITES = {
   nombre: 200, sector: 120, zona: 120, notas: 1000, texto: 2000, nombres: 120, apellidos: 120,
+  numEmpleadosAprox: 8,
   cargo: 160, email: 160, email2: 160, email3: 160, celular: 40, telefono: 40,
   telefono2: 40, descripcion: 400, origen: 120, estado: 60, etapa: 120,
   propietario: 120, leadScoring: 20, ultimoContacto: 40, tags: 200,
@@ -203,6 +204,14 @@ function validarCliente(data) {
   const c = limpiarCampos(data, CLIENTE_FIELDS);
   const errores = {};
   if (c.nombre.length < 2) errores.nombre = 'Escribe el nombre de la empresa.';
+  const num = c.numEmpleadosAprox;
+  if (num) {
+    const n = Number(num);
+    if (!Number.isInteger(n) || n < 0 || n > 99999999) errores.numEmpleadosAprox = 'Número de empleados inválido.';
+    else c.numEmpleadosAprox = n;
+  } else {
+    c.numEmpleadosAprox = null;
+  }
   return { datos: c, errores };
 }
 

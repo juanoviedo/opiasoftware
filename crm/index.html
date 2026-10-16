@@ -117,7 +117,8 @@
       }
       #tabla-clientes td:nth-child(2)::before { content: 'Sector'; }
       #tabla-clientes td:nth-child(3)::before { content: 'Zona'; }
-      #tabla-clientes td:nth-child(4)::before { content: 'Contactos'; }
+      #tabla-clientes td:nth-child(4)::before { content: 'Empleados'; }
+      #tabla-clientes td:nth-child(5)::before { content: 'Contactos'; }
       #tabla-contactos td:nth-child(2)::before { content: 'Cargo'; }
       #tabla-contactos td:nth-child(3)::before { content: 'Correo'; }
       #tabla-contactos td:nth-child(4)::before { content: 'Celular'; }
@@ -240,7 +241,7 @@
           </div>
           <table>
             <thead>
-              <tr><th>Empresa</th><th>Sector</th><th>Zona</th><th style="text-align:right">Contactos</th><th></th></tr>
+              <tr><th>Empresa</th><th>Sector</th><th>Zona</th><th style="text-align:right">Empleados</th><th style="text-align:right">Contactos</th><th></th></tr>
             </thead>
             <tbody id="tabla-clientes"></tbody>
           </table>
@@ -343,7 +344,7 @@
       return { status: resp.status, ...datos };
     }
 
-    const CAMPOS_CLIENTE = ['nombre', 'sector', 'zona', 'notas'];
+    const CAMPOS_CLIENTE = ['nombre', 'sector', 'zona', 'numEmpleadosAprox', 'notas'];
     const CAMPOS_CONTACTO = [
       ['nombres', 'Nombres'], ['apellidos', 'Apellidos'], ['cargo', 'Cargo'],
       ['email', 'Correo principal'], ['email2', 'Correo 2'], ['email3', 'Correo 3'],
@@ -478,6 +479,9 @@
         tr.appendChild(nombre);
         tr.appendChild(el('td', c.sector));
         tr.appendChild(el('td', c.zona));
+        const emp = el('td', c.numEmpleadosAprox != null ? String(c.numEmpleadosAprox) : '');
+        emp.style.textAlign = 'right';
+        tr.appendChild(emp);
         const n = el('td', String(c.contactos));
         n.style.textAlign = 'right';
         tr.appendChild(n);
@@ -506,7 +510,7 @@
       $('#ficha-cliente').appendChild(h2);
       const ficha = el('div');
       ficha.className = 'ficha';
-      const pares = [['Sector', cliente.sector], ['Zona', cliente.zona], ['Notas', cliente.notas]];
+      const pares = [['Sector', cliente.sector], ['Zona', cliente.zona], ['Empleados aprox.', cliente.numEmpleadosAprox != null ? String(cliente.numEmpleadosAprox) : ''], ['Notas', cliente.notas]];
       for (const [k, v] of pares) {
         if (!v) continue;
         const p = el('span');
@@ -634,6 +638,11 @@
           input.appendChild(el('option', ''));
           for (const e of ESTADOS) input.appendChild(el('option', e));
           input.value = valores[campo] || '';
+        } else if (campo === 'numEmpleadosAprox') {
+          input = el('input');
+          input.type = 'number';
+          input.min = '0';
+          input.value = valores[campo] != null ? String(valores[campo]) : '';
         } else {
           input = el('input');
           input.type = 'text';
@@ -671,7 +680,7 @@
     function formularioCliente(cliente) {
       const valores = cliente || {};
       const campos = [
-        ['nombre', 'Empresa *'], ['sector', 'Sector'], ['zona', 'Zona'],
+        ['nombre', 'Empresa *'], ['sector', 'Sector'], ['zona', 'Zona'], ['numEmpleadosAprox', 'Empleados aprox.'],
       ];
       const { form, refs } = formularioGenerico(campos, valores);
       const divNotas = el('div');
