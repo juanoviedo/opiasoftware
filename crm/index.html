@@ -162,6 +162,7 @@
         <nav>
           <button id="tab-clientes" class="activo">Clientes</button>
           <button id="tab-contactos">Contactos</button>
+          <button id="tab-acceso">Acceso</button>
         </nav>
         <div class="espacio"></div>
         <span class="quien" id="quien"></span>
@@ -213,6 +214,23 @@
             </thead>
             <tbody id="tabla-contactos-global"></tbody>
           </table>
+        </section>
+
+        <!-- correos autorizados -->
+        <section id="panel-acceso" hidden>
+          <div class="tarjeta" style="max-width:640px">
+            <h2>Correos autorizados</h2>
+            <p class="mini mut" style="margin-top:0">Solo estas personas pueden pedir el enlace de entrada al CRM. Para entrar, escriben su correo en la página inicial y reciben un enlace que vence en 15 minutos.</p>
+            <table>
+              <thead><tr><th>Correo</th><th style="text-align:right"></th></tr></thead>
+              <tbody id="tabla-acceso"></tbody>
+            </table>
+            <div class="herramientas" style="margin-top:16px">
+              <input type="email" id="nuevo-correo" placeholder="nuevocorreo@empresa.com" style="max-width:340px" />
+              <button class="primario" id="btn-agregar-correo">Autorizar</button>
+            </div>
+            <div id="acceso-aviso" class="aviso" hidden></div>
+          </div>
         </section>
       </main>
     </div>
@@ -316,13 +334,62 @@
 
     function irA(vista) {
       estado.vista = vista;
-      $('#tab-clientes').classList.toggle('activo', vista !== 'contactos');
+      $('#tab-clientes').classList.toggle('activo', vista === 'clientes' || vista === 'cliente');
       $('#tab-contactos').classList.toggle('activo', vista === 'contactos');
+      $('#tab-acceso').classList.toggle('activo', vista === 'acceso');
       $('#panel-clientes').hidden = vista !== 'clientes';
       $('#panel-cliente').hidden = vista !== 'cliente';
       $('#panel-contactos').hidden = vista !== 'contactos';
+      $('#panel-acceso').hidden = vista !== 'acceso';
       if (vista === 'clientes') cargarClientes();
       if (vista === 'contactos') cargarContactosGlobales();
+      if (vista === 'acceso') cargarAcceso();
+    }
+
+    /* ---------------- acceso: correos autorizados ---------------- */
+    async function cargarAcceso() {
+      const { correos } = await api('/api/crm/admin/correos');
+      const tabla = $('#tabla-acceso');
+      tabla.textContent = '';
+      for (const c of correos) {
+        const tr = el('tr');
+        tr.appendChild(el('td', c));
+        const td = el('td');
+        td.style.textAlign = 'right';
+        const quitar = el('button', 'Quitar');
+        quitar.className = 'chico peligro';
+        quitar.addEventListener('click', () => quitarCorreo(c));
+        td.appendChild(quitar);
+        tr.appendChild(td);
+        tabla.appendChild(tr);
+      }
+      if (!correos.length) tabla.appendChild(el('tr')).appendChild(el('td', 'No hay correos autorizados. Agrega el tuyo.'));
+    }
+
+    function avisoAcceso(mensaje, esError) {
+      const aviso = $('#acceso-aviso');
+      aviso.textContent = mensaje;
+      aviso.className = 'aviso' + (esError ? ' error' : ' ok');
+      aviso.hidden = false;
+    }
+
+    async function agregarCorreoAutorizado() {
+      const input = $('#nuevo-correo');
+      const email = input.value.trim();
+      if (!email) return;
+      const resp = await api('/api/crm/admin/correos', { method: 'POST', body: JSON.stringify({ email }) });
+      if (!resp.ok) return avisoAcceso(resp.error || 'No se pudo autorizar.', true);
+      input.value = '';
+      avisoAcceso('Correo autorizado. Esa persona ya puede pedir su enlace de entrada.', false);
+      cargarAcceso();
+    }
+
+    async function quitarCorreoAutorizado(email) {
+      if (!confirm('¿Quitar el acceso a ' + email + '? Si tiene una sesión abierta, la perderá.')) return;
+      const resp = await api('/api/crm/admin/correos?email=' + encodeURIComponent(email), { method: 'DELETE' });
+      if (!resp.ok) return avisoAcceso(resp.error || 'No se pudo quitar.', true);
+      avisoAcceso('Correo quitado de la lista.', false);
+      cargarAcceso();
     }
 
     /* ---------------- clientes ---------------- */
@@ -616,6 +683,9 @@
     });
     $('#tab-clientes').addEventListener('click', () => irA('clientes'));
     $('#tab-contactos').addEventListener('click', () => irA('contactos'));
+    $('#tab-acceso').addEventListener('click', () => irA('acceso'));
+    $('#btn-agregar-correo').addEventListener('click', agregarCorreoAutorizado);
+    $('#nuevo-correo').addEventListener('keydown', (ev) => { if (ev.key === 'Enter') agregarCorreoAutorizado(); });
     $('#btn-volver').addEventListener('click', () => irA('clientes'));
     $('#btn-nuevo-cliente').addEventListener('click', () => formularioCliente(null));
     $('#btn-nuevo-contacto').addEventListener('click', () => formularioContacto(null));

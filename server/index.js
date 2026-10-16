@@ -474,6 +474,21 @@ async function handleCrmApi(req, res, pathname, url) {
     }
   }
 
+  if (partes[2] === 'admin' && partes[3] === 'correos') {
+    if (metodo === 'GET') return H.sendJson(res, 200, { ok: true, correos: crm.listarCorreos() });
+    if (metodo === 'POST') {
+      const r = crm.agregarCorreo(body.email);
+      if (r.error) return H.sendJson(res, 422, { ok: false, error: r.error });
+      return H.sendJson(res, 201, { ok: true, correos: r.correos });
+    }
+    if (metodo === 'DELETE') {
+      const r = crm.quitarCorreo(url.searchParams.get('email'));
+      if (r.error) return H.sendJson(res, 422, { ok: false, error: r.error });
+      return H.sendJson(res, 200, { ok: true, correos: r.correos });
+    }
+    return H.sendJson(res, 405, { ok: false, error: 'Método no permitido.' });
+  }
+
   if (coleccion === 'clientes') {
     if (!id && metodo === 'GET') return H.sendJson(res, 200, { ok: true, ...listadoClientes(url) });
     if (!id && metodo === 'POST') {

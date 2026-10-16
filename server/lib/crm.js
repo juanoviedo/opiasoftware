@@ -31,17 +31,25 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 /* ------------------------------------------------------------- configuración */
 
+// Dentro de dataDir (volumen en producción): así el contenedor lo ve sin
+// tocar la imagen, y vive junto a secret.key y los datos del CRM.
+const RUTA_CONFIG = path.join(config.dataDir, 'crm-config.json');
+const MAX_CORREOS_AUTORIZADOS = 20;
+
 function leerCrmConfig() {
-  // Dentro de dataDir (volumen en producción): así el contenedor lo ve sin
-  // tocar la imagen, y vive junto a secret.key y los datos del CRM.
-  const archivo = path.join(config.dataDir, 'crm-config.json');
   try {
-    const raw = JSON.parse(fs.readFileSync(archivo, 'utf8'));
+    const raw = JSON.parse(fs.readFileSync(RUTA_CONFIG, 'utf8'));
     if (raw && typeof raw === 'object') return raw;
   } catch {
     // sin archivo: el CRM avisa qué falta, no falla
   }
   return {};
+}
+
+function guardarCrmConfig(raw) {
+  const tmp = RUTA_CONFIG + '.tmp';
+  fs.writeFileSync(tmp, JSON.stringify(raw, null, 2));
+  fs.renameSync(tmp, RUTA_CONFIG);
 }
 
 function emailConfigurado() {
@@ -52,6 +60,33 @@ function emailConfigurado() {
 function correosPermitidos() {
   const c = leerCrmConfig();
   return Array.isArray(c.adminEmails) ? c.adminEmails.map((e) => String(e).toLowerCase().trim()) : [];
+}
+
+/** La lista de autorizados la administra el dueño desde el propio CRM. */
+function listarCorreos() {
+  return correosPermitidos();
+}
+
+function agregarCorreo(email) {
+  const limpio = String(email || '').toLowerCase().trim();
+  if (!EMAIL_RE.test(limpio)) return { error: 'Correo inválido.' };
+  const lista = correosPermitidos();
+  if (lista.includes(limpio)) return { error: 'Ese correo ya está autorizado.' };
+  if (lista.length >= MAX_CORREOS_AUTORIZADOS) return { error: `Máximo ${MAX_CORREOS_AUTORIZADOS} correos autorizados.` };
+  const c = leerCrmConfig();
+  c.adminEmails = [...lista, limpio];
+  guardarCrmConfig(c);
+  return { correos: c.adminEmails };
+}
+
+function quitarCorreo(email) {
+  const limpio = String(email || '').toLowerCase().trim();
+  const lista = correosPermitidos();
+  if (!lista.includes(limpio)) return { error: 'Ese correo no está en la lista.' };
+  const c = leerCrmConfig();
+  c.adminEmails = lista.filter((e) => e !== limpio);
+  guardarCrmConfig(c);
+  return { correos: c.adminEmails };
 }
 
 /* ----------------------------------------------------------------- almacén */
@@ -280,5 +315,8 @@ module.exports = {
   borrarCookieSesion,
   sesionActual,
   emailConfigurado,
+  listarCorreos,
+  agregarCorreo,
+  quitarCorreo,
   COOKIE_CRM,
 };
