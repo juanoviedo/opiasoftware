@@ -19,6 +19,7 @@ node server/scripts/set-password.js        # contraseña del panel /opadmin (int
 node scripts/inject-tags.js       # hornea GA4/Pixel/beacon en los HTML desde server/ads-config.json
 python marketing/plan-leads/tools/meta_api.py --validate   # valida credenciales de Meta Marketing API
 python scripts/importar-crm.py    # importa los Excel de DatosInicialesCRM/ al CRM (server/data/crm/)
+python scripts/asignar-empresas-por-dominio.py    # reagrupa contactos "sin empresa" bajo clientes nombrados por el dominio del correo
 ```
 
 No hay tests automatizados ni linter: verificar con curl (`/api/health`, `/privacidad`, `/lp/diagnostico-gratis`) y revisando el HTML servido.
