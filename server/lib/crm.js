@@ -419,6 +419,7 @@ function sesionActual(req) {
 }
 
 module.exports = {
+  Tabla,
   clientes,
   contactos,
   notas,
