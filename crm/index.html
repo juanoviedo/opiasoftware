@@ -98,7 +98,7 @@
       }
       main { padding: 14px; max-width: 1200px; margin: 0 auto; }
       .herramientas { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
-      .herramientas input, .herramientas textarea { max-width: none; flex: 1 1 220px; }
+      .herramientas input, .herramientas select, .herramientas textarea { max-width: none; flex: 1 1 220px; }
       .contador { color: var(--muted); font-size: 13px; }
 
       /* Las tablas se leen como tarjetas en móvil; en escritorio vuelven a ser tabla.
@@ -198,6 +198,7 @@
 
         input, select, textarea { padding: 10px 13px; font-size: 14px; }
         .herramientas input[type="search"], .herramientas input[type="email"] { max-width: 340px; flex: 0 1 auto; }
+        .herramientas select { max-width: 240px; flex: 0 1 auto; }
         .rejilla { grid-template-columns: 1fr 1fr; }
 
         .modal-fondo { place-items: center; padding: 20px; }
@@ -242,6 +243,17 @@
         <section id="panel-clientes">
           <div class="herramientas">
             <input type="search" id="buscar-cliente" placeholder="Buscar por nombre, sector o zona…" />
+            <select id="orden-clientes" aria-label="Ordenar la lista de empresas">
+              <option value="">Ordenar por…</option>
+              <option value="nombre:asc">Nombre A → Z</option>
+              <option value="nombre:desc">Nombre Z → A</option>
+              <option value="sector:asc">Sector A → Z</option>
+              <option value="zona:asc">Ciudad A → Z</option>
+              <option value="empleados:desc">Empleados: mayor a menor</option>
+              <option value="empleados:asc">Empleados: menor a mayor</option>
+              <option value="contactos:desc">Contactos: mayor a menor</option>
+              <option value="contactos:asc">Contactos: menor a mayor</option>
+            </select>
             <span class="contador" id="contador-clientes"></span>
             <div style="flex:1"></div>
             <button class="primario" id="btn-nuevo-cliente">+ Nuevo cliente</button>
@@ -485,6 +497,10 @@
         th.dataset.dir = activa ? estado.orden.dir : '';
         th.querySelector('.orden-flecha').textContent =
           activa ? (estado.orden.dir === 'asc' ? '▲' : '▼') : '';
+      }
+      const selector = $('#orden-clientes');
+      if (selector) {
+        selector.value = estado.orden.columna ? estado.orden.columna + ':' + estado.orden.dir : '';
       }
     }
     function alternarOrden(columna) {
@@ -872,6 +888,16 @@
     for (const th of document.querySelectorAll('#tabla-clientes thead th[data-orden]')) {
       th.addEventListener('click', () => alternarOrden(th.dataset.orden));
     }
+    $('#orden-clientes').addEventListener('change', () => {
+      const v = $('#orden-clientes').value;
+      if (!v) estado.orden = { columna: '', dir: '' };
+      else {
+        const [columna, dir] = v.split(':');
+        estado.orden = { columna, dir };
+      }
+      pintarOrden();
+      cargarClientes();
+    });
     pintarOrden();
     let busquedaContactosTimer = null;
     $('#buscar-contacto').addEventListener('input', () => {
