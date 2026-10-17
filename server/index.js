@@ -14,7 +14,8 @@ const { parseUserAgent } = require('./lib/ua');
 const { buildStats, classifyTraffic } = require('./lib/analytics');
 const auth = require('./lib/auth');
 const crm = require('./lib/crm');
-const { serveStatic } = require('./lib/static');
+const aiagent = require('./lib/aiagent');
+const { serveStatic, sendFile } = require('./lib/static');
 
 const visits = new JsonlStore(path.join(config.dataDir, 'visits.jsonl'));
 const leadsStore = new JsonlStore(path.join(config.dataDir, 'leads.jsonl'));
@@ -55,6 +56,9 @@ const leadLimiter = makeLimiter(6, 60 * 60_000);
 const statsLimiter = makeLimiter(120, 60_000);
 const crmLoginLimiter = makeLimiter(5, 15 * 60_000);
 const crmApiLimiter = makeLimiter(600, 60 * 60_000);
+const aiMessageLimiter = makeLimiter(15, 60_000);
+const aiHistoryLimiter = makeLimiter(120, 60_000);
+const aiInicioLimiter = makeLimiter(30, 60_000);
 
 setInterval(() => {
   trackLimiter.sweep();
@@ -62,6 +66,9 @@ setInterval(() => {
   statsLimiter.sweep();
   crmLoginLimiter.sweep();
   crmApiLimiter.sweep();
+  aiMessageLimiter.sweep();
+  aiHistoryLimiter.sweep();
+  aiInicioLimiter.sweep();
 }, 5 * 60_000).unref();
 
 /* ------------------------------------------------------------------ útiles */
@@ -152,9 +159,11 @@ async function handleTrack(req, res) {
 
   const { pathname, search } = safePath(body.p);
   // No rastrear el propio panel ni los endpoints: inflaría las métricas.
+  // /crm y /aiagent tampoco: son aplicaciones privadas (y el agente cambia de URL por guid).
   if (
     pathname.startsWith('/opadmin') ||
     pathname.startsWith('/crm') ||
+    pathname.startsWith('/aiagent') ||
     pathname.startsWith('/api/') ||
     pathname.startsWith('/__opia/')
   ) {
@@ -675,6 +684,107 @@ async function handleCrmApi(req, res, pathname, url) {
   return H.sendJson(res, 404, { ok: false, error: 'not_found' });
 }
 
+/* ------------------------------------------------------------- /aiagent */
+
+const RE_GUID = /^[A-Za-z0-9_-]{8,64}$/;
+
+async function handleAiMensaje(req, res) {
+  const ip = H.clientIp(req, config.trustProxy);
+  if (!aiMessageLimiter(ip)) return H.sendJson(res, 429, { ok: false, error: 'rate_limited' });
+
+  let body;
+  try {
+    body = await readFormOrJson(req);
+  } catch {
+    return H.sendJson(res, 400, { ok: false, error: 'Solicitud inválida.' });
+  }
+  const texto = H.clean(body.texto, 2000).trim();
+  if (texto.length < 1) return H.sendJson(res, 422, { ok: false, error: 'Escribe un mensaje.' });
+  let guid = H.clean(body.guid, 64);
+  if (!RE_GUID.test(guid)) guid = '';
+
+  try {
+    const r = await aiagent.mensaje(guid, texto);
+    if (r.error) return H.sendJson(res, r.status || 500, { ok: false, error: r.error });
+    return H.sendJson(res, 200, { ok: true, guid: r.guid, respuesta: r.texto, lead: r.leadRegistrado });
+  } catch (err) {
+    console.error('[aiagent]', err.message);
+    return H.sendJson(res, 502, { ok: false, error: 'El asistente falló. Intenta de nuevo en un momento.' });
+  }
+}
+
+/** Apertura del agente: crea la sesión y su contacto placeholder de una vez. */
+async function handleAiInicio(req, res) {
+  if (!aiInicioLimiter(H.clientIp(req, config.trustProxy))) {
+    return H.sendJson(res, 429, { ok: false, error: 'rate_limited' });
+  }
+  let body = {};
+  try {
+    body = await readFormOrJson(req);
+  } catch {
+    body = {};
+  }
+  try {
+    const propuesto = H.clean(body.guid, 64);
+    const r = aiagent.inicio(RE_GUID.test(propuesto) ? propuesto : '');
+    return H.sendJson(res, 200, { ok: true, guid: r.guid });
+  } catch (err) {
+    console.error('[aiagent]', err.message);
+    return H.sendJson(res, 500, { ok: false, error: 'error' });
+  }
+}
+
+function handleAiSesion(req, res, url) {
+  if (!aiHistoryLimiter(H.clientIp(req, config.trustProxy))) {
+    return H.sendJson(res, 429, { ok: false, error: 'rate_limited' });
+  }
+  const guid = H.clean(url.searchParams.get('guid'), 64);
+  const s = RE_GUID.test(guid) ? aiagent.obtenerSesion(guid, false) : null;
+  if (!s) return H.sendJson(res, 404, { ok: false, error: 'not_found' });
+  return H.sendJson(res, 200, { ok: true, guid: s.id, estado: s.estado, historial: aiagent.historialVisible(s) });
+}
+
+/**
+ * Página pública del asistente virtual.
+ * /aiagent            → si hay cookie con sesión válida, redirige a /aiagent/<guid>;
+ *                        si no, sirve la página para empezar de cero.
+ * /aiagent/<guid>     → sirve la misma página y SIEMBRA la cookie de continuidad:
+ *                        la próxima visita a /aiagent (sin guid) redirige solo.
+ */
+function handleAiAgentPage(req, res, pathname, url) {
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    return H.sendJson(res, 405, { ok: false, error: 'Método no permitido.' });
+  }
+  const archivo = path.join(config.publicRoot, 'aiagent', 'index.html');
+
+  if (pathname === '/aiagent') {
+    const cookies = H.parseCookies(req.headers.cookie);
+    const guid = cookies[aiagent.COOKIE_AI] || '';
+    if (RE_GUID.test(guid) && aiagent.obtenerSesion(guid, false)) {
+      res.writeHead(303, { Location: '/aiagent/' + encodeURIComponent(guid) });
+      return res.end();
+    }
+    if (sendFile(res, req, archivo, pathname)) return;
+    return serveStatic(req, res, req.url);
+  }
+
+  const m = /^\/aiagent\/([A-Za-z0-9_-]{8,64})$/.exec(pathname);
+  if (m) {
+    res.setHeader(
+      'Set-Cookie',
+      H.serializeCookie(aiagent.COOKIE_AI, m[1], {
+        maxAgeSeconds: 180 * 86_400,
+        path: '/',
+        httpOnly: true,
+        sameSite: 'Lax',
+        secure: isSecureRequest(req),
+      })
+    );
+    if (sendFile(res, req, archivo, pathname)) return;
+  }
+  return serveStatic(req, res, req.url);
+}
+
 /* ---------------------------------------------------------------- servidor */
 
 const server = http.createServer((req, res) => {
@@ -722,6 +832,12 @@ const server = http.createServer((req, res) => {
       if (req.method === 'POST' && pathname === '/api/crm/auth/salir') return handleCrmSalir(req, res);
       if (pathname.startsWith('/api/crm/')) return await handleCrmApi(req, res, pathname, url);
 
+      if (req.method === 'POST' && pathname === '/api/aiagent/mensaje') return await handleAiMensaje(req, res);
+      if (req.method === 'POST' && pathname === '/api/aiagent/inicio') return handleAiInicio(req, res);
+      if (req.method === 'GET' && pathname === '/api/aiagent/sesion') return handleAiSesion(req, res, url);
+
+      if (pathname === '/aiagent' || pathname.startsWith('/aiagent/')) return handleAiAgentPage(req, res, pathname, url);
+
       if (pathname === '/opadmin/logout') {
         auth.destroySession(res);
         res.writeHead(303, { Location: '/opadmin' });
@@ -759,8 +875,9 @@ function purgeOld() {
   const cutoff = new Date(Date.now() - config.retentionDays * 86_400_000).toISOString();
   const removedVisits = visits.prune(cutoff);
   const removedLeads = leadsStore.prune(cutoff);
-  if (removedVisits || removedLeads) {
-    console.log(`[opia] retención: -${removedVisits} visitas, -${removedLeads} leads (>${config.retentionDays} días)`);
+  const removedAi = aiagent.podarSesiones();
+  if (removedVisits || removedLeads || removedAi) {
+    console.log(`[opia] retención: -${removedVisits} visitas, -${removedLeads} leads, -${removedAi} chats de agente (>${config.retentionDays} días)`);
   }
 }
 
