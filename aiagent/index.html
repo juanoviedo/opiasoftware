@@ -81,7 +81,7 @@
         color: #fff; font-size: 16px; font-family: inherit;
       }
       .caja-envio input:focus { outline: 2px solid var(--blue); outline-offset: 1px; border-color: transparent; }
-      .caja-envio button { background: var(--blue); border-color: transparent; color: #fff; font-weight: 600; padding: 12px 20px; border-radius: 12px; }
+      .caja-envio button { background: var(--blue); border-color: transparent; color: #fff; font-weight: 600; padding: 12px 20px; border-radius: 12px; white-space: nowrap; }
       .caja-envio button:hover { background: #2b90ff; }
       .privacidad { max-width: 760px; margin: 8px auto 0; color: var(--muted); font-size: 11.5px; line-height: 1.45; }
       [hidden] { display: none !important; }
@@ -91,16 +91,14 @@
     <header class="barra">
       <div class="marca"><b>OPIA</b><span>Asistente virtual</span></div>
       <div class="estado">En línea</div>
-      <div class="espacio"></div>
-      <button id="btn-copiar" type="button" hidden>Copiar enlace de esta conversación</button>
     </header>
 
     <main id="chat" aria-live="polite"></main>
 
     <form id="formulario" autocomplete="off">
       <div class="caja-envio">
-        <input id="entrada" type="text" placeholder="Escribe tu mensaje…" maxlength="2000" required />
-        <button id="btn-enviar" type="submit">Enviar</button>
+        <input id="entrada" type="email" placeholder="tu@correo.com" maxlength="160" required />
+        <button id="btn-enviar" type="submit">Enviar enlace</button>
       </div>
       <p class="privacidad">
         Al conversar, tus datos (nombre, celular y lo que nos cuentes) quedan registrados en nuestro sistema
@@ -115,24 +113,22 @@
     const chat = document.querySelector('#chat');
     const entrada = document.querySelector('#entrada');
     const btnEnviar = document.querySelector('#btn-enviar');
-    const btnCopiar = document.querySelector('#btn-copiar');
 
-    // /aiagent/<guid> carga esa conversación; /aiagent limpio empieza de cero
-    // (el servidor ya redirigió si había cookie de una conversación previa).
-    // Al abrir la página se crea de una vez la sesión y el contacto en blanco
-    // ("Esperando respuesta agente IA"); el guid pendiente vive en sessionStorage
-    // para que un F5 antes de registrarse no cree un contacto nuevo.
+    // /aiagent/<guid> entra desde el enlace del correo (la sesión ya quedó
+    // autenticada); /aiagent limpio pide el correo para mandar el magic link.
     const partes = location.pathname.split('/').filter(Boolean);
     const guidUrl = partes.length === 2 ? partes[1] : '';
     let guid = guidUrl;
-    const CLAVE_PENDIENTE = 'aiagent:guid';
+    let modo = 'correo'; // 'correo' → espera el correo | 'chat' → conversación
+
+    function alFondo() { chat.scrollTop = chat.scrollHeight; }
 
     function burbuja(texto, quien) {
       const div = document.createElement('div');
       div.className = 'msg ' + quien;
       div.textContent = texto;
       chat.appendChild(div);
-      chat.scrollTop = chat.scrollHeight;
+      alFondo();
       return div;
     }
 
@@ -141,7 +137,20 @@
       div.className = 'msg aviso';
       div.textContent = texto;
       chat.appendChild(div);
-      chat.scrollTop = chat.scrollHeight;
+      alFondo();
+    }
+
+    // burbuja con enlace dentro (texto plano + <a>), para el aviso de privacidad
+    function burbujaConEnlace(frases, quien) {
+      const div = document.createElement('div');
+      div.className = 'msg ' + quien;
+      for (const parte of frases) {
+        if (typeof parte === 'string') div.appendChild(document.createTextNode(parte));
+        else div.appendChild(parte);
+      }
+      chat.appendChild(div);
+      alFondo();
+      return div;
     }
 
     async function api(ruta, opciones = {}) {
@@ -154,32 +163,74 @@
       return { status: resp.status, ...datos };
     }
 
-    async function prepararSesion() {
-      const pendiente = sessionStorage.getItem(CLAVE_PENDIENTE) || '';
-      const r = await api('/api/aiagent/inicio', {
-        method: 'POST',
-        body: JSON.stringify({ guid: guid || pendiente || undefined }),
-      });
-      if (!r.ok) return;
-      guid = r.guid;
-      sessionStorage.setItem(CLAVE_PENDIENTE, guid);
+    function pantallaCorreo() {
+      modo = 'correo';
+      entrada.type = 'email';
+      entrada.placeholder = 'tu@correo.com';
+      btnEnviar.textContent = 'Enviar enlace';
+      entrada.focus();
+
+      const enlace = document.createElement('a');
+      enlace.href = '/privacidad';
+      enlace.target = '_blank';
+      enlace.rel = 'noopener';
+      enlace.textContent = 'Políticas de Privacidad y Términos';
+      burbujaConEnlace([
+        '¡Hola! 👋 Qué gusto saludarte. Para poder brindarte una atención personalizada y asegurarnos de que ' +
+          'siempre tengas acceso a tu historial de conversación, por favor compártenos tu correo electrónico. ' +
+          '(Te enviaremos un enlace seguro de acceso directo. Al continuar, aceptas nuestras ',
+        enlace,
+        '.)',
+      ], 'ia');
+    }
+
+    function pantallaChat() {
+      modo = 'chat';
+      entrada.type = 'text';
+      entrada.placeholder = 'Escribe tu mensaje…';
+      btnEnviar.textContent = 'Enviar';
+      entrada.focus();
     }
 
     async function cargarHistorial() {
-      if (!guid) return;
       const r = await api('/api/aiagent/sesion?guid=' + encodeURIComponent(guid));
-      if (r.ok) {
-        for (const m of r.historial) burbuja(m.texto, m.rol === 'usuario' ? 'usuario' : 'ia');
-      } else {
-        await prepararSesion(); // guid de la URL sin sesión: se materializa
-      }
-      btnCopiar.hidden = false;
+      if (!r.ok) return false;
+      for (const m of r.historial) burbuja(m.texto, m.rol === 'usuario' ? 'usuario' : 'ia');
+      pantallaChat();
+      return true;
     }
 
     async function arranque() {
-      if (guid) await cargarHistorial();
-      else await prepararSesion();
-      entrada.focus();
+      if (new URLSearchParams(location.search).get('enlace') === 'invalido') {
+        aviso('Ese enlace venció o ya se usó. Escribe tu correo para recibir uno nuevo.');
+      }
+      if (guid && (await cargarHistorial())) return;
+      if (guid) aviso('No encontramos esa conversación. Escribe tu correo para continuar donde quedaste.');
+      pantallaCorreo();
+    }
+
+    async function pedirEnlace(correo) {
+      btnEnviar.disabled = true;
+      entrada.disabled = true;
+      burbuja(correo, 'usuario');
+      try {
+        const r = await api('/api/aiagent/email', {
+          method: 'POST',
+          body: JSON.stringify({ correo }),
+        });
+        if (!r.ok) {
+          aviso(r.error || 'No pudimos enviar el correo. Intenta de nuevo.');
+          return;
+        }
+        burbuja('¡Listo! Te acabamos de enviar un enlace seguro de acceso directo a ' + correo + '. Revisa tu bandeja para continuar.', 'ia');
+        btnEnviar.textContent = 'Reenviar enlace';
+      } catch {
+        aviso('Falló la conexión. Intenta de nuevo.');
+      } finally {
+        btnEnviar.disabled = false;
+        entrada.disabled = false;
+        entrada.focus();
+      }
     }
 
     async function enviar(texto) {
@@ -189,22 +240,20 @@
       try {
         const r = await api('/api/aiagent/mensaje', {
           method: 'POST',
-          body: JSON.stringify({ guid: guid || undefined, texto }),
+          body: JSON.stringify({ guid, texto }),
         });
         esperando.remove();
         if (!r.ok) {
+          if (r.status === 404) {
+            aviso(r.error || 'Conversación no encontrada.');
+            pantallaCorreo();
+            return;
+          }
           aviso(r.error || 'No pude responder. Intenta de nuevo.');
           return;
         }
         guid = r.guid;
-        sessionStorage.setItem(CLAVE_PENDIENTE, guid);
-        btnCopiar.hidden = false;
         burbuja(r.respuesta, 'ia');
-        // al registrarse el lead, la página se recarga con su enlace propio:
-        // entra la cookie de continuidad y la conversación queda conservada
-        if (r.lead && !guidUrl) {
-          location.replace('/aiagent/' + encodeURIComponent(guid));
-        }
       } catch {
         esperando.remove();
         aviso('Falló la conexión. Intenta de nuevo.');
@@ -217,23 +266,18 @@
 
     document.querySelector('#formulario').addEventListener('submit', (ev) => {
       ev.preventDefault();
+      if (modo === 'correo') {
+        const correo = entrada.value.trim();
+        if (!correo) return;
+        entrada.value = '';
+        pedirEnlace(correo);
+        return;
+      }
       const texto = entrada.value.trim();
       if (!texto) return;
       entrada.value = '';
       burbuja(texto, 'usuario');
       enviar(texto);
-    });
-
-    btnCopiar.addEventListener('click', async () => {
-      if (!guid) return;
-      const enlace = location.origin + '/aiagent/' + guid;
-      try {
-        await navigator.clipboard.writeText(enlace);
-        btnCopiar.textContent = '¡Enlace copiado!';
-      } catch {
-        window.prompt('Copia el enlace de esta conversación:', enlace);
-      }
-      setTimeout(() => { btnCopiar.textContent = 'Copiar enlace de esta conversación'; }, 1500);
     });
 
     arranque();

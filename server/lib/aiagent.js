@@ -4,6 +4,7 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const config = require('./config');
+const auth = require('./auth');
 const crm = require('./crm');
 const teams = require('./teams');
 const H = require('./http');
@@ -15,11 +16,12 @@ const COOKIE_AI = 'opia_aiguid';
 const VIDA_SESION_DIAS = 90;
 // tope de mensajes conservados por conversación (contexto del modelo + pantalla)
 const MAX_MSG_SESION = 200;
-// tope de mensajes sin registrarse: el agente pide nombre+celular y no se
-// puede conversar gratis para siempre (cada mensaje cuesta llamada al modelo)
-const MAX_MSG_ANONIMO = 12;
 const MAX_MENSAJES_DIA = 500;
 const MAX_ITER_HERRAMIENTAS = 4;
+// magic link: un solo uso, 15 minutos, igual filosofía que el acceso al CRM
+const TOKEN_MINUTOS = 15;
+const NOMBRE_SIN_REGISTRAR = 'AI user';
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 // Las dos tablas del agente viven junto a las del CRM (dataDir/crm, volumen).
 // aiagentmessages: cada mensaje del chat (rol usuario/ia/herramienta), con
@@ -27,6 +29,132 @@ const MAX_ITER_HERRAMIENTAS = 4;
 // aiagentsessions: una fila por conversación (guid = id), ligada a su contacto.
 const mensajes = new Tabla('aiagentmessages.json');
 const sesiones = new Tabla('aiagentsessions.json');
+
+/* --------------------------------------------------- autenticación por correo */
+
+const tokens = new Map(); // jti -> { correo, exp }; el enlace es de un solo uso
+
+/**
+ * Envía el magic link. El token va firmado (HMAC del secret.key) y de un solo
+ * uso: al abrir el enlace se borra el jti, así aunque el correo se reenvíe o
+ * quede en la papelera ya no sirve. Respuesta genérica siempre: no revela si
+ * un correo existe o no en el CRM.
+ */
+async function solicitarEnlace(correoCrudo) {
+  const correo = H.clean(correoCrudo, 160).trim().toLowerCase();
+  if (!EMAIL_RE.test(correo)) return { ok: false, status: 422, error: 'Ese correo no parece válido.' };
+  const jti = crypto.randomBytes(16).toString('hex');
+  const exp = Date.now() + TOKEN_MINUTOS * 60_000;
+  tokens.set(jti, { correo, exp });
+  const token = auth.sign({ e: correo, exp, jti });
+  const base = config.publicUrl || `http://localhost:${config.port}`;
+  const enlace = `${base}/chat?token=${encodeURIComponent(token)}`;
+  const envio = await crm.enviarCorreo({
+    to: correo,
+    subject: 'Tu enlace para conversar con OPIA Software',
+    text:
+      `Hola,\n\nAbre este enlace para entrar a la conversación con nuestro asistente ` +
+      `(vence en ${TOKEN_MINUTOS} minutos y solo sirve una vez):\n\n${enlace}\n\n` +
+      `Si no lo pediste, ignora este mensaje.\n— OPIA Software`,
+  });
+  if (!envio.ok) {
+    tokens.delete(jti);
+    console.error('[aiagent] no se pudo enviar el magic link:', envio.error);
+    return { ok: false, status: 502, error: 'No pudimos enviar el correo. Intenta de nuevo en unos minutos.' };
+  }
+  const r = { ok: true, correo };
+  // comodín de desarrollo para poder probar el flujo sin buzón propio
+  if (process.env.NODE_ENV !== 'production') r.token = token;
+  return r;
+}
+
+function buscarContactoPorCorreo(correo) {
+  return crm.contactos.todas().find((k) => {
+    for (const campo of ['email', 'email2', 'email3']) {
+      if (String(k[campo] || '').toLowerCase() === correo) return true;
+    }
+    return false;
+  });
+}
+
+function crearContactoPorCorreo(correo) {
+  const emp = empresaComodin();
+  const { datos, errores } = crm.validarContacto({ clienteId: emp.id, nombres: NOMBRE_SIN_REGISTRAR, email: correo });
+  if (Object.keys(errores).length) {
+    throw new Error('contacto por correo: ' + Object.values(errores).join(' '));
+  }
+  return crm.contactos.agregar({ id: crm.siguienteId('p'), ...datos, archivoOrigen: 'agente_ia' }, 'aiagent');
+}
+
+function saludoInicial(contacto) {
+  const nombre = `${contacto.nombres || ''} ${contacto.apellidos || ''}`.trim();
+  if (contacto.nombres && contacto.nombres !== NOMBRE_SIN_REGISTRAR && nombre.length > 1) {
+    return `¡Hola de nuevo, ${nombre}! Qué bueno verte por aquí. ¿En qué podemos ayudarte hoy?`;
+  }
+  return `¡Listo, ya verificamos tu correo! Para brindarte una atención personalizada, ¿cuál es tu nombre completo?`;
+}
+
+/**
+ * Valida el token del magic link y deja la sesión lista: busca el contacto por
+ * correo (caso A) o lo crea como "AI user" (caso B), reutiliza su última
+ * conversación para conservar el historial y deja el saludo inicial guardado.
+ * Devuelve { guid } o { error, status }.
+ */
+function verificarEnlace(tokenCrudo) {
+  const token = H.clean(tokenCrudo, 2000);
+  const payload = token ? auth.unsign(token) : null;
+  if (!payload || payload.exp < Date.now()) return { error: 'El enlace venció. Pide uno nuevo en el chat.', status: 410 };
+  const guardado = tokens.get(payload.jti);
+  if (!guardado || guardado.correo !== payload.e || guardado.exp < Date.now()) {
+    return { error: 'Ese enlace ya se usó. Pide uno nuevo en el chat.', status: 410 };
+  }
+  tokens.delete(payload.jti); // un solo uso, aunque expire después
+
+  let contacto = buscarContactoPorCorreo(guardado.correo);
+  if (!contacto) contacto = crearContactoPorCorreo(guardado.correo);
+
+  // la conversación de un contacto es una sola: el historial le pertenece a él
+  let s = sesiones
+    .todas()
+    .filter((x) => x.contactoId === contacto.id)
+    .sort((a, b) => String(b.modifiedon || '').localeCompare(String(a.modifiedon || '')))[0];
+  if (!s) {
+    s = sesiones.agregar(
+      { id: crypto.randomBytes(9).toString('base64url'), estado: 'lead', contactoId: contacto.id, clienteId: contacto.clienteId },
+      'aiagent'
+    );
+    agregarMsg(s, { rol: 'ia', texto: saludoInicial(contacto) }, 'aiagent');
+  }
+  return { guid: s.id, correo: guardado.correo };
+}
+
+/* ------------------------------------------------------------------- sesiones */
+
+function obtenerSesion(guid) {
+  return sesiones.porId(guid) || null;
+}
+
+function guardarSesion(s, actor) {
+  return sesiones.actualizar(s.id, s, actor);
+}
+
+/** Limpia conversaciones inactivas (y sus mensajes); va con la retención. */
+function podarSesiones() {
+  const limite = Date.now() - VIDA_SESION_DIAS * 86_400_000;
+  let cambios = 0;
+  for (const s of sesiones.todas()) {
+    const t = Date.parse(s.modifiedon || s.createdon || 0);
+    if (!Number.isFinite(t) || t < limite) {
+      for (const m of mensajes.todas().filter((m) => m.guid === s.id)) mensajes.eliminar(m.id);
+      // conversaciones viejas del flujo anónimo (estado !== lead) arrastraban un
+      // contacto placeholder que no existía en el CRM: se va con la sesión
+      if (s.estado !== 'lead' && s.contactoId) crm.contactos.eliminar(s.contactoId);
+      sesiones.eliminar(s.id);
+      cambios += 1;
+    }
+  }
+  return cambios;
+}
 
 /* ------------------------------------------------------------- configuración */
 
@@ -48,64 +176,6 @@ function configurado() {
 }
 
 /* ------------------------------------------------------------------- sesiones */
-
-const PLACEHOLDER = 'Esperando respuesta agente IA';
-
-// Contacto en blanco que se crea apenas alguien abre el agente; cuando la
-// persona da nombre y celular, ESTE MISMO registro se actualiza (registrarLead).
-function crearContactoPlaceholder() {
-  const emp = empresaComodin();
-  const { datos, errores } = crm.validarContacto({ clienteId: emp.id, nombres: PLACEHOLDER });
-  if (Object.keys(errores).length) {
-    throw new Error('contacto placeholder: ' + Object.values(errores).join(' '));
-  }
-  return crm.contactos.agregar({ id: crm.siguienteId('p'), ...datos, archivoOrigen: 'agente_ia' }, 'aiagent');
-}
-
-function nuevaSesion(guid) {
-  const contacto = crearContactoPlaceholder();
-  return sesiones.agregar(
-    { id: guid, estado: 'anonimo', contactoId: contacto.id, clienteId: contacto.clienteId },
-    'aiagent'
-  );
-}
-
-/** Apertura del agente: devuelve la sesión existente del guid o crea una nueva. */
-function inicio(guidPropuesto) {
-  if (guidPropuesto) {
-    const previa = obtenerSesion(guidPropuesto, false);
-    if (previa) return { guid: previa.id };
-  }
-  return { guid: nuevaSesion(crypto.randomBytes(9).toString('base64url')).id };
-}
-
-function obtenerSesion(guid, crear) {
-  const previa = sesiones.porId(guid);
-  if (previa) return previa;
-  return crear ? nuevaSesion(guid) : null;
-}
-
-function guardarSesion(s, actor) {
-  return sesiones.actualizar(s.id, s, actor);
-}
-
-/** Limpia conversaciones inactivas (y sus mensajes); va con la retención. */
-function podarSesiones() {
-  const limite = Date.now() - VIDA_SESION_DIAS * 86_400_000;
-  let cambios = 0;
-  for (const s of sesiones.todas()) {
-    const t = Date.parse(s.modifiedon || s.createdon || 0);
-    if (!Number.isFinite(t) || t < limite) {
-      for (const m of mensajes.todas().filter((m) => m.guid === s.id)) mensajes.eliminar(m.id);
-      // el contacto placeholder (nunca registrado) se va con la conversación;
-      // el de un lead real se conserva para seguimiento comercial
-      if (s.estado !== 'lead' && s.contactoId) crm.contactos.eliminar(s.contactoId);
-      sesiones.eliminar(s.id);
-      cambios += 1;
-    }
-  }
-  return cambios;
-}
 
 function siguienteMsgId() {
   const rutaMeta = path.join(config.dataDir, 'crm', 'meta.json');
@@ -156,9 +226,9 @@ function historialVisible(s) {
 const SYSTEM_PROMPT = [
   'Eres el asistente comercial virtual de OPIA Software, una empresa colombiana de software y marketing digital. Hablas siempre en español con calidez y mensajes cortos.',
   '',
-  'Tu PRIMER paso, antes de cualquier otra cosa, es pedirle a la persona su nombre completo, su número de celular y su correo electrónico. En cuanto te dé nombre y celular, llama INMEDIATAMENTE a la herramienta registrar_lead con esos datos (incluye el correo si ya lo dio).',
+  'La persona ya verificó su correo para chatear y su contacto existe en el CRM. Si aún no tiene nombre real (fue creado como "AI user"), haz la recolección paso a paso y EN ESTE ORDEN: 1) pide su nombre completo y llama registrar_lead apenas lo tenga, 2) pide su celular y actualízalo con registrar_lead, 3) pregúntale en qué empresa trabaja y llama a vincular_empresa. Si el contacto ya tiene esos datos, no los vuelvas a pedir.',
   '',
-  'Después de registrarla pregúntale en qué empresa trabaja y llama a vincular_empresa con el nombre que te dé. Luego haz el levantamiento completo de sus necesidades: qué quiere lograr, si es desarrollo de software a la medida o mercadeo/digitalización, alcance, funcionalidades y plazos. Guarda los puntos clave con agregar_nota.',
+  'Cuando ya tengas nombre, celular y empresa, haz el levantamiento completo de sus necesidades: qué quiere lograr, si es desarrollo de software a la medida o mercadeo/digitalización, alcance, funcionalidades y plazos. Guarda los puntos clave con agregar_nota.',
   '',
   'CUANDO ya tengas: nombre, celular, empresa y el levantamiento completo de necesidades, llama a solicitar_cotizacion con un resumen detallado de todo lo conversado. Después de llamarla dile a la persona que en breve recibirá un correo con su cotización. Si vuelve a escribir después de eso, dile que el equipo ya tiene su solicitud y lo contactará muy pronto.',
   '',
@@ -177,16 +247,16 @@ const HERRAMIENTAS = [
     type: 'function',
     function: {
       name: 'registrar_lead',
-      description: 'Registra a la persona que chatea como contacto en el CRM. Usar en cuanto dé su nombre y celular.',
+      description:
+        'Actualiza los datos de la persona que chatea en su contacto del CRM (nombre, celular). Usar apenas la persona dé su nombre, y de nuevo cuando dé su celular.',
       parameters: {
         type: 'object',
         properties: {
           nombres: { type: 'string' },
           apellidos: { type: 'string' },
           celular: { type: 'string' },
-          correo: { type: 'string', description: 'Correo electrónico de la persona (opcional)' },
         },
-        required: ['nombres', 'celular'],
+        required: ['nombres'],
       },
     },
   },
@@ -307,53 +377,41 @@ function empresaComodin() {
   );
 }
 
+/**
+ * Actualiza el contacto de la conversación con los datos que la persona va
+ * dando (nombre primero, celular después): la identidad del contacto es su
+ * correo verificado, así que aquí nunca se crean contactos nuevos.
+ */
 function registrarLead(s, args) {
-  if (s.estado === 'lead' && s.contactoId) {
-    return 'El lead ya está registrado en el CRM. No crear duplicados.';
-  }
+  const contacto = crm.contactos.porId(s.contactoId);
+  if (!contacto) return 'No encontré el contacto de esta conversación en el CRM.';
+
   const nombres = H.clean(args.nombres, 120).trim();
   const apellidos = H.clean(args.apellidos, 120).trim();
   const celular = H.clean(args.celular, 40).trim();
-  const correo = H.clean(args.correo, 160).trim().toLowerCase();
   const digitos = celular.replace(/\D/g, '');
-  if (nombres.length < 2 || digitos.length < 7 || digitos.length > 15) {
-    return 'Faltan datos válidos: necesito el nombre completo y un celular de 7 a 15 dígitos.';
+
+  if (nombres.length < 2 && !celular) return 'Necesito al menos el nombre de la persona.';
+  if (celular && (digitos.length < 7 || digitos.length > 15)) {
+    return 'Ese celular no parece válido (7 a 15 dígitos).';
   }
 
-  // validación compartida con el CRM: formato de correo y límites de campos
-  const chequeo = crm.validarContacto({ clienteId: s.clienteId || '', nombres, apellidos, celular, email: correo });
-  if (Object.keys(chequeo.errores).length) {
-    return 'No pude registrar: ' + Object.values(chequeo.errores).join(' ');
+  const cambios = {};
+  if (nombres.length >= 2) {
+    cambios.nombres = nombres;
+    if (apellidos) cambios.apellidos = apellidos;
   }
+  if (celular) cambios.celular = celular;
+  if (!Object.keys(cambios).length) return 'No tengo datos nuevos que guardar.';
 
-  // si ese celular ya existe en otro contacto, se usa ese y el placeholder se borra
-  const duplicado = crm.contactos
-    .todas()
-    .find((k) => k.id !== s.contactoId && (k.celular || '').replace(/\D/g, '') === digitos);
-
-  let contacto = crm.contactos.porId(s.contactoId);
-  if (duplicado) {
-    if (contacto) crm.contactos.eliminar(contacto.id);
-    contacto = duplicado;
-  }
-  const cambios = { nombres, apellidos, celular };
-  if (correo) cambios.email = correo;
-  if (!contacto) {
-    // placeholder perdido (limpieza manual, etc.): se recrea bajo el comodín
-    const emp = empresaComodin();
-    const { datos, errores } = crm.validarContacto({ clienteId: emp.id, nombres, apellidos, celular, email: correo });
-    if (Object.keys(errores).length) return 'No pude registrar: ' + Object.values(errores).join(' ');
-    contacto = crm.contactos.agregar({ id: crm.siguienteId('p'), ...datos, archivoOrigen: 'agente_ia' }, 'aiagent');
-  } else {
-    crm.contactos.actualizar(contacto.id, cambios, 'aiagent');
-    contacto = crm.contactos.porId(contacto.id);
-  }
+  const { datos, errores } = crm.validarContacto({ ...contacto, ...cambios });
+  if (Object.keys(errores).length) return 'No pude actualizar: ' + Object.values(errores).join(' ');
+  crm.contactos.actualizar(contacto.id, cambios, 'aiagent');
 
   s.estado = 'lead';
-  s.contactoId = contacto.id;
   s.clienteId = contacto.clienteId;
   guardarSesion(s, 'aiagent');
-  return `Lead registrado en el CRM como ${contacto.id}. Continúa la conversación normalmente.`;
+  return `Datos actualizados en el CRM (${contacto.id}). Continúa la conversación normalmente.`;
 }
 
 function vincularEmpresa(s, args) {
@@ -630,41 +688,34 @@ function topeDiarioOk() {
  * Punto de entrada de cada mensaje del chat público.
  * Devuelve { guid, texto, leadRegistrado } o { error, status }.
  */
+/**
+ * Punto de entrada de cada mensaje del chat. La sesión solo existe después de
+ * verificar el correo con el magic link: no se chatea sin identidad.
+ * Devuelve { guid, texto } o { error, status }.
+ */
 async function mensaje(guidPropuesto, texto) {
   if (!configurado()) return { error: 'El agente de IA no está configurado todavía.', status: 503 };
 
-  let s;
-  if (guidPropuesto) {
-    s = obtenerSesion(guidPropuesto, true);
-  } else {
-    s = nuevaSesion(crypto.randomBytes(9).toString('base64url'));
-  }
-
-  const avisoRegistro =
-    'Para seguir conversando necesito tu nombre completo y tu número de celular. Con eso te registro y continuamos.';
-
-  // sin lead registrado solo hay paciencia limitada: se cobra nombre y celular
+  const s = obtenerSesion(guidPropuesto || '');
+  if (!s) return { error: 'Conversación no encontrada. Vuelve a entrar con tu enlace de acceso.', status: 404 };
   if (s.estado !== 'lead') {
-    const escritos = mensajes.todas().filter((m) => m.guid === s.id && m.rol === 'usuario').length;
-    if (escritos >= MAX_MSG_ANONIMO) {
-      agregarMsg(s, { rol: 'usuario', texto }, 'visitante');
-      agregarMsg(s, { rol: 'ia', texto: avisoRegistro }, 'aiagent');
-      return { guid: s.id, texto: avisoRegistro, leadRegistrado: false };
-    }
+    // sesiones del flujo anónimo anterior: se les pide pasar por el correo
+    const aviso = 'Para seguir conversando necesitas entrar con tu correo. Abre de nuevo opiasoftware.com/aiagent y sigue los pasos.';
+    agregarMsg(s, { rol: 'usuario', texto }, 'visitante');
+    agregarMsg(s, { rol: 'ia', texto: aviso }, 'aiagent');
+    return { guid: s.id, texto: aviso };
   }
 
   if (!topeDiarioOk()) {
     return {
       guid: s.id,
       texto: 'Hoy recibí muchos mensajes y necesito un descanso. Escríbenos mañana o déjanos tus datos en la página de contacto.',
-      leadRegistrado: false,
     };
   }
 
-  const eraAnonima = s.estado !== 'lead';
   try {
     const respuesta = await responder(s, texto);
-    return { guid: s.id, texto: respuesta, leadRegistrado: eraAnonima && s.estado === 'lead' };
+    return { guid: s.id, texto: respuesta };
   } catch (err) {
     // sin respuesta del modelo se quita el turno del usuario: evita duplicados al reintentar
     const suyos = mensajes.todas().filter((m) => m.guid === s.id);
@@ -680,6 +731,7 @@ module.exports = {
   obtenerSesion,
   historialVisible,
   podarSesiones,
-  inicio,
+  solicitarEnlace,
+  verificarEnlace,
   mensaje,
 };

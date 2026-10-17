@@ -59,7 +59,7 @@ const crmLoginLimiter = makeLimiter(5, 15 * 60_000);
 const crmApiLimiter = makeLimiter(600, 60 * 60_000);
 const aiMessageLimiter = makeLimiter(15, 60_000);
 const aiHistoryLimiter = makeLimiter(120, 60_000);
-const aiInicioLimiter = makeLimiter(30, 60_000);
+const aiEmailLimiter = makeLimiter(5, 15 * 60_000);
 
 setInterval(() => {
   trackLimiter.sweep();
@@ -69,7 +69,7 @@ setInterval(() => {
   crmApiLimiter.sweep();
   aiMessageLimiter.sweep();
   aiHistoryLimiter.sweep();
-  aiInicioLimiter.sweep();
+  aiEmailLimiter.sweep();
 }, 5 * 60_000).unref();
 
 /* ------------------------------------------------------------------ útiles */
@@ -707,17 +707,18 @@ async function handleAiMensaje(req, res) {
   try {
     const r = await aiagent.mensaje(guid, texto);
     if (r.error) return H.sendJson(res, r.status || 500, { ok: false, error: r.error });
-    return H.sendJson(res, 200, { ok: true, guid: r.guid, respuesta: r.texto, lead: r.leadRegistrado });
+    return H.sendJson(res, 200, { ok: true, guid: r.guid, respuesta: r.texto });
   } catch (err) {
     console.error('[aiagent]', err.message);
     return H.sendJson(res, 502, { ok: false, error: 'El asistente falló. Intenta de nuevo en un momento.' });
   }
 }
 
-/** Apertura del agente: crea la sesión y su contacto placeholder de una vez. */
-async function handleAiInicio(req, res) {
-  if (!aiInicioLimiter(H.clientIp(req, config.trustProxy))) {
-    return H.sendJson(res, 429, { ok: false, error: 'rate_limited' });
+/** Envía el magic link al correo que la persona escribe en el chat. */
+async function handleAiEmail(req, res) {
+  const ip = H.clientIp(req, config.trustProxy);
+  if (!aiEmailLimiter(ip)) {
+    return H.sendJson(res, 429, { ok: false, error: 'Demasiados intentos. Espera unos minutos.' });
   }
   let body = {};
   try {
@@ -726,12 +727,11 @@ async function handleAiInicio(req, res) {
     body = {};
   }
   try {
-    const propuesto = H.clean(body.guid, 64);
-    const r = aiagent.inicio(RE_GUID.test(propuesto) ? propuesto : '');
-    return H.sendJson(res, 200, { ok: true, guid: r.guid });
+    const r = await aiagent.solicitarEnlace(H.clean(body.correo, 160));
+    return H.sendJson(res, r.status || 200, r);
   } catch (err) {
     console.error('[aiagent]', err.message);
-    return H.sendJson(res, 500, { ok: false, error: 'error' });
+    return H.sendJson(res, 502, { ok: false, error: 'No pudimos enviar el correo. Intenta de nuevo en un momento.' });
   }
 }
 
@@ -739,8 +739,10 @@ function handleAiSesion(req, res, url) {
   if (!aiHistoryLimiter(H.clientIp(req, config.trustProxy))) {
     return H.sendJson(res, 429, { ok: false, error: 'rate_limited' });
   }
-  const guid = H.clean(url.searchParams.get('guid'), 64);
-  const s = RE_GUID.test(guid) ? aiagent.obtenerSesion(guid, false) : null;
+  // el guid puede venir por query (enlace directo) o por la cookie de sesión
+  let guid = H.clean(url.searchParams.get('guid'), 64);
+  if (!RE_GUID.test(guid)) guid = H.parseCookies(req.headers.cookie)[aiagent.COOKIE_AI] || '';
+  const s = RE_GUID.test(guid) ? aiagent.obtenerSesion(guid) : null;
   if (!s) return H.sendJson(res, 404, { ok: false, error: 'not_found' });
   return H.sendJson(res, 200, { ok: true, guid: s.id, estado: s.estado, historial: aiagent.historialVisible(s) });
 }
@@ -794,21 +796,48 @@ async function handleTeamsCallback(req, res, url) {
 
 /**
  * Página pública del asistente virtual.
- * /aiagent            → si hay cookie con sesión válida, redirige a /aiagent/<guid>;
- *                        si no, sirve la página para empezar de cero.
- * /aiagent/<guid>     → sirve la misma página y SIEMBRA la cookie de continuidad:
- *                        la próxima visita a /aiagent (sin guid) redirige solo.
+ * /aiagent?token=…    → consume el magic link: crea/reusa la sesión del contacto,
+ *                        planta la cookie (30 días, Strict) y redirige al chat.
+ * /aiagent            → con cookie de sesión válida redirige al chat; si no,
+ *                        sirve la página para pedir el correo.
+ * /aiagent/<guid>     → sirve la página y refresca la cookie de continuidad.
  */
-function handleAiAgentPage(req, res, pathname, url) {
+async function handleAiAgentPage(req, res, pathname, url) {
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     return H.sendJson(res, 405, { ok: false, error: 'Método no permitido.' });
   }
   const archivo = path.join(config.publicRoot, 'aiagent', 'index.html');
 
   if (pathname === '/aiagent') {
+    const token = url.searchParams.get('token');
+    if (token) {
+      try {
+        const r = await aiagent.verificarEnlace(token);
+        if (r.error) {
+          res.writeHead(303, { Location: '/aiagent?enlace=invalido' });
+          return res.end();
+        }
+        res.setHeader(
+          'Set-Cookie',
+          H.serializeCookie(aiagent.COOKIE_AI, r.guid, {
+            maxAgeSeconds: 30 * 86_400,
+            path: '/',
+            httpOnly: true,
+            sameSite: 'Strict',
+            secure: isSecureRequest(req),
+          })
+        );
+        res.writeHead(303, { Location: '/aiagent/' + encodeURIComponent(r.guid) });
+        return res.end();
+      } catch (err) {
+        console.error('[aiagent]', err.message);
+        res.writeHead(303, { Location: '/aiagent?enlace=invalido' });
+        return res.end();
+      }
+    }
     const cookies = H.parseCookies(req.headers.cookie);
     const guid = cookies[aiagent.COOKIE_AI] || '';
-    if (RE_GUID.test(guid) && aiagent.obtenerSesion(guid, false)) {
+    if (RE_GUID.test(guid) && aiagent.obtenerSesion(guid)) {
       res.writeHead(303, { Location: '/aiagent/' + encodeURIComponent(guid) });
       return res.end();
     }
@@ -821,10 +850,10 @@ function handleAiAgentPage(req, res, pathname, url) {
     res.setHeader(
       'Set-Cookie',
       H.serializeCookie(aiagent.COOKIE_AI, m[1], {
-        maxAgeSeconds: 180 * 86_400,
+        maxAgeSeconds: 30 * 86_400,
         path: '/',
         httpOnly: true,
-        sameSite: 'Lax',
+        sameSite: 'Strict',
         secure: isSecureRequest(req),
       })
     );
@@ -881,7 +910,7 @@ const server = http.createServer((req, res) => {
       if (pathname.startsWith('/api/crm/')) return await handleCrmApi(req, res, pathname, url);
 
       if (req.method === 'POST' && pathname === '/api/aiagent/mensaje') return await handleAiMensaje(req, res);
-      if (req.method === 'POST' && pathname === '/api/aiagent/inicio') return handleAiInicio(req, res);
+      if (req.method === 'POST' && pathname === '/api/aiagent/email') return await handleAiEmail(req, res);
       if (req.method === 'GET' && pathname === '/api/aiagent/sesion') return handleAiSesion(req, res, url);
 
       if (req.method === 'GET' && pathname === '/api/teams/estado') {
@@ -895,7 +924,13 @@ const server = http.createServer((req, res) => {
       if (req.method === 'GET' && pathname === '/api/teams/conectar') return handleTeamsConectar(req, res);
       if (req.method === 'GET' && pathname === '/api/teams/callback') return await handleTeamsCallback(req, res, url);
 
-      if (pathname === '/aiagent' || pathname.startsWith('/aiagent/')) return handleAiAgentPage(req, res, pathname, url);
+      // alias corto del enlace que va en el correo: /chat?token=… → /aiagent?token=…
+      if (pathname === '/chat') {
+        res.writeHead(308, { Location: '/aiagent' + (url.search || '') });
+        return res.end();
+      }
+
+      if (pathname === '/aiagent' || pathname.startsWith('/aiagent/')) return await handleAiAgentPage(req, res, pathname, url);
 
       if (pathname === '/opadmin/logout') {
         auth.destroySession(res);

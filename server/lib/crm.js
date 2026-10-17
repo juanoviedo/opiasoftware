@@ -400,6 +400,28 @@ function notificarEquipo({ subject, text }) {
     });
 }
 
+/** Correo transaccional a un destinatario arbitrario (magic link del agente). */
+function enviarCorreo({ to, subject, text }) {
+  if (!emailConfigurado()) return Promise.resolve({ ok: false, error: 'SMTP no configurado' });
+  const c = leerCrmConfig();
+  return sendMail({
+    host: c.smtp.host,
+    port: Number(c.smtp.port) || (c.smtp.secure === false ? 587 : 465),
+    secure: c.smtp.secure !== false,
+    user: c.smtp.user,
+    pass: c.smtp.pass,
+    from: c.from,
+    to,
+    subject,
+    text,
+  })
+    .then(() => ({ ok: true }))
+    .catch((err) => {
+      console.error('[crm] falló el correo transaccional:', err.message);
+      return { ok: false, error: err.message };
+    });
+}
+
 function verificarAcceso(token) {
   const payload = auth.unsign(token);
   if (!payload) return { ok: false, error: 'El enlace es inválido o venció. Pide uno nuevo.' };
@@ -458,6 +480,7 @@ module.exports = {
   solicitarAcceso,
   verificarAcceso,
   notificarEquipo,
+  enviarCorreo,
   crearCookieSesion,
   borrarCookieSesion,
   sesionActual,
