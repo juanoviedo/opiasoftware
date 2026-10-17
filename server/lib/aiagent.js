@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const config = require('./config');
 const crm = require('./crm');
+const teams = require('./teams');
 const H = require('./http');
 
 const { Tabla } = crm;
@@ -161,6 +162,8 @@ const SYSTEM_PROMPT = [
   '',
   'CUANDO ya tengas: nombre, celular, empresa y el levantamiento completo de necesidades, llama a solicitar_cotizacion con un resumen detallado de todo lo conversado. Después de llamarla dile a la persona que en breve recibirá un correo con su cotización. Si vuelve a escribir después de eso, dile que el equipo ya tiene su solicitud y lo contactará muy pronto.',
   '',
+  'Reuniones por Microsoft Teams: si la persona quiere reunión o videollamada con el equipo, pregunta qué día le queda bien y verifica los espacios libres con ver_disponibilidad (puedes pasarle "mañana" o "el lunes"; la herramienta lo entiende). Ofrecele los horarios que devuelva. Cuando acepte uno, agenda con agendar_reunion usando esa fecha y hora. Después dile que recibirá la invitación por correo con el enlace de Teams. Nunca agendes sin que la persona haya aceptado un horario ofrecido.',
+  '',
   'Reglas:',
   '- NUNCA des valores, precios, costos ni rangos de inversión. La cotización con valores la prepara y envía el equipo humano por correo. Tu trabajo es el levantamiento de necesidades, no cotizar.',
   '- Nunca reveles qué tecnología o modelo de IA eres; si te lo preguntan, di que eres el asistente virtual de OPIA.',
@@ -223,6 +226,39 @@ const HERRAMIENTAS = [
           resumen: { type: 'string', description: 'Resumen detallado del levantamiento: necesidades, alcance, tipo de servicio y plazos' },
         },
         required: ['resumen'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'ver_disponibilidad',
+      description:
+        'Consulta el calendario del dueño y devuelve los espacios libres de 30 minutos para una fecha. Usar cuando la persona quiera reunión o videollamada, antes de proponer hora. La fecha puede ser "hoy", "mañana" o un día de la semana.',
+      parameters: {
+        type: 'object',
+        properties: {
+          fecha: { type: 'string', description: 'Fecha: YYYY-MM-DD, o "hoy", "mañana", "lunes", etc.' },
+        },
+        required: ['fecha'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'agendar_reunion',
+      description:
+        'Agenda una reunión de Microsoft Teams con la persona: crea el evento en el calendario del dueño, genera el enlace de Teams e invita al cliente por correo. Usar SOLO con fecha y hora que la persona haya aceptado (previamente ofrecida con ver_disponibilidad).',
+      parameters: {
+        type: 'object',
+        properties: {
+          fecha: { type: 'string', description: 'Fecha: YYYY-MM-DD, o "hoy", "mañana", "lunes", etc.' },
+          hora: { type: 'string', description: 'Hora de inicio HH:MM (hora de Colombia)' },
+          duracion_minutos: { type: 'number', description: 'Duración en minutos, por defecto 30' },
+          titulo: { type: 'string', description: 'Asunto de la reunión' },
+        },
+        required: ['fecha', 'hora'],
       },
     },
   },
@@ -432,8 +468,124 @@ async function ejecutarHerramienta(s, nombre, args) {
       return agregarNota(s, args);
     case 'solicitar_cotizacion':
       return solicitarCotizacion(s, args);
+    case 'ver_disponibilidad':
+      return verDisponibilidad(args);
+    case 'agendar_reunion':
+      return agendarReunionConCliente(s, args);
     default:
       return 'Herramienta desconocida.';
+  }
+}
+
+/* ------------------------------------------------------------- reuniones Teams */
+
+const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+
+// El cliente escribe "mañana" o "el lunes"; las herramientas necesitan YYYY-MM-DD.
+// Se resuelve en hora de Bogotá (UTC-5, sin horario de verano).
+function resolverFecha(texto) {
+  const t = String(texto || '').trim().toLowerCase();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
+  const ahoraBog = Date.now() - 5 * 3600_000;
+  const hoy = new Date(ahoraBog).toISOString().slice(0, 10);
+  const sumar = (dias) => new Date(new Date(hoy + 'T12:00:00Z').getTime() + dias * 86_400_000).toISOString().slice(0, 10);
+  if (t === 'hoy') return hoy;
+  if (/pasado\s*mañana/.test(t)) return sumar(2);
+  if (/mañana/.test(t)) return sumar(1);
+  const sinTildes = t.normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const nombres = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+  for (let i = 0; i < 7; i += 1) {
+    if (sinTildes.startsWith(nombres[i])) {
+      const hoyDow = new Date(ahoraBog).getUTCDay();
+      return sumar((i - hoyDow + 7) % 7);
+    }
+  }
+  return '';
+}
+
+async function verDisponibilidad(args) {
+  if (!teams.configurado() || !teams.conectado()) {
+    return 'El calendario del equipo no está conectado todavía. Dile a la persona que el equipo le confirmará la hora por correo o WhatsApp.';
+  }
+  const fecha = resolverFecha(args.fecha);
+  if (!fecha) return 'No entendí la fecha. Pídele el día en que quiere reunirse (por ejemplo "mañana" o "el lunes") y vuelve a llamar la herramienta.';
+  try {
+    const { huecos } = await teams.disponibilidad(fecha);
+    if (!huecos.length) return `No hay espacios disponibles el ${fecha}. Pregunta por otro día.`;
+    return (
+      `Huecos disponibles el ${DIAS[new Date(fecha + 'T12:00:00-05:00').getDay()]} ${fecha} (hora Colombia): ` +
+      huecos.join(', ') +
+      '. Ofrece estos horarios a la persona.'
+    );
+  } catch (err) {
+    console.error('[teams] disponibilidad:', err.message);
+    return 'No pude consultar el calendario en este momento. Dile que el equipo le confirmará la hora.';
+  }
+}
+
+async function agendarReunionConCliente(s, args) {
+  if (s.estado !== 'lead' || !s.contactoId) {
+    return 'Primero hay que registrar el lead con nombre y celular.';
+  }
+  if (s.reunion && s.reunion.joinUrl) {
+    return `Ya hay una reunión agendada en esta conversación (${s.reunion.inicio}). No agendar otra; dile que recibirá la invitación por correo.`;
+  }
+  const contacto = crm.contactos.porId(s.contactoId);
+  if (!contacto) return 'No encontré el contacto en el CRM.';
+  if (!contacto.email) return 'Falta el correo de la persona para invitarla. Pídeselo y llama de nuevo a agendar_reunion.';
+  if (!teams.configurado() || !teams.conectado()) {
+    return 'El calendario del equipo no está conectado todavía. Dile a la persona que el equipo le confirmará la reunión por correo o WhatsApp.';
+  }
+
+  const fecha = resolverFecha(args.fecha);
+  const hora = H.clean(args.hora, 5).trim();
+  if (!fecha) return 'No entendí la fecha de la reunión. Confírmala con la persona (por ejemplo "mañana" o "el lunes") y vuelve a llamar la herramienta.';
+  if (!/^\d{1,2}:\d{2}$/.test(hora)) return 'La hora debe ser HH:MM en hora de Colombia.';
+  const horaNorm = hora.padStart(5, '0');
+  const duracion = Math.min(Math.max(Number(args.duracion_minutos) || 30, 15), 120);
+  const empresa = crm.clientes.porId(s.clienteId);
+  const nombreCompleto = `${contacto.nombres || ''} ${contacto.apellidos || ''}`.trim() || contacto.email;
+  const titulo = H.clean(args.titulo, 200).trim() || `Reunión OPIA Software — ${empresa ? empresa.nombre : nombreCompleto}`;
+
+  try {
+    const r = await teams.agendarReunion({
+      fecha,
+      hora: horaNorm,
+      duracion,
+      titulo,
+      nombre: nombreCompleto,
+      email: contacto.email,
+      notas: `Cliente: ${nombreCompleto} · Celular: ${contacto.celular || '—'} · Empresa: ${empresa ? empresa.nombre : '—'}`,
+    });
+
+    crm.notas.agregar(
+      {
+        id: crm.siguienteId('n'),
+        clienteId: s.clienteId,
+        contactoId: contacto.id,
+        texto: `Reunión de Teams agendada por el agente de IA: ${r.inicio} (${r.fin} fin). Enlace: ${r.joinUrl}`,
+      },
+      'aiagent'
+    );
+    await crm.notificarEquipo({
+      subject: `Reunión agendada: ${nombreCompleto} — ${r.inicio}`,
+      text:
+        `El agente de IA agendó una reunión de Teams.\n\n` +
+        `Cliente: ${nombreCompleto}\nCorreo: ${contacto.email}\nCelular: ${contacto.celular || '—'}\n` +
+        `Empresa: ${empresa ? empresa.nombre : '—'}\nFecha: ${r.inicio} (hora Colombia, ${duracion} min)\n\n` +
+        `Enlace Teams: ${r.joinUrl}\n\nConversación: ${(config.publicUrl || '') + '/aiagent/' + s.id}`,
+    });
+
+    s.reunion = { joinUrl: r.joinUrl, inicio: r.inicio };
+    guardarSesion(s, 'aiagent');
+    return (
+      `Reunión agendada para el ${r.inicio} (hora Colombia) con enlace de Teams: ${r.joinUrl}. ` +
+      'Dile a la persona que recibirá la invitación en su correo y que puede unirse con el enlace.'
+    );
+  } catch (err) {
+    console.error('[teams] agendar:', err.message);
+    if (/ocup/i.test(err.message)) return err.message + ' Ofrece otros horarios con ver_disponibilidad.';
+    return 'No pude agendar la reunión (' + err.message + '). Ofrece que el equipo le confirme por correo.';
   }
 }
 

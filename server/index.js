@@ -15,6 +15,7 @@ const { buildStats, classifyTraffic } = require('./lib/analytics');
 const auth = require('./lib/auth');
 const crm = require('./lib/crm');
 const aiagent = require('./lib/aiagent');
+const teams = require('./lib/teams');
 const { serveStatic, sendFile } = require('./lib/static');
 
 const visits = new JsonlStore(path.join(config.dataDir, 'visits.jsonl'));
@@ -744,6 +745,53 @@ function handleAiSesion(req, res, url) {
   return H.sendJson(res, 200, { ok: true, guid: s.id, estado: s.estado, historial: aiagent.historialVisible(s) });
 }
 
+/* ------------------------------------------------------ teams del dueño */
+
+function handleTeamsConectar(req, res) {
+  if (teams.conectado()) {
+    return H.sendJson(res, 200, { ok: true, conectado: true, mensaje: 'El calendario ya está conectado.' });
+  }
+  if (!teams.configurado()) {
+    return H.sendJson(res, 409, {
+      ok: false,
+      error: 'Falta registrar la aplicación (clientId y clientSecret en teams-config.json).',
+    });
+  }
+  res.writeHead(303, { Location: teams.urlConsentimiento() });
+  return res.end();
+}
+
+/** Microsoft devuelve el código aquí; se cambia por tokens y se valida la cuenta. */
+async function handleTeamsCallback(req, res, url) {
+  const estado = url.searchParams.get('state') || '';
+  const payload = auth.unsign(estado);
+  if (!payload || payload.t !== 'teams' || payload.exp < Date.now()) {
+    return H.sendJson(res, 400, { ok: false, error: 'state inválido o vencido. Empieza de nuevo.' });
+  }
+  const code = url.searchParams.get('code') || '';
+  if (!code) {
+    const desc = url.searchParams.get('error_description') || url.searchParams.get('error') || 'sin código';
+    return H.sendJson(res, 400, { ok: false, error: 'Microsoft devolvió un error: ' + desc });
+  }
+  try {
+    const token = await teams.cambiarPorCodigo(code);
+    const yo = await teams.quienSoy(token);
+    const esperado = (teams.organizador() || '').toLowerCase();
+    if (esperado && String(yo.mail || yo.userPrincipalName || '').toLowerCase() !== esperado) {
+      teams.limpiarTokens();
+      return H.sendJson(res, 403, {
+        ok: false,
+        error: `Consentiste con ${yo.mail || yo.userPrincipalName} y se esperaba ${esperado}. Vuelve a intentar con la cuenta correcta.`,
+      });
+    }
+    res.writeHead(303, { Location: '/crm/?teams=conectado' });
+    return res.end();
+  } catch (err) {
+    console.error('[teams]', err.message);
+    return H.sendJson(res, 502, { ok: false, error: 'No pude completar la conexión con Microsoft.' });
+  }
+}
+
 /**
  * Página pública del asistente virtual.
  * /aiagent            → si hay cookie con sesión válida, redirige a /aiagent/<guid>;
@@ -835,6 +883,17 @@ const server = http.createServer((req, res) => {
       if (req.method === 'POST' && pathname === '/api/aiagent/mensaje') return await handleAiMensaje(req, res);
       if (req.method === 'POST' && pathname === '/api/aiagent/inicio') return handleAiInicio(req, res);
       if (req.method === 'GET' && pathname === '/api/aiagent/sesion') return handleAiSesion(req, res, url);
+
+      if (req.method === 'GET' && pathname === '/api/teams/estado') {
+        return H.sendJson(res, 200, {
+          ok: true,
+          configurado: teams.configurado(),
+          conectado: teams.conectado(),
+          organizador: teams.organizador(),
+        });
+      }
+      if (req.method === 'GET' && pathname === '/api/teams/conectar') return handleTeamsConectar(req, res);
+      if (req.method === 'GET' && pathname === '/api/teams/callback') return await handleTeamsCallback(req, res, url);
 
       if (pathname === '/aiagent' || pathname.startsWith('/aiagent/')) return handleAiAgentPage(req, res, pathname, url);
 
