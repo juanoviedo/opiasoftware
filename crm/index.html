@@ -344,6 +344,11 @@
               <option value="1001-">Más de 1.000</option>
               <option value="-0">Sin dato de empleados</option>
             </select>
+            <select id="orden-contactos" aria-label="Ordenar los contactos">
+              <option value="empleados:desc">Empleados: mayor a menor</option>
+              <option value="empleados:asc">Empleados: menor a mayor</option>
+              <option value="">Sin orden</option>
+            </select>
             <span class="contador" id="contador-contactos"></span>
           </div>
           <table>
@@ -503,11 +508,23 @@
       else if (estado.vista === 'cliente' && estado.clienteActual && estado.clienteActual.id === clienteId) abrirCliente(clienteId);
     }
 
+    // Clic en el correo = copiarlo al portapapeles (sin abrir el formulario de
+    // la fila). Con Ctrl+clic o clic central sí abre el cliente de correo.
     function celdaEmail(email) {
       const td = el('td');
       if (email) {
         const a = el('a', email);
         a.href = 'mailto:' + email;
+        a.title = 'Clic para copiar el correo';
+        a.addEventListener('click', (ev) => {
+          if (ev.ctrlKey || ev.metaKey || ev.button === 1) return;
+          ev.preventDefault();
+          ev.stopPropagation();
+          const volver = () => { setTimeout(() => { a.textContent = email; }, 1200); };
+          navigator.clipboard.writeText(email)
+            .then(() => { a.textContent = '¡Copiado!'; volver(); })
+            .catch(() => { a.textContent = 'No se pudo copiar'; volver(); });
+        });
         td.appendChild(a);
       }
       return td;
@@ -518,7 +535,8 @@
       email: null,
       clienteActual: null,
       vista: 'clientes',
-      orden: { columna: '', dir: '' },
+      orden: { columna: 'empleados', dir: 'desc' },
+      ordenContactos: { columna: 'empleados', dir: 'desc' },
     };
 
     function mostrarLogin() {
@@ -863,6 +881,9 @@
           if (max) ruta += '&empleadosMax=' + max;
         }
       }
+      if (estado.ordenContactos.columna) {
+        ruta += '&orden=' + estado.ordenContactos.columna + '&dir=' + estado.ordenContactos.dir;
+      }
       const { contactos, total } = await api(ruta);
       $('#contador-contactos').textContent = total + (total === 1 ? ' contacto' : ' contactos');
       const tabla = $('#tabla-contactos-global');
@@ -1157,6 +1178,11 @@
       busquedaContactosTimer = setTimeout(cargarContactosGlobales, 250);
     });
     $('#filtro-empleados').addEventListener('change', cargarContactosGlobales);
+    $('#orden-contactos').addEventListener('change', () => {
+      const v = $('#orden-contactos').value;
+      estado.ordenContactos = v ? { columna: v.split(':')[0], dir: v.split(':')[1] } : { columna: '', dir: '' };
+      cargarContactosGlobales();
+    });
     $('#filtro-seguimiento').addEventListener('change', cargarClientes);
 
     iniciar();

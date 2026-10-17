@@ -509,6 +509,19 @@ function listadoContactos(url) {
         .some((v) => crm.normaliza(v).includes(q))
     );
   }
+  const orden = H.clean(url.searchParams.get('orden') || '', 20);
+  const dir = H.clean(url.searchParams.get('dir') || '', 4) === 'desc' ? -1 : 1;
+  if (orden === 'empleados') {
+    // los empleados son de la empresa; sin dato van siempre al final
+    filas.sort((a, b) => {
+      const va = empleadosPorCliente.get(a.clienteId);
+      const vb = empleadosPorCliente.get(b.clienteId);
+      if (va == null && vb == null) return 0;
+      if (va == null) return 1;
+      if (vb == null) return -1;
+      return (va - vb) * dir;
+    });
+  }
   filas = filas.slice(0, 500).map((k) => ({
     ...k,
     empresa: nombreCliente.get(k.clienteId) || '',
