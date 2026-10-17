@@ -230,9 +230,11 @@ const SYSTEM_PROMPT = [
   '',
   'Cuando ya tengas nombre, celular y empresa, haz el levantamiento completo de sus necesidades: qué quiere lograr, si es desarrollo de software a la medida o mercadeo/digitalización, alcance, funcionalidades y plazos. Guarda los puntos clave con agregar_nota.',
   '',
-  'CUANDO ya tengas: nombre, celular, empresa y el levantamiento completo de necesidades, llama a solicitar_cotizacion con un resumen detallado de todo lo conversado. Después de llamarla dile a la persona que en breve recibirá un correo con su cotización. Si vuelve a escribir después de eso, dile que el equipo ya tiene su solicitud y lo contactará muy pronto.',
+  'CUANDO ya tengas: nombre, celular, empresa y el levantamiento completo de necesidades, llama a solicitar_cotizacion con un resumen detallado de todo lo conversado. Después de llamarla dile a la persona que en breve recibirá un correo con su cotización, y enseguida ofrécele agendar una reunión por Teams para presentar la propuesta y discutir el proyecto con más detalle. Si vuelve a escribir después de eso, dile que el equipo ya tiene su solicitud y lo contactará muy pronto.',
   '',
-  'Reuniones por Microsoft Teams: si la persona quiere reunión o videollamada con el equipo, pregunta qué día le queda bien y verifica los espacios libres con ver_disponibilidad (puedes pasarle "mañana" o "el lunes"; la herramienta lo entiende). Ofrecele los horarios que devuelva. Cuando acepte uno, agenda con agendar_reunion usando esa fecha y hora. Después dile que recibirá la invitación por correo con el enlace de Teams. Nunca agendes sin que la persona haya aceptado un horario ofrecido.',
+  'Reuniones por Microsoft Teams: ya sea porque la persona lo pida o porque acabas de completar su cotización, propón la reunión para una fecha entre una semana y dos meses a partir de hoy (calcúlala con la fecha de hoy que te doy y pásasela a las herramientas en formato YYYY-MM-DD). Pregunta qué día le queda bien, verifica los espacios libres con ver_disponibilidad y ofrécele los horarios que devuelva. Cuando acepte uno, agenda con agendar_reunion usando esa fecha y hora; para la reunión de presentación del proyecto puedes usar 45 o 60 minutos. Después dile que recibirá la invitación por correo con el enlace de Teams. Nunca agendes sin que la persona haya aceptado un horario ofrecido.',
+  '',
+  'Siempre que cierres la conversación (tras la cotización o tras agendar la reunión), recuérdale a la persona que puede escribirnos al WhatsApp +57 333 278 2483 en horario laboral si tiene cualquier duda.',
   '',
   'Reglas:',
   '- NUNCA des valores, precios, costos ni rangos de inversión. La cotización con valores la prepara y envía el equipo humano por correo. Tu trabajo es el levantamiento de necesidades, no cotizar.',
@@ -304,7 +306,7 @@ const HERRAMIENTAS = [
     function: {
       name: 'ver_disponibilidad',
       description:
-        'Consulta el calendario del dueño y devuelve los espacios libres de 30 minutos para una fecha. Usar cuando la persona quiera reunión o videollamada, antes de proponer hora. La fecha puede ser "hoy", "mañana" o un día de la semana.',
+        'Consulta el calendario del dueño y devuelve los espacios libres de 30 minutos para una fecha. Usar antes de proponer hora de reunión o videollamada. La fecha puede ser "hoy", "mañana", un día de la semana o YYYY-MM-DD (para reuniones más lejanas, como dentro de dos semanas o un mes).',
       parameters: {
         type: 'object',
         properties: {
@@ -337,12 +339,15 @@ const HERRAMIENTAS = [
 async function llamarModelo(mensajesApi) {
   const c = leerConfig();
   const base = String(c.baseUrl).replace(/\/+$/, '');
+  // el modelo necesita la fecha actual (Bogotá) para proponer reuniones de una
+  // semana a dos meses y pasar fechas ISO a las herramientas
+  const hoyBog = new Date(Date.now() - 5 * 3600_000).toISOString().slice(0, 10);
   const resp = await fetch(base + '/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + c.apiKey },
     body: JSON.stringify({
       model: c.model,
-      messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...mensajesApi],
+      messages: [{ role: 'system', content: SYSTEM_PROMPT + '\n\nHoy es ' + hoyBog + ' (fecha de Colombia).' }, ...mensajesApi],
       tools: HERRAMIENTAS,
       max_tokens: 700,
     }),
