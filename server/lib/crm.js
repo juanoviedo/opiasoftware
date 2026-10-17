@@ -16,8 +16,9 @@ const SESION_DIAS = 7;
 const CLIENTE_FIELDS = [
   'nombre', 'sector', 'zona', 'notas', 'numEmpleadosAprox',
   'direccion', 'departamento', 'sitioWeb', 'telefono', 'email', 'archivoOrigen',
+  'contactoPrincipalId', 'estadoSeguimiento', 'ultimaFechaContacto',
 ];
-const NOTA_FIELDS = ['clienteId', 'texto'];
+const NOTA_FIELDS = ['clienteId', 'contactoId', 'texto'];
 const CONTACTO_FIELDS = [
   'clienteId', 'nombres', 'apellidos', 'cargo', 'email', 'email2', 'email3',
   'celular', 'telefono', 'telefono2', 'descripcion', 'sector', 'zona', 'origen',
@@ -32,8 +33,13 @@ const LIMITES = {
   telefono2: 40, descripcion: 400, origen: 120, estado: 60, etapa: 120,
   propietario: 120, leadScoring: 20, ultimoContacto: 40, tags: 200,
   observaciones: 500, idExterno: 64, archivoOrigen: 120,
+  contactoPrincipalId: 20, estadoSeguimiento: 20, ultimaFechaContacto: 40,
 };
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+/* Embudo comercial de seguimiento por empresa. La clave se guarda en el JSON;
+   la etiqueta la pone la interfaz. */
+const ESTADOS_SEGUIMIENTO = ['sin_contactar', 'pendiente_respuesta', 'interesado', 'negociacion', 'no_interesado'];
 
 /* ------------------------------------------------------------- configuración */
 
@@ -204,7 +210,7 @@ function limpiarCampos(data, campos) {
   return out;
 }
 
-function validarCliente(data) {
+function validarCliente(data, clienteId) {
   const c = limpiarCampos(data, CLIENTE_FIELDS);
   const errores = {};
   if (c.nombre.length < 2) errores.nombre = 'Escribe el nombre de la empresa.';
@@ -218,6 +224,18 @@ function validarCliente(data) {
   }
   if (c.email && !EMAIL_RE.test(c.email)) errores.email = 'Ese correo no parece válido.';
   if (c.sitioWeb && !/^https?:\/\//i.test(c.sitioWeb)) c.sitioWeb = 'https://' + c.sitioWeb;
+  if (!c.estadoSeguimiento) c.estadoSeguimiento = 'sin_contactar';
+  else if (!ESTADOS_SEGUIMIENTO.includes(c.estadoSeguimiento)) {
+    errores.estadoSeguimiento = 'Estado de seguimiento no válido.';
+  }
+  if (c.contactoPrincipalId) {
+    const principal = contactos.porId(c.contactoPrincipalId);
+    if (!principal || principal.clienteId !== clienteId) {
+      errores.contactoPrincipalId = 'El contacto principal debe ser un contacto de esta empresa.';
+    }
+  } else {
+    c.contactoPrincipalId = '';
+  }
   return { datos: c, errores };
 }
 
@@ -240,6 +258,41 @@ function validarNota(data) {
   if (!clientes.porId(n.clienteId)) errores.clienteId = 'El cliente no existe.';
   if (n.texto.length < 2) errores.texto = 'Escribe la nota (mínimo 2 caracteres).';
   return { datos: n, errores };
+}
+
+/**
+ * Un clic en el botón de WhatsApp = gestión comercial: pasa a "pendiente de
+ * respuesta", registra la fecha y deja la nota de apertura para que el equipo
+ * complete con lo que responda el cliente.
+ */
+function registrarContactoWhatsapp(clienteId) {
+  const cliente = clientes.porId(clienteId);
+  if (!cliente) return { error: 'Cliente no encontrado.', status: 404 };
+  const suyos = contactos.todas().filter((k) => k.clienteId === clienteId);
+  const marcado = suyos.find((k) => k.id === cliente.contactoPrincipalId);
+  // 7–15 dígitos: el techo internacional descarta fechas u otros basureros
+  // heredados en la columna de celular (ej. "2023-11-29 05:00:00.0000000").
+  const conCelular = (k) => {
+    if (!k) return false;
+    const d = String(k.celular || '').replace(/\D/g, '');
+    return d.length >= 7 && d.length <= 15;
+  };
+  const destino = conCelular(marcado) ? marcado : suyos.find(conCelular);
+  if (!destino) {
+    return { error: 'Ningún contacto de esta empresa tiene celular. Agrégalo en un contacto primero.', status: 422 };
+  }
+  const nombre = [destino.nombres, destino.apellidos].filter(Boolean).join(' ').trim() || 'sin nombre';
+  const ahora = new Date().toISOString();
+  clientes.actualizar(clienteId, { estadoSeguimiento: 'pendiente_respuesta', ultimaFechaContacto: ahora });
+  const nota = notas.agregar({
+    id: siguienteId('n'),
+    clienteId,
+    contactoId: destino.id,
+    texto: `📱 Se inició contacto por WhatsApp con ${nombre} (${destino.celular}). Esperando respuesta…`,
+    creadoEl: ahora,
+    actualizadoEl: ahora,
+  });
+  return { ok: true, nota, contacto: destino };
 }
 
 /* ------------------------------------------------------------------- auth */
@@ -335,6 +388,8 @@ module.exports = {
   notas,
   siguienteId,
   normaliza,
+  ESTADOS_SEGUIMIENTO,
+  registrarContactoWhatsapp,
   validarCliente,
   validarContacto,
   validarNota,

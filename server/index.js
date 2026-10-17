@@ -408,21 +408,43 @@ function listadoClientes(url) {
   const q = crm.normaliza(H.clean(url.searchParams.get('q'), 120));
   const orden = H.clean(url.searchParams.get('orden') || '', 20);
   const dir = H.clean(url.searchParams.get('dir') || '', 4) === 'desc' ? -1 : 1;
+  const seguimiento = H.clean(url.searchParams.get('seguimiento') || '', 20);
   const todas = crm.clientes.todas();
-  const filtradas = q
+  let filtradas = q
     ? todas.filter((c) =>
         [c.nombre, c.sector, c.zona].some((v) => crm.normaliza(v).includes(q))
       )
     : todas;
+  if (seguimiento && crm.ESTADOS_SEGUIMIENTO.includes(seguimiento)) {
+    filtradas = filtradas.filter((c) => (c.estadoSeguimiento || 'sin_contactar') === seguimiento);
+  }
   const conteos = new Map();
+  const porId = new Map();
+  const primeroConCelular = new Map();
+  // 7–15 dígitos: el techo internacional descarta fechas u otros basureros
+  // heredados en la columna de celular (ej. "2023-11-29 05:00:00.0000000").
+  const conCelular = (k) => {
+    if (!k) return false;
+    const d = String(k.celular || '').replace(/\D/g, '');
+    return d.length >= 7 && d.length <= 15;
+  };
   for (const k of crm.contactos.todas()) {
     conteos.set(k.clienteId, (conteos.get(k.clienteId) || 0) + 1);
+    porId.set(k.id, k);
+    if (!primeroConCelular.has(k.clienteId) && conCelular(k)) primeroConCelular.set(k.clienteId, k);
   }
+  // Para el botón de WhatsApp: el contacto principal explícito; si no tiene
+  // celular o no hay, el primero con celular. El servidor decide y lo cuenta
+  // como la gestión hecha a ese contacto.
+  const principalDe = (c) => conCelular(porId.get(c.contactoPrincipalId))
+    ? porId.get(c.contactoPrincipalId)
+    : primeroConCelular.get(c.id) || null;
   const valor = {
     nombre: (c) => String(c.nombre || ''),
     sector: (c) => String(c.sector || ''),
     zona: (c) => String(c.zona || ''),
     empleados: (c) => (c.numEmpleadosAprox == null ? null : Number(c.numEmpleadosAprox)),
+    seguimiento: (c) => c.estadoSeguimiento || 'sin_contactar',
     contactos: (c) => conteos.get(c.id) || 0,
   }[orden];
   filtradas.sort((a, b) => {
@@ -439,10 +461,20 @@ function listadoClientes(url) {
   });
   return {
     total: filtradas.length,
-    clientes: filtradas.slice(0, 500).map((c) => ({
-      ...c,
-      contactos: conteos.get(c.id) || 0,
-    })),
+    clientes: filtradas.slice(0, 500).map((c) => {
+      const principal = principalDe(c);
+      return {
+        ...c,
+        contactos: conteos.get(c.id) || 0,
+        contactoPrincipal: principal
+          ? {
+              id: principal.id,
+              nombre: [principal.nombres, principal.apellidos].filter(Boolean).join(' ') || '—',
+              celular: principal.celular || '',
+            }
+          : null,
+      };
+    }),
   };
 }
 
@@ -547,8 +579,13 @@ async function handleCrmApi(req, res, pathname, url) {
       const suyos = crm.contactos.todas().filter((k) => k.clienteId === id);
       return H.sendJson(res, 200, { ok: true, cliente, contactos: suyos });
     }
+    if (partes[4] === 'whatsapp' && metodo === 'POST') {
+      const r = crm.registrarContactoWhatsapp(id);
+      if (!r.ok) return H.sendJson(res, r.status || 500, { ok: false, error: r.error });
+      return H.sendJson(res, 200, { ok: true, nota: r.nota, contacto: r.contacto });
+    }
     if (metodo === 'PUT') {
-      const { datos, errores } = crm.validarCliente(body);
+      const { datos, errores } = crm.validarCliente(body, id);
       if (Object.keys(errores).length) return H.sendJson(res, 422, { ok: false, errors: errores });
       return H.sendJson(res, 200, { ok: true, cliente: crm.clientes.actualizar(id, datos) });
     }
@@ -582,6 +619,9 @@ async function handleCrmApi(req, res, pathname, url) {
     }
     if (metodo === 'DELETE') {
       crm.contactos.eliminar(id);
+      // que no quede apuntando a un contacto que ya no existe
+      const dueno = crm.clientes.todas().find((c) => c.contactoPrincipalId === id);
+      if (dueno) crm.clientes.actualizar(dueno.id, { contactoPrincipalId: '' });
       return H.sendJson(res, 200, { ok: true });
     }
   }
