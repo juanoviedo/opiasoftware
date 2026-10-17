@@ -821,7 +821,7 @@
         item.className = 'nota-item';
         const encabezado = el('div');
         encabezado.className = 'encabezado';
-        encabezado.appendChild(el('span', fechaBonita(n.creadoEl))).className = 'fecha';
+        encabezado.appendChild(el('span', fechaBonita(n.createdon || n.creadoEl || ''))).className = 'fecha';
         const acciones = el('span');
         const editar = el('button', 'Editar');
         editar.className = 'chico';

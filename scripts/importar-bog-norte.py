@@ -247,12 +247,14 @@ def main(ruta_csv, directorio):
                 cliente['zona'] = ciudad  # ciudad basura del primer paso: se corrige
             if cliente.get('numEmpleadosAprox') in (None, '') and num is not None:
                 cliente['numEmpleadosAprox'] = num
-                cliente['actualizadoEl'] = ahora_utc()
+                cliente['modifiedby'] = 'importacion'
+                cliente['modifiedon'] = ahora_utc()
             for campo, valor in (('direccion', direccion), ('departamento', depto),
                                  ('telefono', telefono), ('email', email)):
                 if valor and not cliente.get(campo):
                     cliente[campo] = valor
-                    cliente['actualizadoEl'] = ahora_utc()
+                    cliente['modifiedby'] = 'importacion'
+                    cliente['modifiedon'] = ahora_utc()
             # la primera versión metía teléfonos/correos/dirección en notas;
             # ya viven en campos propios, se deja solo la marca de origen
             notas = cliente.get('notas') or ''
@@ -274,8 +276,10 @@ def main(ruta_csv, directorio):
                 'telefono': telefono,
                 'email': email,
                 'archivoOrigen': ARCHIVO_ORIGEN,
-                'creadoEl': ahora_utc(),
-                'actualizadoEl': ahora_utc(),
+                'createdby': 'importacion',
+                'createdon': ahora_utc(),
+                'modifiedby': 'importacion',
+                'modifiedon': ahora_utc(),
             }
             clientes.append(cliente)
             por_nombre[clave] = cliente
@@ -304,8 +308,10 @@ def main(ruta_csv, directorio):
                 'ultimoContacto': '', 'tags': '', 'observaciones': '', 'notas': '',
                 'idExterno': id_ext,
                 'archivoOrigen': ARCHIVO_ORIGEN,
-                'creadoEl': ahora,
-                'actualizadoEl': ahora,
+                'createdby': 'importacion',
+                'createdon': ahora,
+                'modifiedby': 'importacion',
+                'modifiedon': ahora,
             })
             k_nuevos += 1
 

@@ -587,8 +587,7 @@ async function handleCrmApi(req, res, pathname, url) {
     if (!id && metodo === 'POST') {
       const { datos, errores } = crm.validarCliente(body);
       if (Object.keys(errores).length) return H.sendJson(res, 422, { ok: false, errors: errores });
-      const ahora = new Date().toISOString();
-      const creado = crm.clientes.agregar({ id: crm.siguienteId('c'), ...datos, creadoEl: ahora, actualizadoEl: ahora });
+      const creado = crm.clientes.agregar({ id: crm.siguienteId('c'), ...datos }, email);
       return H.sendJson(res, 201, { ok: true, cliente: creado });
     }
     const cliente = crm.clientes.porId(id);
@@ -598,14 +597,14 @@ async function handleCrmApi(req, res, pathname, url) {
       return H.sendJson(res, 200, { ok: true, cliente, contactos: suyos });
     }
     if (partes[4] === 'whatsapp' && metodo === 'POST') {
-      const r = crm.registrarContactoWhatsapp(id, H.clean(body.contactoId, 20));
+      const r = crm.registrarContactoWhatsapp(id, H.clean(body.contactoId, 20), email);
       if (!r.ok) return H.sendJson(res, r.status || 500, { ok: false, error: r.error });
       return H.sendJson(res, 200, { ok: true, nota: r.nota, contacto: r.contacto });
     }
     if (metodo === 'PUT') {
       const { datos, errores } = crm.validarCliente(body, id);
       if (Object.keys(errores).length) return H.sendJson(res, 422, { ok: false, errors: errores });
-      return H.sendJson(res, 200, { ok: true, cliente: crm.clientes.actualizar(id, datos) });
+      return H.sendJson(res, 200, { ok: true, cliente: crm.clientes.actualizar(id, datos, email) });
     }
     if (metodo === 'DELETE') {
       crm.clientes.eliminar(id);
@@ -624,9 +623,8 @@ async function handleCrmApi(req, res, pathname, url) {
     if (!id && metodo === 'POST') {
       const { datos, errores } = crm.validarContacto(body);
       if (Object.keys(errores).length) return H.sendJson(res, 422, { ok: false, errors: errores });
-      const ahora = new Date().toISOString();
-      const creado = crm.contactos.agregar({ id: crm.siguienteId('p'), ...datos, creadoEl: ahora, actualizadoEl: ahora });
-      crm.propagarEmpleados(creado.clienteId, body.numEmpleadosAprox);
+      const creado = crm.contactos.agregar({ id: crm.siguienteId('p'), ...datos }, email);
+      crm.propagarEmpleados(creado.clienteId, body.numEmpleadosAprox, email);
       return H.sendJson(res, 201, { ok: true, contacto: creado });
     }
     const contacto = crm.contactos.porId(id);
@@ -634,15 +632,15 @@ async function handleCrmApi(req, res, pathname, url) {
     if (metodo === 'PUT') {
       const { datos, errores } = crm.validarContacto({ ...contacto, ...body });
       if (Object.keys(errores).length) return H.sendJson(res, 422, { ok: false, errors: errores });
-      const guardado = crm.contactos.actualizar(id, datos);
-      crm.propagarEmpleados(guardado.clienteId, body.numEmpleadosAprox);
+      const guardado = crm.contactos.actualizar(id, datos, email);
+      crm.propagarEmpleados(guardado.clienteId, body.numEmpleadosAprox, email);
       return H.sendJson(res, 200, { ok: true, contacto: guardado });
     }
     if (metodo === 'DELETE') {
       crm.contactos.eliminar(id);
       // que no quede apuntando a un contacto que ya no existe
       const dueno = crm.clientes.todas().find((c) => c.contactoPrincipalId === id);
-      if (dueno) crm.clientes.actualizar(dueno.id, { contactoPrincipalId: '' });
+      if (dueno) crm.clientes.actualizar(dueno.id, { contactoPrincipalId: '' }, email);
       return H.sendJson(res, 200, { ok: true });
     }
   }
@@ -652,14 +650,13 @@ async function handleCrmApi(req, res, pathname, url) {
       const clienteId = url.searchParams.get('clienteId') || '';
       if (!crm.clientes.porId(clienteId)) return H.sendJson(res, 404, { ok: false, error: 'Cliente no encontrado.' });
       // más nueva primero: la galería se lee de arriba hacia abajo
-      const suyas = crm.notas.todas().filter((n) => n.clienteId === clienteId).sort((a, b) => b.creadoEl.localeCompare(a.creadoEl));
+      const suyas = crm.notas.todas().filter((n) => n.clienteId === clienteId).sort((a, b) => String(b.createdon || b.creadoEl || '').localeCompare(String(a.createdon || a.creadoEl || '')));
       return H.sendJson(res, 200, { ok: true, notas: suyas.slice(0, 500) });
     }
     if (!id && metodo === 'POST') {
       const { datos, errores } = crm.validarNota(body);
       if (Object.keys(errores).length) return H.sendJson(res, 422, { ok: false, errors: errores });
-      const ahora = new Date().toISOString();
-      const creada = crm.notas.agregar({ id: crm.siguienteId('n'), ...datos, creadoEl: ahora, actualizadoEl: ahora });
+      const creada = crm.notas.agregar({ id: crm.siguienteId('n'), ...datos }, email);
       return H.sendJson(res, 201, { ok: true, nota: creada });
     }
     const nota = crm.notas.porId(id);
@@ -667,7 +664,7 @@ async function handleCrmApi(req, res, pathname, url) {
     if (metodo === 'PUT') {
       const { datos, errores } = crm.validarNota({ ...nota, ...body });
       if (Object.keys(errores).length) return H.sendJson(res, 422, { ok: false, errors: errores });
-      return H.sendJson(res, 200, { ok: true, nota: crm.notas.actualizar(id, datos) });
+      return H.sendJson(res, 200, { ok: true, nota: crm.notas.actualizar(id, datos, email) });
     }
     if (metodo === 'DELETE') {
       crm.notas.eliminar(id);

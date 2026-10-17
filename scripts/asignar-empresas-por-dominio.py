@@ -92,14 +92,17 @@ def main(directorio):
                 'sector': '',
                 'zona': '',
                 'notas': 'Creada automáticamente desde el dominio de un correo',
-                'creadoEl': ahora_utc(),
-                'actualizadoEl': ahora_utc(),
+                'createdby': 'importacion',
+                'createdon': ahora_utc(),
+                'modifiedby': 'importacion',
+                'modifiedon': ahora_utc(),
             }
             clientes.append(cliente)
             por_nombre[clave] = cliente
             nuevos[dominio] = cliente
         k['clienteId'] = cliente['id']
-        k['actualizadoEl'] = ahora_utc()
+        k['modifiedby'] = 'importacion'
+        k['modifiedon'] = ahora_utc()
         movidos += 1
 
     meta['seqCliente'] = seq

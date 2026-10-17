@@ -148,18 +148,27 @@ class Tabla {
     return this.leer().find((f) => f.id === id) || null;
   }
 
-  agregar(fila) {
+  // Sello de auditoría estilo Dynamics: quién y cuándo en cada fila.
+  agregar(fila, actor) {
+    const ahora = new Date().toISOString();
+    const conSello = {
+      ...fila,
+      createdby: actor || fila.createdby || '',
+      createdon: fila.createdon || ahora,
+      modifiedby: actor || '',
+      modifiedon: ahora,
+    };
     const filas = this.leer().slice();
-    filas.push(fila);
+    filas.push(conSello);
     this.guardar(filas);
-    return fila;
+    return conSello;
   }
 
-  actualizar(id, cambios) {
+  actualizar(id, cambios, actor) {
     const filas = this.leer().slice();
     const i = filas.findIndex((f) => f.id === id);
     if (i < 0) return null;
-    filas[i] = { ...filas[i], ...cambios, id, actualizadoEl: new Date().toISOString() };
+    filas[i] = { ...filas[i], ...cambios, id, modifiedby: actor || '', modifiedon: new Date().toISOString() };
     this.guardar(filas);
     return filas[i];
   }
@@ -271,7 +280,7 @@ function validarNota(data) {
  * contactoId es opcional: cuando se gestiona un contacto concreto (lista de
  * contactos) se usa ese; si no, el contacto principal de la empresa.
  */
-function registrarContactoWhatsapp(clienteId, contactoId) {
+function registrarContactoWhatsapp(clienteId, contactoId, actor) {
   const cliente = clientes.porId(clienteId);
   if (!cliente) return { error: 'Cliente no encontrado.', status: 404 };
   const suyos = contactos.todas().filter((k) => k.clienteId === clienteId);
@@ -297,15 +306,13 @@ function registrarContactoWhatsapp(clienteId, contactoId) {
   }
   const nombre = [destino.nombres, destino.apellidos].filter(Boolean).join(' ').trim() || 'sin nombre';
   const ahora = new Date().toISOString();
-  clientes.actualizar(clienteId, { estadoSeguimiento: 'pendiente_respuesta', ultimaFechaContacto: ahora });
+  clientes.actualizar(clienteId, { estadoSeguimiento: 'pendiente_respuesta', ultimaFechaContacto: ahora }, actor);
   const nota = notas.agregar({
     id: siguienteId('n'),
     clienteId,
     contactoId: destino.id,
     texto: `📱 Se inició contacto por WhatsApp con ${nombre} (${destino.celular}). Esperando respuesta…`,
-    creadoEl: ahora,
-    actualizadoEl: ahora,
-  });
+  }, actor);
   return { ok: true, nota, contacto: destino };
 }
 
@@ -313,10 +320,15 @@ function registrarContactoWhatsapp(clienteId, contactoId) {
  * El número de empleados vive en la empresa. Si se edita desde el formulario
  * de un contacto, se propaga a la empresa (y por tanto a todos sus contactos).
  */
-function propagarEmpleados(clienteId, valor) {
+function propagarEmpleados(clienteId, valor, actor) {
   if (valor === undefined) return;
   const crudo = String(valor).trim();
-  clientes.actualizar(clienteId, { numEmpleadosAprox: crudo === '' ? null : Number(crudo) });
+  const nuevo = crudo === '' ? null : Number(crudo);
+  const cliente = clientes.porId(clienteId);
+  // sin cambio real no se toca el sello: editar un contacto sin tocar
+  // empleados no debe dejar "modificado" a la empresa
+  if (!cliente || cliente.numEmpleadosAprox === nuevo) return;
+  clientes.actualizar(clienteId, { numEmpleadosAprox: nuevo }, actor);
 }
 
 /* ------------------------------------------------------------------- auth */

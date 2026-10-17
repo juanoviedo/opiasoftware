@@ -113,8 +113,10 @@ def main():
             'zona': limpio(zona, 120),
             'notas': '',
             'archivoOrigen': FUENTE_DYNAMICS,
-            'creadoEl': t,
-            'actualizadoEl': t,
+            'createdby': 'importacion',
+            'createdon': t,
+            'modifiedby': 'importacion',
+            'modifiedon': t,
         }
         por_nombre[clave] = cli
         clientes.append(cli)
@@ -156,8 +158,10 @@ def main():
             'idExterno': limpio(f.get(COL['guid'], ''), 64),
             'archivoOrigen': FUENTE_DYNAMICS,
             'notas': ' | '.join(extras),
-            'creadoEl': t,
-            'actualizadoEl': t,
+            'createdby': 'importacion',
+            'createdon': t,
+            'modifiedby': 'importacion',
+            'modifiedon': t,
         })
 
     platec = FUENTES / 'Contactos Platec.xlsx'
@@ -187,8 +191,10 @@ def main():
                 'idExterno': '',
                 'archivoOrigen': FUENTE_PLATEC,
                 'notas': ' | '.join(extras),
-                'creadoEl': t,
-                'actualizadoEl': t,
+                'createdby': 'importacion',
+                'createdon': t,
+                'modifiedby': 'importacion',
+                'modifiedon': t,
             })
 
     SALIDA.mkdir(parents=True, exist_ok=True)
