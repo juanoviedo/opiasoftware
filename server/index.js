@@ -509,7 +509,12 @@ function listadoContactos(url) {
         .some((v) => crm.normaliza(v).includes(q))
     );
   }
-  filas = filas.slice(0, 500).map((k) => ({ ...k, empresa: nombreCliente.get(k.clienteId) || '' }));
+  filas = filas.slice(0, 500).map((k) => ({
+    ...k,
+    empresa: nombreCliente.get(k.clienteId) || '',
+    // dato duplicado de la empresa para verlo y filtrarlo sin abrir la ficha
+    numEmpleadosAprox: empleadosPorCliente.get(k.clienteId) ?? null,
+  }));
   return { total: filas.length, contactos: filas };
 }
 
@@ -580,7 +585,7 @@ async function handleCrmApi(req, res, pathname, url) {
       return H.sendJson(res, 200, { ok: true, cliente, contactos: suyos });
     }
     if (partes[4] === 'whatsapp' && metodo === 'POST') {
-      const r = crm.registrarContactoWhatsapp(id);
+      const r = crm.registrarContactoWhatsapp(id, H.clean(body.contactoId, 20));
       if (!r.ok) return H.sendJson(res, r.status || 500, { ok: false, error: r.error });
       return H.sendJson(res, 200, { ok: true, nota: r.nota, contacto: r.contacto });
     }
@@ -608,6 +613,7 @@ async function handleCrmApi(req, res, pathname, url) {
       if (Object.keys(errores).length) return H.sendJson(res, 422, { ok: false, errors: errores });
       const ahora = new Date().toISOString();
       const creado = crm.contactos.agregar({ id: crm.siguienteId('p'), ...datos, creadoEl: ahora, actualizadoEl: ahora });
+      crm.propagarEmpleados(creado.clienteId, body.numEmpleadosAprox);
       return H.sendJson(res, 201, { ok: true, contacto: creado });
     }
     const contacto = crm.contactos.porId(id);
@@ -615,7 +621,9 @@ async function handleCrmApi(req, res, pathname, url) {
     if (metodo === 'PUT') {
       const { datos, errores } = crm.validarContacto({ ...contacto, ...body });
       if (Object.keys(errores).length) return H.sendJson(res, 422, { ok: false, errors: errores });
-      return H.sendJson(res, 200, { ok: true, contacto: crm.contactos.actualizar(id, datos) });
+      const guardado = crm.contactos.actualizar(id, datos);
+      crm.propagarEmpleados(guardado.clienteId, body.numEmpleadosAprox);
+      return H.sendJson(res, 200, { ok: true, contacto: guardado });
     }
     if (metodo === 'DELETE') {
       crm.contactos.eliminar(id);

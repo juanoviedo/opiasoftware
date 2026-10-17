@@ -249,6 +249,10 @@ function validarContacto(data) {
   for (const campo of ['email', 'email2', 'email3']) {
     if (c[campo] && !EMAIL_RE.test(c[campo])) errores[campo] = 'Ese correo no parece válido.';
   }
+  if (data.numEmpleadosAprox !== undefined && String(data.numEmpleadosAprox).trim() !== '') {
+    const n = Number(data.numEmpleadosAprox);
+    if (!Number.isInteger(n) || n < 0 || n > 99999999) errores.numEmpleadosAprox = 'Número de empleados inválido.';
+  }
   return { datos: c, errores };
 }
 
@@ -264,12 +268,13 @@ function validarNota(data) {
  * Un clic en el botón de WhatsApp = gestión comercial: pasa a "pendiente de
  * respuesta", registra la fecha y deja la nota de apertura para que el equipo
  * complete con lo que responda el cliente.
+ * contactoId es opcional: cuando se gestiona un contacto concreto (lista de
+ * contactos) se usa ese; si no, el contacto principal de la empresa.
  */
-function registrarContactoWhatsapp(clienteId) {
+function registrarContactoWhatsapp(clienteId, contactoId) {
   const cliente = clientes.porId(clienteId);
   if (!cliente) return { error: 'Cliente no encontrado.', status: 404 };
   const suyos = contactos.todas().filter((k) => k.clienteId === clienteId);
-  const marcado = suyos.find((k) => k.id === cliente.contactoPrincipalId);
   // 7–15 dígitos: el techo internacional descarta fechas u otros basureros
   // heredados en la columna de celular (ej. "2023-11-29 05:00:00.0000000").
   const conCelular = (k) => {
@@ -277,7 +282,16 @@ function registrarContactoWhatsapp(clienteId) {
     const d = String(k.celular || '').replace(/\D/g, '');
     return d.length >= 7 && d.length <= 15;
   };
-  const destino = conCelular(marcado) ? marcado : suyos.find(conCelular);
+  let destino;
+  if (contactoId) {
+    destino = suyos.find((k) => k.id === contactoId);
+    if (!conCelular(destino)) {
+      return { error: 'Ese contacto no tiene un celular válido.', status: 422 };
+    }
+  } else {
+    const marcado = suyos.find((k) => k.id === cliente.contactoPrincipalId);
+    destino = conCelular(marcado) ? marcado : suyos.find(conCelular);
+  }
   if (!destino) {
     return { error: 'Ningún contacto de esta empresa tiene celular. Agrégalo en un contacto primero.', status: 422 };
   }
@@ -293,6 +307,16 @@ function registrarContactoWhatsapp(clienteId) {
     actualizadoEl: ahora,
   });
   return { ok: true, nota, contacto: destino };
+}
+
+/**
+ * El número de empleados vive en la empresa. Si se edita desde el formulario
+ * de un contacto, se propaga a la empresa (y por tanto a todos sus contactos).
+ */
+function propagarEmpleados(clienteId, valor) {
+  if (valor === undefined) return;
+  const crudo = String(valor).trim();
+  clientes.actualizar(clienteId, { numEmpleadosAprox: crudo === '' ? null : Number(crudo) });
 }
 
 /* ------------------------------------------------------------------- auth */
@@ -390,6 +414,7 @@ module.exports = {
   normaliza,
   ESTADOS_SEGUIMIENTO,
   registrarContactoWhatsapp,
+  propagarEmpleados,
   validarCliente,
   validarContacto,
   validarNota,

@@ -130,8 +130,9 @@
       #tabla-contactos-global td:nth-child(3)::before { content: 'Cargo'; }
       #tabla-contactos-global td:nth-child(4)::before { content: 'Correo'; }
       #tabla-contactos-global td:nth-child(5)::before { content: 'Celular'; }
-      #tabla-contactos-global td:nth-child(6)::before { content: 'Estado'; }
-      #tabla-contactos-global td:nth-child(7)::before { content: 'Archivo origen'; }
+      #tabla-contactos-global td:nth-child(6)::before { content: 'Empleados'; }
+      #tabla-contactos-global td:nth-child(7)::before { content: 'Estado'; }
+      #tabla-contactos-global td:nth-child(8)::before { content: 'Archivo origen'; }
       .tarjeta {
         background: var(--card); border: 1px solid var(--line); border-radius: 14px;
         padding: 18px 20px; margin-bottom: 18px;
@@ -347,7 +348,7 @@
           </div>
           <table>
             <thead>
-              <tr><th>Nombre</th><th>Empresa</th><th>Cargo</th><th>Correo</th><th>Celular</th><th>Estado</th><th>Archivo origen</th></tr>
+              <tr><th>Nombre</th><th>Empresa</th><th>Cargo</th><th>Correo</th><th>Celular</th><th style="text-align:right">Empleados</th><th>Estado</th><th>Archivo origen</th></tr>
             </thead>
             <tbody id="tabla-contactos-global"></tbody>
           </table>
@@ -416,6 +417,7 @@
       ['nombres', 'Nombres'], ['apellidos', 'Apellidos'], ['cargo', 'Cargo'],
       ['email', 'Correo principal'], ['email2', 'Correo 2'], ['email3', 'Correo 3'],
       ['celular', 'Celular'], ['telefono', 'Teléfono'], ['telefono2', 'Teléfono 2'],
+      ['numEmpleadosAprox', 'Empleados de la empresa'],
       ['estado', 'Estado'], ['etapa', 'Etapa'], ['propietario', 'Propietario'],
       ['sector', 'Sector'], ['zona', 'Zona'], ['origen', 'Origen'],
       ['leadScoring', 'Lead scoring'], ['ultimoContacto', 'Último contacto (AAAA-MM-DD)'],
@@ -481,21 +483,24 @@
 
     // Un clic en el ícono = gestión comercial: abre WhatsApp (en el gesto del
     // clic, si no el navegador lo bloquea) y registra estado, fecha y nota.
-    async function gestionarWhatsApp(cliente) {
-      const contacto = cliente.contactoPrincipal;
+    // contacto puede ser el principal de la empresa o uno concreto de la lista.
+    async function gestionarWhatsApp(clienteId, contacto) {
       if (!contacto || !contacto.celular) {
-        alert('Esta empresa no tiene un contacto con celular. Agrégalo en un contacto y vuelve a intentar.');
+        alert('Este contacto no tiene celular. Agrégalo en el contacto y vuelve a intentar.');
         return;
       }
       window.open('https://wa.me/' + waNumero(contacto.celular), '_blank', 'noopener');
       try {
-        const resp = await api('/api/crm/clientes/' + cliente.id + '/whatsapp', { method: 'POST', body: '{}' });
+        const resp = await api('/api/crm/clientes/' + clienteId + '/whatsapp', {
+          method: 'POST',
+          body: JSON.stringify({ contactoId: contacto.id }),
+        });
         if (!resp.ok) alert(resp.error || 'No se pudo registrar la gestión en el CRM.');
       } catch {
         // la sesión pudo expirar; el chat de WhatsApp ya quedó abierto
       }
       if (estado.vista === 'clientes') cargarClientes();
-      else if (estado.clienteActual && estado.clienteActual.id === cliente.id) abrirCliente(cliente.id);
+      else if (estado.vista === 'cliente' && estado.clienteActual && estado.clienteActual.id === clienteId) abrirCliente(clienteId);
     }
 
     function celdaEmail(email) {
@@ -632,7 +637,7 @@
         if (c.contactoPrincipal) {
           const cp = c.contactoPrincipal;
           const wsp = botonWhatsapp('WhatsApp a ' + cp.nombre);
-          wsp.addEventListener('click', (ev) => { ev.stopPropagation(); gestionarWhatsApp(c); });
+          wsp.addEventListener('click', (ev) => { ev.stopPropagation(); gestionarWhatsApp(c.id, cp); });
           tdContacto.appendChild(wsp);
           tdContacto.appendChild(document.createTextNode(' '));
           tdContacto.appendChild(el('b', cp.nombre));
@@ -691,7 +696,7 @@
       if (principal) {
         const nombreP = [principal.nombres, principal.apellidos].filter(Boolean).join(' ') || '—';
         const wsp = botonWhatsapp('WhatsApp a ' + nombreP);
-        wsp.addEventListener('click', () => gestionarWhatsApp({ ...cliente, contactoPrincipal: { id: principal.id, nombre: nombreP, celular: principal.celular } }));
+        wsp.addEventListener('click', () => gestionarWhatsApp(cliente.id, principal));
         cp.appendChild(wsp);
         cp.appendChild(document.createTextNode(' '));
         cp.appendChild(el('b', nombreP));
@@ -753,7 +758,15 @@
         tr.appendChild(tdNombre);
         tr.appendChild(el('td', k.cargo));
         tr.appendChild(celdaEmail(k.email));
-        tr.appendChild(el('td', k.celular));
+        const tdCelular = el('td');
+        if (k.celular) {
+          const wsp = botonWhatsapp('WhatsApp a ' + ([k.nombres, k.apellidos].filter(Boolean).join(' ') || 'este contacto'));
+          wsp.addEventListener('click', (ev) => { ev.stopPropagation(); gestionarWhatsApp(cliente.id, k); });
+          tdCelular.appendChild(wsp);
+          tdCelular.appendChild(document.createTextNode(' '));
+        }
+        tdCelular.appendChild(el('span', k.celular || ''));
+        tr.appendChild(tdCelular);
         const tdEstado = el('td');
         tdEstado.appendChild(estadoBadge(k.estado));
         tr.appendChild(tdEstado);
@@ -861,7 +874,18 @@
         tr.appendChild(el('td', k.empresa));
         tr.appendChild(el('td', k.cargo));
         tr.appendChild(celdaEmail(k.email));
-        tr.appendChild(el('td', k.celular));
+        const tdCelular = el('td');
+        if (k.celular) {
+          const wsp = botonWhatsapp('WhatsApp a ' + ([k.nombres, k.apellidos].filter(Boolean).join(' ') || 'este contacto'));
+          wsp.addEventListener('click', (ev) => { ev.stopPropagation(); gestionarWhatsApp(k.clienteId, k); });
+          tdCelular.appendChild(wsp);
+          tdCelular.appendChild(document.createTextNode(' '));
+        }
+        tdCelular.appendChild(el('span', k.celular || ''));
+        tr.appendChild(tdCelular);
+        const emp = el('td', k.numEmpleadosAprox != null ? String(k.numEmpleadosAprox) : '');
+        emp.style.textAlign = 'right';
+        tr.appendChild(emp);
         const tdEstado = el('td');
         tdEstado.appendChild(estadoBadge(k.estado));
         tr.appendChild(tdEstado);
@@ -1001,7 +1025,12 @@
     }
 
     function formularioContacto(contacto) {
-      const valores = contacto || { clienteId: estado.clienteActual.id };
+      const valores = contacto ? { ...contacto } : { clienteId: estado.clienteActual.id };
+      // los empleados viven en la empresa; el formulario los muestra y al
+      // guardar se propagan a la empresa (y a todos sus contactos)
+      if (valores.numEmpleadosAprox == null && estado.clienteActual) {
+        valores.numEmpleadosAprox = estado.clienteActual.numEmpleadosAprox;
+      }
       const { form, refs } = formularioGenerico(CAMPOS_CONTACTO, valores);
       for (const largo of ['descripcion', 'observaciones', 'notas']) {
         const div = el('div');
