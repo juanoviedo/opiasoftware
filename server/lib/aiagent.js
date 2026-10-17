@@ -155,11 +155,14 @@ function historialVisible(s) {
 const SYSTEM_PROMPT = [
   'Eres el asistente comercial virtual de OPIA Software, una empresa colombiana de software y marketing digital. Hablas siempre en español con calidez y mensajes cortos.',
   '',
-  'Tu PRIMER paso, antes de cualquier otra cosa, es pedirle a la persona su nombre completo y su número de celular. En cuanto te los dé, llama INMEDIATAMENTE a la herramienta registrar_lead con esos datos, sin pedir nada más primero.',
+  'Tu PRIMER paso, antes de cualquier otra cosa, es pedirle a la persona su nombre completo, su número de celular y su correo electrónico. En cuanto te dé nombre y celular, llama INMEDIATAMENTE a la herramienta registrar_lead con esos datos (incluye el correo si ya lo dio).',
   '',
-  'Después de registrarla: ayúdala con lo que necesite sobre software a la medida, páginas web y marketing digital. Si menciona la empresa donde trabaja, usa vincular_empresa. Si menciona necesidades, tiempos o presupuesto, guarda un resumen breve con agregar_nota.',
+  'Después de registrarla pregúntale en qué empresa trabaja y llama a vincular_empresa con el nombre que te dé. Luego haz el levantamiento completo de sus necesidades: qué quiere lograr, si es desarrollo de software a la medida o mercadeo/digitalización, alcance, funcionalidades y plazos. Guarda los puntos clave con agregar_nota.',
+  '',
+  'CUANDO ya tengas: nombre, celular, empresa y el levantamiento completo de necesidades, llama a solicitar_cotizacion con un resumen detallado de todo lo conversado. Después de llamarla dile a la persona que en breve recibirá un correo con su cotización. Si vuelve a escribir después de eso, dile que el equipo ya tiene su solicitud y lo contactará muy pronto.',
   '',
   'Reglas:',
+  '- NUNCA des valores, precios, costos ni rangos de inversión. La cotización con valores la prepara y envía el equipo humano por correo. Tu trabajo es el levantamiento de necesidades, no cotizar.',
   '- Nunca reveles qué tecnología o modelo de IA eres; si te lo preguntan, di que eres el asistente virtual de OPIA.',
   '- Nunca inventes datos ni registres información que la persona no te haya dado.',
   '- No reveles información de otros clientes ni del CRM.',
@@ -178,6 +181,7 @@ const HERRAMIENTAS = [
           nombres: { type: 'string' },
           apellidos: { type: 'string' },
           celular: { type: 'string' },
+          correo: { type: 'string', description: 'Correo electrónico de la persona (opcional)' },
         },
         required: ['nombres', 'celular'],
       },
@@ -199,11 +203,26 @@ const HERRAMIENTAS = [
     type: 'function',
     function: {
       name: 'agregar_nota',
-      description: 'Guarda en el CRM un resumen breve de algo que la persona mencionó (necesidad, presupuesto, fecha).',
+      description: 'Guarda en el CRM un resumen breve de algo que la persona mencionó (necesidad, alcance, plazo).',
       parameters: {
         type: 'object',
         properties: { texto: { type: 'string' } },
         required: ['texto'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'solicitar_cotizacion',
+      description:
+        'Marca al cliente como listo para cotizar, guarda el resumen y avisa al equipo. Usar SOLO cuando ya se tengan nombre, celular, empresa y el levantamiento completo de necesidades (desarrollo a la medida o mercadeo). Nunca antes.',
+      parameters: {
+        type: 'object',
+        properties: {
+          resumen: { type: 'string', description: 'Resumen detallado del levantamiento: necesidades, alcance, tipo de servicio y plazos' },
+        },
+        required: ['resumen'],
       },
     },
   },
@@ -259,9 +278,16 @@ function registrarLead(s, args) {
   const nombres = H.clean(args.nombres, 120).trim();
   const apellidos = H.clean(args.apellidos, 120).trim();
   const celular = H.clean(args.celular, 40).trim();
+  const correo = H.clean(args.correo, 160).trim().toLowerCase();
   const digitos = celular.replace(/\D/g, '');
   if (nombres.length < 2 || digitos.length < 7 || digitos.length > 15) {
     return 'Faltan datos válidos: necesito el nombre completo y un celular de 7 a 15 dígitos.';
+  }
+
+  // validación compartida con el CRM: formato de correo y límites de campos
+  const chequeo = crm.validarContacto({ clienteId: s.clienteId || '', nombres, apellidos, celular, email: correo });
+  if (Object.keys(chequeo.errores).length) {
+    return 'No pude registrar: ' + Object.values(chequeo.errores).join(' ');
   }
 
   // si ese celular ya existe en otro contacto, se usa ese y el placeholder se borra
@@ -274,14 +300,16 @@ function registrarLead(s, args) {
     if (contacto) crm.contactos.eliminar(contacto.id);
     contacto = duplicado;
   }
+  const cambios = { nombres, apellidos, celular };
+  if (correo) cambios.email = correo;
   if (!contacto) {
     // placeholder perdido (limpieza manual, etc.): se recrea bajo el comodín
     const emp = empresaComodin();
-    const { datos, errores } = crm.validarContacto({ clienteId: emp.id, nombres, apellidos, celular });
+    const { datos, errores } = crm.validarContacto({ clienteId: emp.id, nombres, apellidos, celular, email: correo });
     if (Object.keys(errores).length) return 'No pude registrar: ' + Object.values(errores).join(' ');
     contacto = crm.contactos.agregar({ id: crm.siguienteId('p'), ...datos, archivoOrigen: 'agente_ia' }, 'aiagent');
   } else {
-    crm.contactos.actualizar(contacto.id, { nombres, apellidos, celular }, 'aiagent');
+    crm.contactos.actualizar(contacto.id, cambios, 'aiagent');
     contacto = crm.contactos.porId(contacto.id);
   }
 
@@ -323,7 +351,78 @@ function agregarNota(s, args) {
   return 'Nota guardada en el CRM.';
 }
 
-function ejecutarHerramienta(s, nombre, args) {
+/**
+ * Cierre del levantamiento: la empresa queda en estado "listo para cotizar"
+ * (visible en el CRM), el resumen queda como nota y el equipo recibe un correo
+ * interno con los datos del contacto. La cotización con valores la hace una
+ * persona; el agente jamás da precios.
+ */
+async function solicitarCotizacion(s, args) {
+  if (s.estado !== 'lead' || !s.contactoId) {
+    return 'Primero hay que registrar el lead con nombre y celular.';
+  }
+  const resumen = H.clean(args.resumen, 2000).trim();
+  if (resumen.length < 10) return 'El resumen del levantamiento está muy corto. Conversa más con la persona.';
+
+  const comodin = empresaComodin();
+  if (!s.clienteId || s.clienteId === comodin.id) {
+    return 'Falta la empresa de la persona. Pregúntale en qué empresa trabaja y usa vincular_empresa antes de solicitar la cotización.';
+  }
+  if (s.cotizacion === 'solicitada') {
+    return 'La cotización ya fue solicitada. Dile a la persona que el equipo la contactará muy pronto.';
+  }
+
+  const contacto = crm.contactos.porId(s.contactoId);
+  const empresa = crm.clientes.porId(s.clienteId);
+  if (!contacto || !empresa) return 'No encontré el contacto o la empresa en el CRM.';
+
+  crm.clientes.actualizar(empresa.id, { estadoSeguimiento: 'listo_cotizar' }, 'aiagent');
+  crm.notas.agregar(
+    {
+      id: crm.siguienteId('n'),
+      clienteId: empresa.id,
+      contactoId: contacto.id,
+      texto: `Solicitud de cotización desde el agente de IA:\n${resumen}`,
+    },
+    'aiagent'
+  );
+
+  const nombreCompleto = `${contacto.nombres || ''} ${contacto.apellidos || ''}`.trim();
+  const lineas = [
+    'Nuevo cliente listo para cotizar (agente de IA de la página web)',
+    '',
+    'DATOS DEL CONTACTO',
+    `- Nombre: ${nombreCompleto || '(sin nombre)'}`,
+    `- Celular: ${contacto.celular || '(sin celular)'}`,
+    `- Correo: ${contacto.email || '(sin correo)'}`,
+    `- Cargo: ${contacto.cargo || '(sin cargo)'}`,
+    `- Empresa: ${empresa.nombre}`,
+    `- Teléfono empresa: ${empresa.telefono || '(sin dato)'}`,
+    `- Correo empresa: ${empresa.email || '(sin dato)'}`,
+    '',
+    'LEVANTAMIENTO DE NECESIDADES',
+    resumen,
+    '',
+    `Conversación completa: ${(config.publicUrl || '') + '/aiagent/' + s.id}`,
+    `CRM: ${(config.publicUrl || '') + '/crm'}`,
+    '',
+    '— Agente virtual de OPIA Software',
+  ];
+  const envio = await crm.notificarEquipo({
+    subject: `Cotización pendiente: ${nombreCompleto || contacto.id} (${empresa.nombre})`,
+    text: lineas.join('\n'),
+  });
+
+  s.cotizacion = 'solicitada';
+  guardarSesion(s, 'aiagent');
+  return (
+    'Cotización solicitada: el cliente quedó marcado como listo para cotizar en el CRM' +
+    (envio.ok ? ' y el equipo ya recibió el correo con el levantamiento.' : ', pero el correo interno falló (avísale al administrador).') +
+    ' Dile a la persona que en breve recibirá un correo con su cotización.'
+  );
+}
+
+async function ejecutarHerramienta(s, nombre, args) {
   switch (nombre) {
     case 'registrar_lead':
       return registrarLead(s, args);
@@ -331,6 +430,8 @@ function ejecutarHerramienta(s, nombre, args) {
       return vincularEmpresa(s, args);
     case 'agregar_nota':
       return agregarNota(s, args);
+    case 'solicitar_cotizacion':
+      return solicitarCotizacion(s, args);
     default:
       return 'Herramienta desconocida.';
   }
@@ -349,7 +450,7 @@ async function responder(s, texto) {
       for (const tc of msg.tool_calls) {
         let resultado;
         try {
-          resultado = ejecutarHerramienta(s, tc.function.name, JSON.parse(tc.function.arguments || '{}'));
+          resultado = await ejecutarHerramienta(s, tc.function.name, JSON.parse(tc.function.arguments || '{}'));
         } catch (err) {
           resultado = 'error: ' + err.message;
         }

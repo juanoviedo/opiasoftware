@@ -39,7 +39,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 /* Embudo comercial de seguimiento por empresa. La clave se guarda en el JSON;
    la etiqueta la pone la interfaz. */
-const ESTADOS_SEGUIMIENTO = ['sin_contactar', 'pendiente_respuesta', 'interesado', 'negociacion', 'no_interesado'];
+const ESTADOS_SEGUIMIENTO = ['sin_contactar', 'pendiente_respuesta', 'interesado', 'negociacion', 'no_interesado', 'listo_cotizar'];
 
 /* ------------------------------------------------------------- configuración */
 
@@ -376,6 +376,30 @@ function solicitarAcceso(emailCrudo) {
   });
 }
 
+/** Correo interno a todos los autorizados del CRM (notificaciones del agente de IA). */
+function notificarEquipo({ subject, text }) {
+  if (!emailConfigurado()) return Promise.resolve({ ok: false, error: 'SMTP no configurado' });
+  const destinatarios = correosPermitidos();
+  if (!destinatarios.length) return Promise.resolve({ ok: false, error: 'sin correos autorizados' });
+  const c = leerCrmConfig();
+  return sendMail({
+    host: c.smtp.host,
+    port: Number(c.smtp.port) || (c.smtp.secure === false ? 587 : 465),
+    secure: c.smtp.secure !== false,
+    user: c.smtp.user,
+    pass: c.smtp.pass,
+    from: c.from,
+    to: destinatarios.join(', '),
+    subject,
+    text,
+  })
+    .then(() => ({ ok: true }))
+    .catch((err) => {
+      console.error('[crm] falló el correo interno:', err.message);
+      return { ok: false, error: err.message };
+    });
+}
+
 function verificarAcceso(token) {
   const payload = auth.unsign(token);
   if (!payload) return { ok: false, error: 'El enlace es inválido o venció. Pide uno nuevo.' };
@@ -433,6 +457,7 @@ module.exports = {
   validarNota,
   solicitarAcceso,
   verificarAcceso,
+  notificarEquipo,
   crearCookieSesion,
   borrarCookieSesion,
   sesionActual,

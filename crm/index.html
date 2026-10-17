@@ -155,6 +155,7 @@
       .estado.seg-interesado { background: rgba(46, 204, 143, 0.18); color: #7fe6bb; }
       .estado.seg-negociacion { background: rgba(21, 184, 244, 0.18); color: #7fdcff; }
       .estado.seg-no_interesado { background: rgba(255, 107, 107, 0.18); color: #ff9d9d; }
+      .estado.seg-listo_cotizar { background: rgba(176, 107, 255, 0.2); color: #d8b3ff; }
 
       /* botón redondo de WhatsApp: abre el chat y registra la gestión */
       .btn-wsp {
@@ -272,6 +273,7 @@
               <option value="interesado">Interesado</option>
               <option value="negociacion">En negociación</option>
               <option value="no_interesado">No interesado</option>
+              <option value="listo_cotizar">Listo para cotizar</option>
             </select>
             <select id="orden-clientes" aria-label="Ordenar la lista de empresas">
               <option value="">Ordenar por…</option>
@@ -454,6 +456,7 @@
       interesado: 'Interesado',
       negociacion: 'En negociación',
       no_interesado: 'No interesado',
+      listo_cotizar: 'Listo para cotizar',
     };
 
     function etiquetaSeg(clave) {
