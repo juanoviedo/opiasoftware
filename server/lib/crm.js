@@ -15,14 +15,14 @@ const SESION_DIAS = 7;
 
 const CLIENTE_FIELDS = [
   'nombre', 'sector', 'zona', 'notas', 'numEmpleadosAprox',
-  'direccion', 'departamento', 'sitioWeb', 'telefono', 'email',
+  'direccion', 'departamento', 'sitioWeb', 'telefono', 'email', 'archivoOrigen',
 ];
 const NOTA_FIELDS = ['clienteId', 'texto'];
 const CONTACTO_FIELDS = [
   'clienteId', 'nombres', 'apellidos', 'cargo', 'email', 'email2', 'email3',
   'celular', 'telefono', 'telefono2', 'descripcion', 'sector', 'zona', 'origen',
   'estado', 'etapa', 'propietario', 'leadScoring', 'ultimoContacto', 'tags',
-  'observaciones', 'notas', 'idExterno',
+  'observaciones', 'notas', 'idExterno', 'archivoOrigen',
 ];
 const LIMITES = {
   nombre: 200, sector: 120, zona: 120, notas: 1000, texto: 2000, nombres: 120, apellidos: 120,
@@ -31,7 +31,7 @@ const LIMITES = {
   cargo: 160, email: 160, email2: 160, email3: 160, celular: 40, telefono: 40,
   telefono2: 40, descripcion: 400, origen: 120, estado: 60, etapa: 120,
   propietario: 120, leadScoring: 20, ultimoContacto: 40, tags: 200,
-  observaciones: 500, idExterno: 64,
+  observaciones: 500, idExterno: 64, archivoOrigen: 120,
 };
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 

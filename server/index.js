@@ -450,8 +450,27 @@ function listadoContactos(url) {
   const q = crm.normaliza(H.clean(url.searchParams.get('q'), 120));
   const clienteId = H.clean(url.searchParams.get('clienteId'), 20);
   const nombreCliente = new Map(crm.clientes.todas().map((c) => [c.id, c.nombre]));
+  const minRaw = url.searchParams.get('empleadosMin');
+  const maxRaw = url.searchParams.get('empleadosMax');
+  const soloSinDato = url.searchParams.get('empleadosVacios') === '1';
+  const empleadosMin = minRaw ? Number(minRaw) : NaN;
+  const empleadosMax = maxRaw ? Number(maxRaw) : NaN;
+  const empleadosPorCliente = new Map(
+    crm.clientes.todas().map((c) => [c.id, c.numEmpleadosAprox == null ? null : Number(c.numEmpleadosAprox)])
+  );
   let filas = crm.contactos.todas();
   if (clienteId) filas = filas.filter((k) => k.clienteId === clienteId);
+  if (soloSinDato) {
+    filas = filas.filter((k) => empleadosPorCliente.get(k.clienteId) == null);
+  } else if (Number.isFinite(empleadosMin) || Number.isFinite(empleadosMax)) {
+    filas = filas.filter((k) => {
+      const n = empleadosPorCliente.get(k.clienteId);
+      if (n == null) return false; // sin dato de empleados no entra al filtro
+      if (Number.isFinite(empleadosMin) && n < empleadosMin) return false;
+      if (Number.isFinite(empleadosMax) && n > empleadosMax) return false;
+      return true;
+    });
+  }
   if (q) {
     filas = filas.filter((k) =>
       [k.nombres, k.apellidos, k.email, k.cargo, nombreCliente.get(k.clienteId)]

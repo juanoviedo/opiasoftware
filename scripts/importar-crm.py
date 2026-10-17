@@ -20,6 +20,8 @@ NS = {'m': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
 RAIZ = Path(__file__).resolve().parent.parent
 FUENTES = RAIZ / 'DatosInicialesCRM' / 'DatosClientesPT'
 SALIDA = RAIZ / 'server' / 'data' / 'crm'
+FUENTE_DYNAMICS = 'contactoprospectosProcesado.xlsx'
+FUENTE_PLATEC = 'Contactos Platec.xlsx'
 
 # columnas del export Dynamics (índice según encabezado del archivo)
 COL = {
@@ -110,6 +112,7 @@ def main():
             'sector': limpio(sector, 120),
             'zona': limpio(zona, 120),
             'notas': '',
+            'archivoOrigen': FUENTE_DYNAMICS,
             'creadoEl': t,
             'actualizadoEl': t,
         }
@@ -151,6 +154,7 @@ def main():
             'tags': limpio(f.get(COL['tags'], ''), 200),
             'observaciones': limpio(f.get(COL['observaciones'], ''), 500),
             'idExterno': limpio(f.get(COL['guid'], ''), 64),
+            'archivoOrigen': FUENTE_DYNAMICS,
             'notas': ' | '.join(extras),
             'creadoEl': t,
             'actualizadoEl': t,
@@ -181,6 +185,7 @@ def main():
                 'origen': '', 'estado': '', 'etapa': '', 'propietario': '',
                 'leadScoring': '', 'ultimoContacto': '', 'tags': '', 'observaciones': '',
                 'idExterno': '',
+                'archivoOrigen': FUENTE_PLATEC,
                 'notas': ' | '.join(extras),
                 'creadoEl': t,
                 'actualizadoEl': t,

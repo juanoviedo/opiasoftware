@@ -46,6 +46,7 @@ ROLES_CONTACTO = [
 ]
 NOMBRES_BASURA = {'N/A', 'NA', '0', '-', '--', 'NINGUNA', 'NINGUNO', 'NO', 'X', 'XXX'}
 MARCA_NOTA = 'Importado de la base antigua (bog_norte)'
+ARCHIVO_ORIGEN = 'empresas_bognorte.csv'
 
 # municipio (sin tildes, en mayúsculas) -> departamento, para el top de ciudades
 # del archivo; lo que no se reconozca queda sin departamento.
@@ -272,6 +273,7 @@ def main(ruta_csv, directorio):
                 'sitioWeb': '',
                 'telefono': telefono,
                 'email': email,
+                'archivoOrigen': ARCHIVO_ORIGEN,
                 'creadoEl': ahora_utc(),
                 'actualizadoEl': ahora_utc(),
             }
@@ -301,6 +303,7 @@ def main(ruta_csv, directorio):
                 'estado': '', 'etapa': '', 'propietario': '', 'leadScoring': '',
                 'ultimoContacto': '', 'tags': '', 'observaciones': '', 'notas': '',
                 'idExterno': id_ext,
+                'archivoOrigen': ARCHIVO_ORIGEN,
                 'creadoEl': ahora,
                 'actualizadoEl': ahora,
             })

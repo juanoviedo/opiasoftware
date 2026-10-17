@@ -128,6 +128,7 @@
       #tabla-contactos-global td:nth-child(4)::before { content: 'Correo'; }
       #tabla-contactos-global td:nth-child(5)::before { content: 'Celular'; }
       #tabla-contactos-global td:nth-child(6)::before { content: 'Estado'; }
+      #tabla-contactos-global td:nth-child(7)::before { content: 'Archivo origen'; }
       .tarjeta {
         background: var(--card); border: 1px solid var(--line); border-radius: 14px;
         padding: 18px 20px; margin-bottom: 18px;
@@ -302,11 +303,20 @@
         <section id="panel-contactos" hidden>
           <div class="herramientas">
             <input type="search" id="buscar-contacto" placeholder="Buscar contactos por nombre, correo, cargo o empresa…" />
+            <select id="filtro-empleados" aria-label="Filtrar contactos por empleados de la empresa">
+              <option value="">Empleados de la empresa: todos</option>
+              <option value="1-10">1 a 10 empleados</option>
+              <option value="11-50">11 a 50</option>
+              <option value="51-200">51 a 200</option>
+              <option value="201-1000">201 a 1.000</option>
+              <option value="1001-">Más de 1.000</option>
+              <option value="-0">Sin dato de empleados</option>
+            </select>
             <span class="contador" id="contador-contactos"></span>
           </div>
           <table>
             <thead>
-              <tr><th>Nombre</th><th>Empresa</th><th>Cargo</th><th>Correo</th><th>Celular</th><th>Estado</th></tr>
+              <tr><th>Nombre</th><th>Empresa</th><th>Cargo</th><th>Correo</th><th>Celular</th><th>Estado</th><th>Archivo origen</th></tr>
             </thead>
             <tbody id="tabla-contactos-global"></tbody>
           </table>
@@ -378,7 +388,7 @@
       ['estado', 'Estado'], ['etapa', 'Etapa'], ['propietario', 'Propietario'],
       ['sector', 'Sector'], ['zona', 'Zona'], ['origen', 'Origen'],
       ['leadScoring', 'Lead scoring'], ['ultimoContacto', 'Último contacto (AAAA-MM-DD)'],
-      ['tags', 'Tags'], ['idExterno', 'ID externo'],
+      ['tags', 'Tags'], ['idExterno', 'ID externo'], ['archivoOrigen', 'Archivo origen'],
     ];
     const TEXTOS_LARGOS = ['notas', 'observaciones', 'descripcion'];
 
@@ -658,7 +668,18 @@
     /* ---------------- contactos globales ---------------- */
     async function cargarContactosGlobales() {
       const q = encodeURIComponent($('#buscar-contacto').value.trim());
-      const { contactos, total } = await api('/api/crm/contactos?q=' + q);
+      let ruta = '/api/crm/contactos?q=' + q;
+      const rango = $('#filtro-empleados').value;
+      if (rango) {
+        if (rango === '-0') {
+          ruta += '&empleadosVacios=1';
+        } else {
+          const [min, max] = rango.split('-');
+          if (min) ruta += '&empleadosMin=' + min;
+          if (max) ruta += '&empleadosMax=' + max;
+        }
+      }
+      const { contactos, total } = await api(ruta);
       $('#contador-contactos').textContent = total + (total === 1 ? ' contacto' : ' contactos');
       const tabla = $('#tabla-contactos-global');
       tabla.textContent = '';
@@ -673,10 +694,11 @@
         const tdEstado = el('td');
         tdEstado.appendChild(estadoBadge(k.estado));
         tr.appendChild(tdEstado);
+        tr.appendChild(el('td', k.archivoOrigen || ''));
         tr.addEventListener('click', () => abrirCliente(k.clienteId));
         tabla.appendChild(tr);
       }
-      if (!contactos.length) tabla.appendChild(el('tr')).appendChild(el('td', 'Sin resultados. Escribe para buscar.'));
+      if (!contactos.length) tabla.appendChild(el('tr')).appendChild(el('td', 'Sin resultados. Cambia la búsqueda o el filtro.'));
     }
 
     /* ---------------- modal y formularios ---------------- */
@@ -755,7 +777,7 @@
         ['nombre', 'Empresa *'], ['sector', 'Sector'], ['zona', 'Ciudad / Zona'],
         ['numEmpleadosAprox', 'Empleados aprox.'], ['direccion', 'Dirección'],
         ['departamento', 'Departamento'], ['telefono', 'Teléfono'], ['email', 'Correo de la empresa'],
-        ['sitioWeb', 'Página web'],
+        ['sitioWeb', 'Página web'], ['archivoOrigen', 'Archivo origen'],
       ];
       const { form, refs } = formularioGenerico(campos, valores);
       const divNotas = el('div');
@@ -904,6 +926,7 @@
       clearTimeout(busquedaContactosTimer);
       busquedaContactosTimer = setTimeout(cargarContactosGlobales, 250);
     });
+    $('#filtro-empleados').addEventListener('change', cargarContactosGlobales);
 
     iniciar();
     </script>
