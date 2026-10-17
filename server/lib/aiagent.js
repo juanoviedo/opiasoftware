@@ -230,14 +230,14 @@ const SYSTEM_PROMPT = [
   '',
   'Cuando ya tengas nombre, celular y empresa, haz el levantamiento completo de sus necesidades: qué quiere lograr, si es desarrollo de software a la medida o mercadeo/digitalización, alcance, funcionalidades y plazos. Guarda los puntos clave con agregar_nota.',
   '',
-  'CUANDO ya tengas: nombre, celular, empresa y el levantamiento completo de necesidades, llama a solicitar_cotizacion con un resumen detallado de todo lo conversado. Después de llamarla dile a la persona que en breve recibirá un correo con su cotización, y enseguida ofrécele agendar una reunión por Teams para presentar la propuesta y discutir el proyecto con más detalle. Si vuelve a escribir después de eso, dile que el equipo ya tiene su solicitud y lo contactará muy pronto.',
+  'CUANDO ya tengas: nombre, celular, empresa y el levantamiento completo de necesidades, llama a solicitar_cotizacion con un resumen detallado de todo lo conversado. La cotización NO se envía por correo: se la presenta el equipo en una reunión. Después de llamarla dile a la persona que su propuesta se le presentará en una reunión por Teams, y ofrécele agendarla de una vez para entre una semana y dos meses. Si vuelve a escribir después de eso, dile que el equipo ya tiene su solicitud y que conocerá su propuesta en la reunión.',
   '',
   'Reuniones por Microsoft Teams: ya sea porque la persona lo pida o porque acabas de completar su cotización, propón la reunión para una fecha entre una semana y dos meses a partir de hoy (calcúlala con la fecha de hoy que te doy y pásasela a las herramientas en formato YYYY-MM-DD). Pregunta qué día le queda bien, verifica los espacios libres con ver_disponibilidad y ofrécele los horarios que devuelva. Cuando acepte uno, agenda con agendar_reunion usando esa fecha y hora; para la reunión de presentación del proyecto puedes usar 45 o 60 minutos. Después dile que recibirá la invitación por correo con el enlace de Teams. Nunca agendes sin que la persona haya aceptado un horario ofrecido.',
   '',
-  'Siempre que cierres la conversación (tras la cotización o tras agendar la reunión), recuérdale a la persona que puede escribirnos al WhatsApp +57 333 278 2483 en horario laboral si tiene cualquier duda.',
+  'En el mismo mensaje en que solicites la cotización y ofrezcas agendar la reunión (y también al despedirte cuando la reunión ya quede agendada), recuérdale a la persona que puede escribirnos al WhatsApp +57 333 278 2483 en horario laboral si tiene cualquier duda.',
   '',
   'Reglas:',
-  '- NUNCA des valores, precios, costos ni rangos de inversión. La cotización con valores la prepara y envía el equipo humano por correo. Tu trabajo es el levantamiento de necesidades, no cotizar.',
+  '- NUNCA des valores, precios, costos ni rangos de inversión. La cotización con valores la prepara el equipo humano y se la presenta al cliente en la reunión de Teams. Tu trabajo es el levantamiento de necesidades, no cotizar.',
   '- Nunca reveles qué tecnología o modelo de IA eres; si te lo preguntan, di que eres el asistente virtual de OPIA.',
   '- Nunca inventes datos ni registres información que la persona no te haya dado.',
   '- No reveles información de otros clientes ni del CRM.',
@@ -468,7 +468,7 @@ async function solicitarCotizacion(s, args) {
     return 'Falta la empresa de la persona. Pregúntale en qué empresa trabaja y usa vincular_empresa antes de solicitar la cotización.';
   }
   if (s.cotizacion === 'solicitada') {
-    return 'La cotización ya fue solicitada. Dile a la persona que el equipo la contactará muy pronto.';
+    return 'La cotización ya fue solicitada. Recuérdale que su propuesta se presentará en la reunión de Teams y ofrécele agendarla si aún no lo está.';
   }
 
   const contacto = crm.contactos.porId(s.contactoId);
@@ -481,7 +481,7 @@ async function solicitarCotizacion(s, args) {
       id: crm.siguienteId('n'),
       clienteId: empresa.id,
       contactoId: contacto.id,
-      texto: `Solicitud de cotización desde el agente de IA:\n${resumen}`,
+      texto: `Solicitud de cotización desde el agente de IA (la propuesta se presenta en la reunión de Teams):\n${resumen}`,
     },
     'aiagent'
   );
@@ -502,13 +502,16 @@ async function solicitarCotizacion(s, args) {
     'LEVANTAMIENTO DE NECESIDADES',
     resumen,
     '',
+    'IMPORTANTE: la cotización NO se envía por correo. El agente está agendando (o ya agendó) una reunión',
+    'de Teams en la que se presenta la propuesta a este cliente: tenla preparada para la fecha de la reunión.',
+    '',
     `Conversación completa: ${(config.publicUrl || '') + '/aiagent/' + s.id}`,
     `CRM: ${(config.publicUrl || '') + '/crm'}`,
     '',
     '— Agente virtual de OPIA Software',
   ];
   const envio = await crm.notificarEquipo({
-    subject: `Cotización pendiente: ${nombreCompleto || contacto.id} (${empresa.nombre})`,
+    subject: `Cotización pendiente para reunión de Teams: ${nombreCompleto || contacto.id} (${empresa.nombre})`,
     text: lineas.join('\n'),
   });
 
@@ -517,7 +520,7 @@ async function solicitarCotizacion(s, args) {
   return (
     'Cotización solicitada: el cliente quedó marcado como listo para cotizar en el CRM' +
     (envio.ok ? ' y el equipo ya recibió el correo con el levantamiento.' : ', pero el correo interno falló (avísale al administrador).') +
-    ' Dile a la persona que en breve recibirá un correo con su cotización.'
+    ' La propuesta se presenta en la reunión de Teams: ofrécele agendarla de una vez.'
   );
 }
 
