@@ -25,6 +25,25 @@ const CONTACTO_FIELDS = [
   'estado', 'etapa', 'propietario', 'leadScoring', 'ultimoContacto', 'tags',
   'observaciones', 'notas', 'idExterno', 'archivoOrigen',
 ];
+// Levantamiento estructurado que llena el agente de IA (metodología SPIN +
+// cualificación): campos comunes + pista software + pista marketing.
+const LEVANTAMIENTO_FIELDS = [
+  'tipo', 'situacion', 'problema', 'impacto', 'objetivo',
+  'usuarios', 'procesos', 'funcionalidades', 'integraciones', 'datos', 'plataforma',
+  'publico', 'propuesta', 'canales', 'competencia', 'kpis', 'assets', 'inversionAds',
+  'decisor', 'plazo', 'presupuesto',
+];
+const TIPOS_LEVANTAMIENTO = ['software', 'marketing', 'otro'];
+// Etiquetas legibles: las usa el correo interno del agente y la ficha del CRM.
+const ETIQUETAS_LEVANTAMIENTO = {
+  tipo: 'Pista', situacion: 'Situación actual', problema: 'Problema', impacto: 'Impacto si no se resuelve',
+  objetivo: 'Objetivo / beneficio esperado', usuarios: 'Usuarios', procesos: 'Proceso a apoyar',
+  funcionalidades: 'Funcionalidades', integraciones: 'Integraciones', datos: 'Datos y migración',
+  plataforma: 'Plataforma y requisitos', publico: 'Público objetivo', propuesta: 'Propuesta de valor',
+  canales: 'Canales actuales', competencia: 'Competencia', kpis: 'Cómo mide resultados',
+  assets: 'Material disponible', inversionAds: 'Inversión en pauta', decisor: 'Decisor / quién más opina',
+  plazo: 'Plazo', presupuesto: 'Presupuesto de referencia del cliente',
+};
 const LIMITES = {
   nombre: 200, sector: 120, zona: 120, notas: 1000, texto: 2000, nombres: 120, apellidos: 120,
   numEmpleadosAprox: 8,
@@ -34,6 +53,10 @@ const LIMITES = {
   propietario: 120, leadScoring: 20, ultimoContacto: 40, tags: 200,
   observaciones: 500, idExterno: 64, archivoOrigen: 120,
   contactoPrincipalId: 20, estadoSeguimiento: 20, ultimaFechaContacto: 40,
+  tipo: 20, situacion: 600, problema: 600, impacto: 600, objetivo: 600,
+  usuarios: 600, procesos: 600, funcionalidades: 600, integraciones: 600, datos: 600,
+  plataforma: 600, publico: 600, propuesta: 600, canales: 600, competencia: 600,
+  kpis: 600, assets: 600, inversionAds: 600, decisor: 600, plazo: 600, presupuesto: 600,
 };
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -189,16 +212,17 @@ class Tabla {
 const clientes = new Tabla('clientes.json');
 const contactos = new Tabla('contactos.json');
 const notas = new Tabla('notas.json');
+const levantamientos = new Tabla('levantamientos.json');
 
 function siguienteId(prefijo) {
-  let meta = { seqCliente: 0, seqContacto: 0, seqNota: 0 };
+  let meta = { seqCliente: 0, seqContacto: 0, seqNota: 0, seqLevantamiento: 0 };
   try {
     meta = { ...meta, ...JSON.parse(fs.readFileSync(path.join(CRM_DIR, 'meta.json'), 'utf8')) };
   } catch {
     // primer arranque
   }
-  const campos = { c: 'seqCliente', p: 'seqContacto', n: 'seqNota' };
-  const rellenos = { c: 5, p: 6, n: 6 };
+  const campos = { c: 'seqCliente', p: 'seqContacto', n: 'seqNota', l: 'seqLevantamiento' };
+  const rellenos = { c: 5, p: 6, n: 6, l: 6 };
   const campo = campos[prefijo];
   meta[campo] += 1;
   fs.writeFileSync(path.join(CRM_DIR, 'meta.json'), JSON.stringify(meta, null, 2), 'utf8');
@@ -271,6 +295,44 @@ function validarNota(data) {
   if (!clientes.porId(n.clienteId)) errores.clienteId = 'El cliente no existe.';
   if (n.texto.length < 2) errores.texto = 'Escribe la nota (mínimo 2 caracteres).';
   return { datos: n, errores };
+}
+
+function validarLevantamiento(data) {
+  const l = limpiarCampos(data, LEVANTAMIENTO_FIELDS);
+  const errores = {};
+  if (l.tipo && !TIPOS_LEVANTAMIENTO.includes(l.tipo)) errores.tipo = 'Pista inválida.';
+  return { datos: l, errores };
+}
+
+/**
+ * Levantamiento del agente de IA: uno por conversación (guid de la sesión);
+ * las llamadas sucesivas fusionan solo los campos que traigan valor, así el
+ * agente puede ir guardando a medida que averigua.
+ */
+function guardarLevantamiento({ guid, clienteId, contactoId, campos }, actor) {
+  const { datos, errores } = validarLevantamiento(campos || {});
+  if (Object.keys(errores).length) return { error: Object.values(errores).join(' ') };
+  const existente = levantamientos.todas().find((l) => l.guid === guid);
+  if (existente) {
+    const cambios = {};
+    for (const [campo, valor] of Object.entries(datos)) if (valor) cambios[campo] = valor;
+    if (existente.clienteId !== clienteId || existente.contactoId !== contactoId) {
+      cambios.clienteId = clienteId;
+      cambios.contactoId = contactoId;
+    }
+    return { levantamiento: levantamientos.actualizar(existente.id, cambios, actor) };
+  }
+  const fila = { id: siguienteId('l'), guid, clienteId, contactoId };
+  for (const [campo, valor] of Object.entries(datos)) if (valor) fila[campo] = valor;
+  return { levantamiento: levantamientos.agregar(fila, actor) };
+}
+
+/** Levantamientos de una empresa, del más reciente al más viejo. */
+function listarLevantamientos(clienteId) {
+  return levantamientos
+    .todas()
+    .filter((l) => l.clienteId === clienteId)
+    .sort((a, b) => String(b.modifiedon || b.createdon || '').localeCompare(String(a.modifiedon || a.createdon || '')));
 }
 
 /**
@@ -469,14 +531,18 @@ module.exports = {
   clientes,
   contactos,
   notas,
+  levantamientos,
   siguienteId,
   normaliza,
   ESTADOS_SEGUIMIENTO,
+  ETIQUETAS_LEVANTAMIENTO,
   registrarContactoWhatsapp,
   propagarEmpleados,
   validarCliente,
   validarContacto,
   validarNota,
+  guardarLevantamiento,
+  listarLevantamientos,
   solicitarAcceso,
   verificarAcceso,
   notificarEquipo,

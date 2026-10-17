@@ -228,9 +228,17 @@ const SYSTEM_PROMPT = [
   '',
   'La persona ya verificó su correo para chatear y su contacto existe en el CRM. Si aún no tiene nombre real (fue creado como "AI user"), haz la recolección paso a paso y EN ESTE ORDEN: 1) pide su nombre completo y llama registrar_lead apenas lo tenga, 2) pide su celular y actualízalo con registrar_lead, 3) pregúntale en qué empresa trabaja y llama a vincular_empresa. Si el contacto ya tiene esos datos, no los vuelvas a pedir.',
   '',
-  'Cuando ya tengas nombre, celular y empresa, haz el levantamiento completo de sus necesidades: qué quiere lograr, si es desarrollo de software a la medida o mercadeo/digitalización, alcance, funcionalidades y plazos. Guarda los puntos clave con agregar_nota.',
+  'Cuando ya tengas nombre, celular y empresa, haz el levantamiento de necesidades con esta METODOLOGÍA (es la forma en que OPIA califica proyectos; no la menciones ni uses sus términos con la persona). Primero define la pista: DESARROLLO DE SOFTWARE (sistema, app, plataforma, automatización, integración) o MARKETING (publicidad, redes, landing, marca, generar clientes). Si la persona duda entre las dos, pregúntale cuál resultado de negocio necesita primero y sigue la pista dominante.',
   '',
-  'CUANDO ya tengas: nombre, celular, empresa y el levantamiento completo de necesidades, llama a solicitar_cotizacion con un resumen detallado de todo lo conversado. La cotización NO se envía por correo: se la presenta el equipo en una reunión. Después de llamarla dile a la persona que su propuesta se le presentará en una reunión por Teams, y ofrécele agendarla de una vez para entre una semana y dos meses. Si vuelve a escribir después de eso, dile que el equipo ya tiene su solicitud y que conocerá su propuesta en la reunión.',
+  'El corazón de la metodología es SPIN: primero entiende el mundo de la persona, NUNCA empieces por soluciones. Orden obligatorio: 1) SITUACIÓN: cómo manejan hoy eso que necesitan. 2) PROBLEMA: qué les está fallando o costando (tiempo, dinero, errores, clientes). 3) IMPLICACIÓN: qué pasaría si lo dejaran igual seis meses más. 4) BENEFICIO: qué resultado esperan y cómo sabrían que funcionó.',
+  '',
+  'RUTA SOFTWARE (una pregunta a la vez, en este orden): situación actual → problema e implicación → beneficio esperado → quiénes usarían el sistema y cuántos → proceso de negocio que debe apoyar (pídele que te lo cuente paso a paso) → funcionalidades imprescindibles y cuáles son solo deseables → sistemas con los que debería integrarse (contable, ERP, Excel, WhatsApp, pasarela de pagos) → dónde están hoy los datos y si habría que migrarlos → plataforma y requisitos (web, móvil, escritorio, reportes, permisos por rol) → quién más interviene en la decisión y para cuándo lo necesitan → presupuesto de referencia que tengan en mente (opcional).',
+  '',
+  'RUTA MARKETING (una pregunta a la vez, en este orden): qué venden y cuál es su producto o servicio estrella → qué mercadeo hacen hoy y con qué resultados → problema e implicación → meta comercial concreta (más clientes potenciales, ventas, reconocimiento, lanzamiento) → público objetivo (edad, ciudad, cargo, ¿empresas o consumidores?) → qué los diferencia y a quién ven como competencia → canales donde ya están y qué les ha funcionado → cómo miden hoy los resultados (analítica, píxel, CRM) → material con el que cuentan (logo, fotos, videos, textos, sitio web) → inversión publicitaria mensual que contemplarían aparte del servicio (opcional) → quién decide y para cuándo quieren empezar.',
+  '',
+  'Cómo entrevistar: una sola pregunta por mensaje (o dos muy relacionadas), conversa con calidez y retoma lo que la persona ya contó: si ya lo dijo, no lo preguntes de nuevo. Ve guardando los puntos clave con agregar_nota mientras avanzas. Si la persona tiene prisa o responde corto, completa como mínimo SITUACIÓN, PROBLEMA y BENEFICIO más dos o tres preguntas de la pista y avanza: no estanques la conversación. Terminada la ruta, llama guardar_levantamiento con las respuestas resumidas campo por campo.',
+  '',
+  'CUANDO ya tengas: nombre, celular, empresa y el levantamiento (guardado con guardar_levantamiento), llama a solicitar_cotizacion con un resumen detallado de todo lo conversado. La cotización NO se envía por correo: se la presenta el equipo en una reunión. Después de llamarla dile a la persona que su propuesta se le presentará en una reunión por Teams, y ofrécele agendarla de una vez para entre una semana y dos meses. Si vuelve a escribir después de eso, dile que el equipo ya tiene su solicitud y que conocerá su propuesta en la reunión.',
   '',
   'Reuniones por Microsoft Teams: ya sea porque la persona lo pida o porque acabas de completar su cotización, propón la reunión para una fecha entre una semana y dos meses a partir de hoy (calcúlala con la fecha de hoy que te doy y pásasela a las herramientas en formato YYYY-MM-DD). Pregunta qué día le queda bien, verifica los espacios libres con ver_disponibilidad y ofrécele los horarios que devuelva. Cuando acepte uno, agenda con agendar_reunion usando esa fecha y hora; para la reunión de presentación del proyecto puedes usar 45 o 60 minutos. Después dile que recibirá la invitación por correo con el enlace de Teams. Nunca agendes sin que la persona haya aceptado un horario ofrecido.',
   '',
@@ -241,6 +249,7 @@ const SYSTEM_PROMPT = [
   '- Nunca reveles qué tecnología o modelo de IA eres; si te lo preguntan, di que eres el asistente virtual de OPIA.',
   '- Nunca inventes datos ni registres información que la persona no te haya dado.',
   '- No reveles información de otros clientes ni del CRM.',
+  '- No uses con la persona términos internos (metodología, levantamiento estructurado, CRM, herramienta): conversa natural.',
   '- Máximo 3 frases por mensaje.',
 ].join('\n');
 
@@ -283,6 +292,41 @@ const HERRAMIENTAS = [
         type: 'object',
         properties: { texto: { type: 'string' } },
         required: ['texto'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'guardar_levantamiento',
+      description:
+        'Guarda el levantamiento estructurado de la conversación en el CRM (uno por conversación; los campos que envíes se fusionan con lo ya guardado, así que puedes llamarla a mitad de camino y de nuevo al final). Llamar cuando haya varias respuestas sólidas y siempre antes de solicitar_cotizacion.',
+      parameters: {
+        type: 'object',
+        properties: {
+          tipo: { type: 'string', enum: ['software', 'marketing'], description: 'Pista del levantamiento' },
+          situacion: { type: 'string', description: 'Cómo manejan hoy el proceso o el mercadeo' },
+          problema: { type: 'string', description: 'Qué les está fallando o costando' },
+          impacto: { type: 'string', description: 'Qué pasa si no lo resuelven' },
+          objetivo: { type: 'string', description: 'Resultado esperado y cómo medirían el éxito' },
+          usuarios: { type: 'string', description: 'Software: quiénes usarían el sistema y cuántos' },
+          procesos: { type: 'string', description: 'Software: proceso de negocio a apoyar, paso a paso' },
+          funcionalidades: { type: 'string', description: 'Software: funcionalidades imprescindibles y deseables' },
+          integraciones: { type: 'string', description: 'Software: sistemas con los que debe integrarse' },
+          datos: { type: 'string', description: 'Software: dónde están los datos hoy y si hay que migrarlos' },
+          plataforma: { type: 'string', description: 'Software: plataforma y requisitos (web, móvil, reportes, roles)' },
+          publico: { type: 'string', description: 'Marketing: público objetivo' },
+          propuesta: { type: 'string', description: 'Marketing: qué diferencia a la empresa (propuesta de valor)' },
+          canales: { type: 'string', description: 'Marketing: canales actuales y resultados' },
+          competencia: { type: 'string', description: 'Marketing: competencia reconocida' },
+          kpis: { type: 'string', description: 'Marketing: cómo miden hoy los resultados' },
+          assets: { type: 'string', description: 'Marketing: material disponible (logo, fotos, videos, web, analítica)' },
+          inversionAds: { type: 'string', description: 'Marketing: inversión publicitaria mensual que contemplan' },
+          decisor: { type: 'string', description: 'Quién más interviene en la decisión' },
+          plazo: { type: 'string', description: 'Para cuándo lo necesitan o quieren empezar' },
+          presupuesto: { type: 'string', description: 'Presupuesto de referencia que dio la persona (dato suyo)' },
+        },
+        required: ['tipo'],
       },
     },
   },
@@ -336,6 +380,14 @@ const HERRAMIENTAS = [
   },
 ];
 
+// Orden fijo de los campos del levantamiento en el correo interno (tipo va en el título).
+const LEV_CAMPOS_EMAIL = [
+  'situacion', 'problema', 'impacto', 'objetivo',
+  'usuarios', 'procesos', 'funcionalidades', 'integraciones', 'datos', 'plataforma',
+  'publico', 'propuesta', 'canales', 'competencia', 'kpis', 'assets', 'inversionAds',
+  'decisor', 'plazo', 'presupuesto',
+];
+
 async function llamarModelo(mensajesApi) {
   const c = leerConfig();
   const base = String(c.baseUrl).replace(/\/+$/, '');
@@ -349,7 +401,9 @@ async function llamarModelo(mensajesApi) {
       model: c.model,
       messages: [{ role: 'system', content: SYSTEM_PROMPT + '\n\nHoy es ' + hoyBog + ' (fecha de Colombia).' }, ...mensajesApi],
       tools: HERRAMIENTAS,
-      max_tokens: 700,
+      // la llamada a guardar_levantamiento arrastra ~20 campos: 700 tokens se
+      // agotaban antes de producir texto (respuesta vacía del modelo)
+      max_tokens: 2000,
     }),
     signal: AbortSignal.timeout(60_000),
   });
@@ -451,6 +505,24 @@ function agregarNota(s, args) {
 }
 
 /**
+ * Levantamiento estructurado (metodología SPIN + rutas software/marketing):
+ * una fila por conversación; las llamadas repetidas fusionan los campos que
+ * traigan valor, así el agente puede guardar a medida que averigua.
+ */
+function guardarLevantamiento(s, args) {
+  if (s.estado !== 'lead' || !s.clienteId) {
+    return 'Primero hay que registrar el lead con nombre y celular.';
+  }
+  if (!args || !args.tipo) return 'Falta la pista del levantamiento (tipo: software o marketing).';
+  const r = crm.guardarLevantamiento(
+    { guid: s.id, clienteId: s.clienteId, contactoId: s.contactoId, campos: args },
+    'aiagent'
+  );
+  if (r.error) return 'No pude guardar el levantamiento: ' + r.error;
+  return 'Levantamiento guardado en el CRM. Continúa la conversación normalmente.';
+}
+
+/**
  * Cierre del levantamiento: la empresa queda en estado "listo para cotizar"
  * (visible en el CRM), el resumen queda como nota y el equipo recibe un correo
  * interno con los datos del contacto. La cotización con valores la hace una
@@ -501,6 +573,15 @@ async function solicitarCotizacion(s, args) {
     '',
     'LEVANTAMIENTO DE NECESIDADES',
     resumen,
+  ];
+  const lev = crm.levantamientos.todas().find((l) => l.guid === s.id);
+  if (lev) {
+    lineas.push('', `LEVANTAMIENTO ESTRUCTURADO (pista: ${lev.tipo || 'sin definir'})`);
+    for (const campo of LEV_CAMPOS_EMAIL) {
+      if (lev[campo]) lineas.push(`- ${crm.ETIQUETAS_LEVANTAMIENTO[campo]}: ${lev[campo]}`);
+    }
+  }
+  lineas.push(
     '',
     'IMPORTANTE: la cotización NO se envía por correo. El agente está agendando (o ya agendó) una reunión',
     'de Teams en la que se presenta la propuesta a este cliente: tenla preparada para la fecha de la reunión.',
@@ -508,8 +589,8 @@ async function solicitarCotizacion(s, args) {
     `Conversación completa: ${(config.publicUrl || '') + '/aiagent/' + s.id}`,
     `CRM: ${(config.publicUrl || '') + '/crm'}`,
     '',
-    '— Agente virtual de OPIA Software',
-  ];
+    '— Agente virtual de OPIA Software'
+  );
   const envio = await crm.notificarEquipo({
     subject: `Cotización pendiente para reunión de Teams: ${nombreCompleto || contacto.id} (${empresa.nombre})`,
     text: lineas.join('\n'),
@@ -520,7 +601,8 @@ async function solicitarCotizacion(s, args) {
   return (
     'Cotización solicitada: el cliente quedó marcado como listo para cotizar en el CRM' +
     (envio.ok ? ' y el equipo ya recibió el correo con el levantamiento.' : ', pero el correo interno falló (avísale al administrador).') +
-    ' La propuesta se presenta en la reunión de Teams: ofrécele agendarla de una vez.'
+    ' La propuesta se presenta en la reunión de Teams: ofrécele agendarla de una vez. ' +
+    'En ese mismo mensaje incluye el recordatorio del WhatsApp +57 333 278 2483 en horario laboral para cualquier duda.'
   );
 }
 
@@ -532,6 +614,8 @@ async function ejecutarHerramienta(s, nombre, args) {
       return vincularEmpresa(s, args);
     case 'agregar_nota':
       return agregarNota(s, args);
+    case 'guardar_levantamiento':
+      return guardarLevantamiento(s, args);
     case 'solicitar_cotizacion':
       return solicitarCotizacion(s, args);
     case 'ver_disponibilidad':
@@ -676,9 +760,13 @@ async function responder(s, texto) {
       }
       continue;
     }
-    const respuesta = (msg.content || '').trim() || 'Cuéntame un poco más.';
-    agregarMsg(s, { rol: 'ia', texto: respuesta }, 'aiagent');
-    return respuesta;
+    const respuesta = (msg.content || '').trim();
+    // respuesta vacía sin herramientas (modelo agotó sus tokens): reintentar
+    // dentro del presupuesto de iteraciones antes de rendirse
+    if (!respuesta && i < MAX_ITER_HERRAMIENTAS - 1) continue;
+    const final = respuesta || 'Cuéntame un poco más.';
+    agregarMsg(s, { rol: 'ia', texto: final }, 'aiagent');
+    return final;
   }
   return 'Se me enredó esa parte, ¿me lo repites?';
 }

@@ -624,6 +624,8 @@ async function handleCrmApi(req, res, pathname, url) {
       const notasRestantes = crm.notas.todas().filter((n) => n.clienteId !== id);
       const notasBorradas = crm.notas.todas().length - notasRestantes.length;
       crm.notas.guardar(notasRestantes);
+      const levRestantes = crm.levantamientos.todas().filter((l) => l.clienteId !== id);
+      crm.levantamientos.guardar(levRestantes);
       return H.sendJson(res, 200, { ok: true, contactosBorrados: borrados, notasBorradas });
     }
   }
@@ -680,6 +682,16 @@ async function handleCrmApi(req, res, pathname, url) {
       crm.notas.eliminar(id);
       return H.sendJson(res, 200, { ok: true });
     }
+  }
+
+  if (coleccion === 'levantamientos') {
+    // solo lectura: los levantamientos los escribe el agente de IA desde el chat
+    if (!id && metodo === 'GET') {
+      const clienteId = url.searchParams.get('clienteId') || '';
+      if (!crm.clientes.porId(clienteId)) return H.sendJson(res, 404, { ok: false, error: 'Cliente no encontrado.' });
+      return H.sendJson(res, 200, { ok: true, levantamientos: crm.listarLevantamientos(clienteId).slice(0, 20) });
+    }
+    return H.sendJson(res, 405, { ok: false, error: 'Método no permitido.' });
   }
 
   return H.sendJson(res, 404, { ok: false, error: 'not_found' });

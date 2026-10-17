@@ -179,6 +179,11 @@
       .nota-item .encabezado { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 4px; }
       .nota-item .texto { font-size: 13.5px; line-height: 1.55; white-space: pre-wrap; }
 
+      /* ---------- levantamiento del agente ---------- */
+      .lev-campo { margin-top: 9px; font-size: 13.5px; line-height: 1.55; }
+      .lev-campo .etiqueta { color: var(--muted); font-size: 11.5px; display: block; margin-bottom: 1px; }
+      .lev-campo .valor { white-space: pre-wrap; }
+
       /* ---------- modal ---------- */
       .modal-fondo {
         position: fixed; inset: 0; background: rgba(2, 8, 18, 0.75);
@@ -312,6 +317,10 @@
         <section id="panel-cliente" hidden>
           <p><button class="chico" id="btn-volver">← Volver a clientes</button></p>
           <div class="tarjeta" id="ficha-cliente"></div>
+          <div class="tarjeta" id="tarjeta-levantamiento" hidden>
+            <h2>Levantamiento de necesidades</h2>
+            <div id="levantamiento-cuerpo"></div>
+          </div>
           <div class="tarjeta">
             <h2>Notas</h2>
             <div class="herramientas">
@@ -807,7 +816,51 @@
       }
       if (!contactos.length) tabla.appendChild(el('tr')).appendChild(el('td', 'Este cliente no tiene contactos todavía.'));
       cargarNotas();
+      cargarLevantamiento();
       irA('cliente');
+    }
+
+    /* ---------------- levantamiento del agente de IA ---------------- */
+    const ETIQUETAS_LEV = {
+      situacion: 'Situación actual', problema: 'Problema', impacto: 'Impacto si no se resuelve',
+      objetivo: 'Objetivo / beneficio esperado', usuarios: 'Usuarios', procesos: 'Proceso a apoyar',
+      funcionalidades: 'Funcionalidades', integraciones: 'Integraciones', datos: 'Datos y migración',
+      plataforma: 'Plataforma y requisitos', publico: 'Público objetivo', propuesta: 'Propuesta de valor',
+      canales: 'Canales actuales', competencia: 'Competencia', kpis: 'Cómo mide resultados',
+      assets: 'Material disponible', inversionAds: 'Inversión en pauta', decisor: 'Decisor / quién más opina',
+      plazo: 'Plazo', presupuesto: 'Presupuesto de referencia del cliente',
+    };
+
+    async function cargarLevantamiento() {
+      const tarjeta = $('#tarjeta-levantamiento');
+      const cuerpo = $('#levantamiento-cuerpo');
+      cuerpo.textContent = '';
+      const r = await api('/api/crm/levantamientos?clienteId=' + estado.clienteActual.id);
+      const levs = r.levantamientos || [];
+      if (!levs.length) {
+        tarjeta.hidden = true;
+        return;
+      }
+      tarjeta.hidden = false;
+      const lev = levs[0];
+      const pista = lev.tipo === 'software' ? 'desarrollo de software' : lev.tipo === 'marketing' ? 'marketing' : 'pista sin definir';
+      const encabezado = el('p', 'Hecho por el agente de IA · ' + pista + ' · ' + fechaBonita(lev.modifiedon || lev.createdon || ''));
+      encabezado.className = 'mini mut';
+      encabezado.style.marginTop = '0';
+      cuerpo.appendChild(encabezado);
+      if (levs.length > 1) {
+        const previos = el('p', 'Hay ' + (levs.length - 1) + ' levantamiento(s) anterior(es); el más reciente se muestra aquí.');
+        previos.className = 'mini mut';
+        cuerpo.appendChild(previos);
+      }
+      for (const campo of Object.keys(ETIQUETAS_LEV)) {
+        if (!lev[campo]) continue;
+        const div = el('div');
+        div.className = 'lev-campo';
+        div.appendChild(el('span', ETIQUETAS_LEV[campo])).className = 'etiqueta';
+        div.appendChild(el('span', lev[campo])).className = 'valor';
+        cuerpo.appendChild(div);
+      }
     }
 
     /* ---------------- notas del cliente ---------------- */
