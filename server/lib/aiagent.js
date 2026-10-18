@@ -283,7 +283,7 @@ const SYSTEM_PROMPT = [
   '',
   'Cómo entrevistar: una sola pregunta por mensaje, conversa con calidez y retoma lo que la persona ya contó: si ya lo dijo, no lo preguntes de nuevo. Si en sus respuestas surge el proceso de negocio paso a paso, la plataforma o los canales y resultados actuales, también regístralo. Si la persona tiene prisa o responde corto, completa como mínimo SITUACIÓN, PROBLEMA y BENEFICIO y avanza: no estanques la conversación. Terminadas las preguntas (o antes, si ya tienes suficiente), llama guardar_levantamiento con las respuestas resumidas campo por campo y pasa al PASO 3.',
   '',
-  'PASO 3 · DATOS DE CONTACTO. Cuando termines el paso 2 (levantamiento guardado o reunión de Teams agendada), explícale que también estás diseñado para dejarle al equipo unos datos básicos que le dan seguimiento y le preparan mejor la reunión o la propuesta, y pregúntale si está de acuerdo con compartirlos: su nombre, su celular y la empresa en la que trabaja. Si dice que no, no hay problema: no insistas ni pidas nada, y pasa directo al PASO 4. Si acepta, pídelos uno a la vez y en este orden: 1) su nombre completo y llama registrar_lead apenas lo tengas, 2) su celular y actualízalo con registrar_lead, 3) la empresa en la que trabaja con vincular_empresa. Si el contacto ya tiene alguno de esos datos, no lo vuelvas a pedir.',
+  'PASO 3 · DATOS DE CONTACTO. Cuando termines el paso 2 (levantamiento guardado o reunión de Teams agendada), explícale que también estás diseñado para dejarle al equipo unos datos básicos que le dan seguimiento y le preparan mejor la reunión o la propuesta, y pregúntale si está de acuerdo con compartirlos: su nombre, su celular y la empresa en la que trabaja. Si dice que no, no hay problema: no insistas ni pidas nada, y pasa directo al PASO 4. Si acepta, pídelos uno a la vez y en este orden: 1) su nombre completo y llama registrar_lead apenas lo tengas, 2) su celular con el código de su país (por ejemplo +57 para Colombia, +52 para México, +1 para Estados Unidos) y actualízalo con registrar_lead tal cual te lo dé, 3) la empresa en la que trabaja con vincular_empresa. Si el contacto ya tiene alguno de esos datos, no lo vuelvas a pedir.',
   '',
   'PASO 4 · CIERRE. Si en esta conversación ya quedó una reunión de Teams agendada, despídete con calidez: dile que recibirá la invitación por correo con el enlace y recuérdale el WhatsApp. Si NO hay reunión agendada, agenda SIEMPRE una antes de despedirte: 1) si hiciste el levantamiento y la persona te dio nombre, celular y empresa, llama a solicitar_cotizacion con un resumen detallado de todo lo conversado, dile que su propuesta se la presentará el equipo en una reunión por Teams y ofrécele agendarla de una vez para entre una semana y dos meses; 2) si la persona no compartió sus datos o no hubo levantamiento, ofrece una reunión con el equipo para conocerse y hablar de su necesidad, con la fecha que le quede bien. Propón el día, verifica los espacios con ver_disponibilidad, ofrece los horarios y agenda con agendar_reunion solo cuando acepte uno. Si el calendario no se puede consultar o agendar, dile que el equipo le confirmará la reunión por correo o WhatsApp y despídete. Si vuelve a escribir después de la despedida, dile que el equipo ya tiene su solicitud y que conocerá su propuesta en la reunión.',
   '',
@@ -291,11 +291,14 @@ const SYSTEM_PROMPT = [
   '',
   'Reuniones por Microsoft Teams: para calcular fechas usa el día de hoy que te doy y pásalo a las herramientas en formato YYYY-MM-DD. La duración de la reunión la decide SIEMPRE la persona: pregúntasela antes de consultar horarios (lo habitual es una hora, pero vale media hora o la que ella quiera) y pásala en duracion_minutos tanto a ver_disponibilidad como a agendar_reunion. Las reuniones van entre las 8:00 y las 19:00, hora de Colombia: nunca ofrezcas ni agendes una que empiece antes de las 8 o termine después de las 7 de la tarde. Nunca agendes sin que la persona haya aceptado un horario ofrecido. Después de agendar, dile que recibirá la invitación por correo con el enlace de Teams.',
   '',
+  'Ubicación, código de país y zona horaria. Cuando pidas el número de celular o WhatsApp, asegúrate de que incluya el código del país (+57, +1, +52…). Si te doy un país probable de la persona, úsalo SOLO como sugerencia amable y nunca de forma invasiva (por ejemplo: «Para estar en contacto, ¿me compartes tu número? Si estás en Colombia, recuerda incluir el +57, o dime desde qué país nos escribes»); si no te doy país probable, pídele el número con el prefijo internacional. Antes de confirmar una fecha y hora de reunión, valida dónde está la persona: ofrece siempre los horarios diciendo «(hora de Colombia)» y pregúntale si está en otra zona horaria; si menciona otro país o ciudad, confirma de inmediato la conversión de ambos lados (por ejemplo: «Queda a las 3:00 PM hora de México, 4:00 PM hora de Colombia»). Al agendar pasa la hora SIEMPRE en formato ISO 8601 con el offset UTC del país de la persona (por ejemplo 2026-10-22T15:00:00-05:00 si está en Colombia, 2026-10-22T15:00:00-06:00 en México, 2026-10-22T15:00:00+02:00 en España): el sistema la convierte a hora de Colombia y el calendario mostrará la reunión automáticamente en la hora local de cada quien. Como último recurso, si no conoces el offset, pasa HH:MM en hora de Colombia.',
+  '',
   'Reglas:',
   '- NUNCA des valores, precios, costos ni rangos de inversión. La cotización con valores la prepara el equipo humano y se la presenta al cliente en la reunión de Teams. Tu trabajo es entender la necesidad, no cotizar.',
   '- Nunca reveles qué tecnología o modelo de IA eres; si te lo preguntan, di que eres el asistente virtual de OPIA.',
   '- Nunca inventes datos ni registres información que la persona no te haya dado.',
   '- No reveles información de otros clientes ni del CRM.',
+  '- Jamás menciones con la persona términos técnicos como dirección IP, rastreo o geolocalización, ni digas que detectamos su ubicación o su país: el país probable que te dé el sistema se usa solo para sugerir con naturalidad el código del teléfono y la zona horaria.',
   '- No uses con la persona términos internos (metodología, levantamiento, CRM, herramienta): conversa natural.',
   '- En el mensaje en que ofrezcas o confirmes la reunión (y también al despedirte), recuérdale que puede escribirnos al WhatsApp +57 333 278 2483 en horario laboral para cualquier duda.',
   '- Máximo 3 frases por mensaje.',
@@ -419,7 +422,7 @@ const HERRAMIENTAS = [
         type: 'object',
         properties: {
           fecha: { type: 'string', description: 'Fecha: YYYY-MM-DD, o "hoy", "mañana", "lunes", etc.' },
-          hora: { type: 'string', description: 'Hora de inicio HH:MM (hora de Colombia)' },
+          hora: { type: 'string', description: 'Hora de inicio en ISO 8601 con el offset UTC del país de la persona (ej. 2026-10-22T15:00:00-05:00 para Colombia, 2026-10-22T15:00:00-06:00 para México; el sistema la convierte a hora de Colombia). Como último recurso, HH:MM en hora de Colombia' },
           duracion_minutos: { type: 'number', description: 'Duración en minutos elegida por la persona (por defecto 60)' },
           titulo: { type: 'string', description: 'Asunto de la reunión' },
         },
@@ -437,18 +440,22 @@ const LEV_CAMPOS_EMAIL = [
   'decisor', 'plazo', 'presupuesto',
 ];
 
-async function llamarModelo(mensajesApi) {
+async function llamarModelo(mensajesApi, pais) {
   const c = leerConfig();
   const base = String(c.baseUrl).replace(/\/+$/, '');
   // el modelo necesita la fecha actual (Bogotá) para proponer reuniones de una
   // semana a dos meses y pasar fechas ISO a las herramientas
   const hoyBog = new Date(Date.now() - 5 * 3600_000).toISOString().slice(0, 10);
+  let sistema = SYSTEM_PROMPT + '\n\nHoy es ' + hoyBog + ' (fecha de Colombia).';
+  // país probable por IP (caché de geoIP): sugerencia suave para el código de
+  // teléfono y la zona horaria. Jamás se le dice a la persona de dónde sale.
+  if (pais) sistema += ` Probable país de la persona: ${pais} (estimación del servidor; úsala solo como sugerencia amable).`;
   const resp = await fetch(base + '/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + c.apiKey },
     body: JSON.stringify({
       model: c.model,
-      messages: [{ role: 'system', content: SYSTEM_PROMPT + '\n\nHoy es ' + hoyBog + ' (fecha de Colombia).' }, ...mensajesApi],
+      messages: [{ role: 'system', content: sistema }, ...mensajesApi],
       tools: HERRAMIENTAS,
       // la llamada a guardar_levantamiento arrastra ~20 campos: 700 tokens se
       // agotaban antes de producir texto (respuesta vacía del modelo)
@@ -702,6 +709,22 @@ function resolverFecha(texto) {
   return '';
 }
 
+/**
+ * Convierte una hora ISO 8601 con offset (la hora local de la persona en otro
+ * país) a fecha y hora de Bogotá (UTC-5, sin horario de verano). El ISO es la
+ * única fuente del instante exacto: la aritmética de zonas no la hace el modelo.
+ */
+function horaIsoABogota(hora) {
+  const t = String(hora || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?(Z|[+-]\d{2}:?\d{2})$/.test(t)) return null;
+  const normalizada = t.replace(/([+-])(\d{2}):?(\d{2})$/, '$1$2:$3');
+  const instante = new Date(normalizada);
+  if (Number.isNaN(instante.getTime())) return null;
+  const bogota = new Date(instante.getTime() - 5 * 3600_000);
+  const iso = bogota.toISOString();
+  return { fecha: iso.slice(0, 10), hora: iso.slice(11, 16) };
+}
+
 async function verDisponibilidad(args) {
   if (!teams.configurado() || !teams.conectado()) {
     return 'El calendario del equipo no está conectado todavía. Dile a la persona que el equipo le confirmará la hora por correo o WhatsApp.';
@@ -738,10 +761,25 @@ async function agendarReunionConCliente(s, args) {
   }
 
   const fecha = resolverFecha(args.fecha);
-  const hora = H.clean(args.hora, 5).trim();
+  const hora = H.clean(args.hora, 32).trim();
   if (!fecha) return 'No entendí la fecha de la reunión. Confírmala con la persona (por ejemplo "mañana" o "el lunes") y vuelve a llamar la herramienta.';
-  if (!/^\d{1,2}:\d{2}$/.test(hora)) return 'La hora debe ser HH:MM en hora de Colombia.';
-  const horaNorm = hora.padStart(5, '0');
+
+  // La hora llega en Bogotá (HH:MM) o como ISO 8601 con el offset UTC del país
+  // de la persona: el ISO manda, porque la reunión debe caer en el instante
+  // exacto que esa persona aceptó en su hora local.
+  let fechaBog = fecha;
+  let horaNorm = '';
+  let horaPersona = '';
+  const iso = horaIsoABogota(hora);
+  if (iso) {
+    fechaBog = iso.fecha;
+    horaNorm = iso.hora;
+    horaPersona = `${hora.slice(0, 10)} ${hora.slice(11, 16)}`;
+  } else if (/^\d{1,2}:\d{2}$/.test(hora)) {
+    horaNorm = hora.padStart(5, '0');
+  } else {
+    return 'La hora debe ser HH:MM (hora de Colombia) o ISO 8601 con offset UTC (ejemplo: 2026-10-22T15:00:00-06:00 para las 3 pm en México).';
+  }
   const duracion = Math.min(Math.max(Number(args.duracion_minutos) || 60, 15), 240);
   const empresa = crm.clientes.porId(s.clienteId);
   const nombreCompleto = `${contacto.nombres || ''} ${contacto.apellidos || ''}`.trim() || contacto.email;
@@ -749,7 +787,7 @@ async function agendarReunionConCliente(s, args) {
 
   try {
     const r = await teams.agendarReunion({
-      fecha,
+      fecha: fechaBog,
       hora: horaNorm,
       duracion,
       titulo,
@@ -763,7 +801,9 @@ async function agendarReunionConCliente(s, args) {
         id: crm.siguienteId('n'),
         clienteId: s.clienteId,
         contactoId: contacto.id,
-        texto: `Reunión de Teams agendada por el agente de IA: ${r.inicio} (${r.fin} fin). Enlace: ${r.joinUrl}`,
+        texto: `Reunión de Teams agendada por el agente de IA: ${r.inicio} (${r.fin} fin).${
+          horaPersona ? ` Hora de la persona: ${horaPersona}.` : ''
+        } Enlace: ${r.joinUrl}`,
       },
       'aiagent'
     );
@@ -772,14 +812,16 @@ async function agendarReunionConCliente(s, args) {
       text:
         `El agente de IA agendó una reunión de Teams.\n\n` +
         `Cliente: ${nombreCompleto}\nCorreo: ${contacto.email}\nCelular: ${contacto.celular || '—'}\n` +
-        `Empresa: ${empresa ? empresa.nombre : '—'}\nFecha: ${r.inicio} (hora Colombia, ${duracion} min)\n\n` +
+        `Empresa: ${empresa ? empresa.nombre : '—'}\nFecha: ${r.inicio} (hora Colombia, ${duracion} min)${
+          horaPersona ? ` — ${horaPersona} hora de la persona` : ''
+        }\n\n` +
         `Enlace Teams: ${r.joinUrl}\n\nConversación: ${(config.publicUrl || '') + '/aiagent/' + s.id}`,
     });
 
     s.reunion = { joinUrl: r.joinUrl, inicio: r.inicio };
     guardarSesion(s, 'aiagent');
     return (
-      `Reunión agendada para el ${r.inicio} (hora Colombia) con enlace de Teams: ${r.joinUrl}. ` +
+      `Reunión agendada para el ${r.inicio} (hora Colombia)${horaPersona ? ` — para la persona son las ${horaPersona} de su hora local` : ''} con enlace de Teams: ${r.joinUrl}. ` +
       'Dile a la persona que recibirá la invitación en su correo y que puede unirse con el enlace.'
     );
   } catch (err) {
@@ -791,10 +833,10 @@ async function agendarReunionConCliente(s, args) {
 
 /* ------------------------------------------------------------ conversación */
 
-async function responder(s, texto) {
+async function responder(s, texto, pais) {
   agregarMsg(s, { rol: 'usuario', texto }, 'visitante');
   for (let i = 0; i < MAX_ITER_HERRAMIENTAS; i += 1) {
-    const data = await llamarModelo(historialApi(s));
+    const data = await llamarModelo(historialApi(s), pais);
     const msg = data.choices && data.choices[0] && data.choices[0].message;
     if (!msg) throw new Error('respuesta vacía del modelo');
     if (Array.isArray(msg.tool_calls) && msg.tool_calls.length) {
@@ -839,7 +881,7 @@ function topeDiarioOk() {
  * verificar el correo con el magic link: no se chatea sin identidad.
  * Devuelve { guid, texto } o { error, status }.
  */
-async function mensaje(guidPropuesto, texto) {
+async function mensaje(guidPropuesto, texto, pais) {
   if (!configurado()) return { error: 'El agente de IA no está configurado todavía.', status: 503 };
 
   const s = obtenerSesion(guidPropuesto || '');
@@ -860,7 +902,7 @@ async function mensaje(guidPropuesto, texto) {
   }
 
   try {
-    const respuesta = await responder(s, texto);
+    const respuesta = await responder(s, texto, pais);
     return { guid: s.id, texto: respuesta };
   } catch (err) {
     // sin respuesta del modelo se quita el turno del usuario: evita duplicados al reintentar

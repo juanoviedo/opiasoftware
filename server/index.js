@@ -750,8 +750,17 @@ async function handleAiMensaje(req, res) {
   let guid = H.clean(body.guid, 64);
   if (!RE_GUID.test(guid)) guid = '';
 
+  // Pista de país para el agente (código de teléfono y zona horaria): caché
+  // de geoIP resuelta en segundo plano. La persona nunca ve de dónde sale.
+  geo.enqueue(ip);
+  const ubicacion = geo.peek(ip);
+  const pais =
+    ubicacion && !ubicacion.internal && !ubicacion.failed && ubicacion.country && ubicacion.country !== 'Desconocido'
+      ? ubicacion.country
+      : '';
+
   try {
-    const r = await aiagent.mensaje(guid, texto);
+    const r = await aiagent.mensaje(guid, texto, pais);
     if (r.error) return H.sendJson(res, r.status || 500, { ok: false, error: r.error });
     return H.sendJson(res, 200, { ok: true, guid: r.guid, respuesta: r.texto });
   } catch (err) {
