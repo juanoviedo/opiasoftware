@@ -705,10 +705,12 @@ async function handleCrmApi(req, res, pathname, url) {
   }
 
   if (coleccion === 'emailmarketing' && partes[3] === 'envios') {
-    if (!partes[4] && metodo === 'GET') return H.sendJson(res, 200, { ok: true, envios: emailmkt.listarEnvios() });
+    if (!partes[4] && metodo === 'GET') {
+      return H.sendJson(res, 200, { ok: true, envios: emailmkt.listarEnvios(), remitentes: crm.remitentesCorreo() });
+    }
     if (!partes[4] && metodo === 'POST') {
       const r = emailmkt.crearEnvio(
-        { asunto: body.asunto, cuerpoHtml: body.html, contactoIds: body.contactoIds },
+        { asunto: body.asunto, cuerpoHtml: body.html, contactoIds: body.contactoIds, de: H.clean(body.de, 120) },
         email
       );
       if (r.error) return H.sendJson(res, 422, { ok: false, error: r.error });

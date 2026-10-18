@@ -76,12 +76,16 @@ function marcarContacto(contactoId, estado) {
 let enCurso = null; // id del envío que se está mandando
 const canceladas = new Set();
 
-function crearEnvio({ asunto, cuerpoHtml, contactoIds }, actor) {
+function crearEnvio({ asunto, cuerpoHtml, contactoIds, de }, actor) {
   const titulo = String(asunto || '').trim();
   const cuerpo = String(cuerpoHtml || '').trim();
   if (titulo.length < 2) return { error: 'Escribe el asunto del correo.' };
   if (cuerpo.length < 2) return { error: 'Escribe el cuerpo del correo.' };
   if (enCurso) return { error: 'Ya hay una campaña enviándose. Espera a que termine o cancélala.' };
+  const remitente = String(de || '').toLowerCase().trim();
+  if (remitente && !crm.remitentesCorreo().some((r) => r.valor === remitente)) {
+    return { error: 'Ese remitente no está permitido.' };
+  }
   const ids = [...new Set((Array.isArray(contactoIds) ? contactoIds : []).map(String))];
   if (!ids.length) return { error: 'Selecciona al menos un contacto.' };
   if (ids.length > MAX_DESTINATARIOS) return { error: `Máximo ${MAX_DESTINATARIOS} destinatarios por campaña.` };
@@ -109,6 +113,7 @@ function crearEnvio({ asunto, cuerpoHtml, contactoIds }, actor) {
   const fila = {
     id: crm.siguienteId('e'),
     asunto: titulo,
+    de: remitente || undefined,
     html: cuerpo,
     texto: quitarEtiquetas(cuerpo),
     estado: 'pendiente',
@@ -148,6 +153,7 @@ async function enviarTodo(envioId) {
           to: d.email,
           subject: envio.asunto,
           html: plantillaHtml(envio.html, pixelToken(d.contactoId, envioId)),
+          de: envio.de,
         });
         if (r.ok) {
           d.estado = 'enviado';
@@ -206,6 +212,7 @@ function listarEnvios() {
     .map((e) => ({
       id: e.id,
       asunto: e.asunto,
+      de: e.de || '',
       estado: e.estado,
       createdon: e.createdon,
       createdby: e.createdby,
@@ -223,6 +230,7 @@ function detalleEnvio(envioId) {
   return {
     id: envio.id,
     asunto: envio.asunto,
+    de: envio.de || '',
     estado: envio.estado,
     createdon: envio.createdon,
     createdby: envio.createdby,

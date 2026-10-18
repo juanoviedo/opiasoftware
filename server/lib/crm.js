@@ -462,17 +462,31 @@ function notificarEquipo({ subject, text }) {
     });
 }
 
+/** Remitentes que Microsoft permite usar: el From configurado (con permiso
+    Send As) y el propio buzón con el que se autentica el SMTP. */
+function remitentesCorreo() {
+  const c = leerCrmConfig();
+  const lista = [];
+  const m = /<([^<>\s]+@[^<>\s]+)>/.exec(String(c.from || ''));
+  const principal = (m ? m[1] : String(c.from || '')).toLowerCase().trim();
+  if (principal) lista.push({ valor: principal, porDefecto: true });
+  const propio = String((c.smtp && c.smtp.user) || '').toLowerCase().trim();
+  if (propio && !lista.some((r) => r.valor === propio)) lista.push({ valor: propio });
+  return lista;
+}
+
 /** Correo transaccional a un destinatario arbitrario (magic link del agente y campañas). */
-function enviarCorreo({ to, subject, text, html }) {
+function enviarCorreo({ to, subject, text, html, de }) {
   if (!emailConfigurado()) return Promise.resolve({ ok: false, error: 'SMTP no configurado' });
   const c = leerCrmConfig();
+  const elegido = de ? remitentesCorreo().find((r) => r.valor === String(de).toLowerCase().trim()) : null;
   return sendMail({
     host: c.smtp.host,
     port: Number(c.smtp.port) || (c.smtp.secure === false ? 587 : 465),
     secure: c.smtp.secure !== false,
     user: c.smtp.user,
     pass: c.smtp.pass,
-    from: c.from,
+    from: elegido ? elegido.valor : c.from,
     to,
     subject,
     text,
@@ -552,6 +566,7 @@ module.exports = {
   borrarCookieSesion,
   sesionActual,
   emailConfigurado,
+  remitentesCorreo,
   listarCorreos,
   agregarCorreo,
   quitarCorreo,

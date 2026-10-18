@@ -469,6 +469,8 @@
             <h2>Nuevo correo</h2>
             <label for="em-asunto">Asunto</label>
             <input id="em-asunto" type="text" placeholder="Ej: OPIA Software — diagnóstico gratis para tu empresa" />
+            <label for="em-remitente">Enviar desde</label>
+            <select id="em-remitente"></select>
             <label>Cuerpo del mensaje</label>
             <div class="em-barra">
               <button type="button" class="chico" data-cmd="bold" title="Negrita"><b>N</b></button>
@@ -478,7 +480,7 @@
               <button type="button" class="chico" data-cmd="removeFormat">Quitar formato</button>
             </div>
             <div id="em-cuerpo" contenteditable="true" class="em-cuerpo" data-ejemplo="Escribe aquí el mensaje que recibirán los contactos…"></div>
-            <p class="mini mut" style="margin-bottom:0">El correo sale de OPIA Software con su diseño. Cuando el contacto lo recibe, queda marcado como <b>Recibido</b>; si el buzón no existe, como <b>No existe</b>.</p>
+            <p class="mini mut" style="margin-bottom:0">El correo sale desde el remitente elegido. Cuando el contacto lo recibe, queda marcado como <b>Recibido</b>; si el buzón no existe, como <b>No existe</b>.</p>
           </div>
           <div class="tarjeta">
             <h2>Destinatarios</h2>
@@ -1350,6 +1352,7 @@
     /* ---------------- email marketing ---------------- */
     const em = { seleccion: new Set(), filas: [], actual: null };
     const LLAVE_BORRADOR = 'opia-crm-em-borrador';
+    const LLAVE_REMITENTE = 'opia-crm-em-remitente';
     let emBusquedaTimer = null;
     let emPollTimer = null;
 
@@ -1495,10 +1498,27 @@
       paso();
     }
 
+    /** La lista de remitentes la decide el servidor (buzón SMTP + From configurado);
+        la última elección del dueño se recuerda entre visitas. */
+    function llenarRemitentes(lista) {
+      const sel = $('#em-remitente');
+      sel.textContent = '';
+      let guardado = '';
+      try { guardado = localStorage.getItem(LLAVE_REMITENTE) || ''; } catch { /* sin localStorage */ }
+      for (const rem of lista) {
+        const op = document.createElement('option');
+        op.value = rem.valor;
+        op.textContent = rem.valor;
+        sel.appendChild(op);
+      }
+      if (lista.some((x) => x.valor === guardado)) sel.value = guardado;
+    }
+
     async function cargarHistorial() {
       const caja = $('#em-historial');
       let r = null;
       try { r = await api('/api/crm/emailmarketing/envios'); } catch { return; }
+      llenarRemitentes((r && r.remitentes) || []);
       caja.textContent = '';
       const lista = (r && r.envios) || [];
       if (!lista.length) {
@@ -1866,7 +1886,7 @@
       try {
         const r = await api('/api/crm/emailmarketing/envios', {
           method: 'POST',
-          body: JSON.stringify({ asunto, html, contactoIds: [...em.seleccion] }),
+          body: JSON.stringify({ asunto, html, contactoIds: [...em.seleccion], de: $('#em-remitente').value }),
         });
         if (!r.ok) return alert(r.error || 'No se pudo crear la campaña.');
         try { localStorage.removeItem(LLAVE_BORRADOR); } catch { /* igual se envió */ }
@@ -1884,6 +1904,9 @@
       if (!em.actual || !confirm('¿Cancelar la campaña? Los contactos pendientes no recibirán el correo.')) return;
       await api('/api/crm/emailmarketing/envios/' + em.actual + '/cancelar', { method: 'POST' });
       vigilarEnvio(em.actual);
+    });
+    $('#em-remitente').addEventListener('change', () => {
+      try { localStorage.setItem(LLAVE_REMITENTE, $('#em-remitente').value); } catch { /* sin localStorage */ }
     });
     $('#filtro-em').addEventListener('change', cargarContactosGlobales);
 
