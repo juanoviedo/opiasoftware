@@ -213,6 +213,8 @@ function listarEnvios() {
       id: e.id,
       asunto: e.asunto,
       de: e.de || '',
+      // el texto plano va en la lista para poder mostrarlo; el HTML solo en el detalle
+      texto: e.texto,
       estado: e.estado,
       createdon: e.createdon,
       createdby: e.createdby,
@@ -231,6 +233,8 @@ function detalleEnvio(envioId) {
     id: envio.id,
     asunto: envio.asunto,
     de: envio.de || '',
+    html: envio.html,
+    texto: envio.texto,
     estado: envio.estado,
     createdon: envio.createdon,
     createdby: envio.createdby,

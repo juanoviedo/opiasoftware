@@ -1461,6 +1461,19 @@
       return partes.join(' · ') || 'sin destinatarios';
     }
 
+    /** Resumen de campaña en los términos del dueño: enviados = alcanzados + erróneos. */
+    function resumenCampania(conteo) {
+      const n = (k) => conteo[k] || 0;
+      const alcanzados = n('enviado') + n('entregado');
+      const erroneos = n('no_existe') + n('error');
+      let linea = 'Correos enviados: ' + (alcanzados + erroneos)
+        + ' · Alcanzados: ' + alcanzados
+        + ' · Erróneos: ' + erroneos;
+      if (n('pendiente')) linea += ' · En cola: ' + n('pendiente');
+      if (n('omitido')) linea += ' · Omitidos: ' + n('omitido');
+      return linea;
+    }
+
     function pintarEnvio(e) {
       em.actual = e.id;
       $('#em-tarjeta-envio').hidden = false;
@@ -1548,6 +1561,18 @@
         const encabezado = el('div');
         encabezado.className = 'encabezado';
         encabezado.appendChild(el('span', fechaBonita(e.createdon) + ' · ' + e.total + ' destinatario(s)')).className = 'fecha';
+        const reutilizar = el('button', 'Reutilizar');
+        reutilizar.className = 'chico';
+        reutilizar.addEventListener('click', async () => {
+          const det = await api('/api/crm/emailmarketing/envios/' + e.id);
+          if (det.ok) {
+            $('#em-asunto').value = det.envio.asunto || '';
+            $('#em-cuerpo').innerHTML = det.envio.html || '';
+            guardarBorrador();
+            window.scrollTo(0, 0);
+          }
+        });
+        encabezado.appendChild(reutilizar);
         const ver = el('button', 'Ver detalle');
         ver.className = 'chico';
         ver.addEventListener('click', async () => {
@@ -1561,7 +1586,14 @@
         encabezado.appendChild(ver);
         item.appendChild(encabezado);
         item.appendChild(el('b', e.asunto));
-        item.appendChild(el('div', lineaConteo(e.conteo || {}))).className = 'mini mut';
+        item.appendChild(el('div', resumenCampania(e.conteo || {}))).className = 'mini mut';
+        const cuerpo = el('details');
+        cuerpo.className = 'conv';
+        cuerpo.appendChild(el('summary', 'Cuerpo del correo'));
+        const texto = el('div', e.texto || '(sin cuerpo)');
+        texto.className = 'conv-cuerpo mini';
+        cuerpo.appendChild(texto);
+        item.appendChild(cuerpo);
         caja.appendChild(item);
       }
     }
