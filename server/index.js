@@ -799,21 +799,21 @@ async function handleTeamsCallback(req, res, url) {
     return H.sendJson(res, 400, { ok: false, error: 'Microsoft devolvió un error: ' + desc });
   }
   try {
-    const token = await teams.cambiarPorCodigo(code);
-    const yo = await teams.quienSoy(token);
+    // el correo viene del id_token: /me falla 403 (el token no trae User.Read)
+    const r = await teams.cambiarPorCodigo(code);
     const esperado = (teams.organizador() || '').toLowerCase();
-    if (esperado && String(yo.mail || yo.userPrincipalName || '').toLowerCase() !== esperado) {
+    if (esperado && r.correo && r.correo !== esperado) {
       teams.limpiarTokens();
       return H.sendJson(res, 403, {
         ok: false,
-        error: `Consentiste con ${yo.mail || yo.userPrincipalName} y se esperaba ${esperado}. Vuelve a intentar con la cuenta correcta.`,
+        error: `Consentiste con ${r.correo} y se esperaba ${esperado}. Vuelve a intentar con la cuenta correcta.`,
       });
     }
     res.writeHead(303, { Location: '/crm/?teams=conectado' });
     return res.end();
   } catch (err) {
     console.error('[teams]', err.message);
-    return H.sendJson(res, 502, { ok: false, error: 'No pude completar la conexión con Microsoft.' });
+    return H.sendJson(res, 500, { ok: false, error: 'No pude completar la conexión con Microsoft.' });
   }
 }
 

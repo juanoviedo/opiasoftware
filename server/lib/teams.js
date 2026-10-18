@@ -91,6 +91,18 @@ async function intercambiar(params) {
   return resp.json();
 }
 
+/** Correo de la cuenta consentida, leído del id_token sin llamar a Graph
+ *  (el token trae solo Calendars.ReadWrite: /me responde 403). */
+function correoDeIdToken(idToken) {
+  try {
+    const payload = JSON.parse(Buffer.from(String(idToken).split('.')[1], 'base64url').toString('utf8'));
+    return String(payload.email || payload.preferred_username || payload.unique_name || '').toLowerCase();
+  } catch {
+    return '';
+  }
+}
+
+/** Cambia el código de consentimiento por tokens; devuelve el correo de la cuenta. */
 async function cambiarPorCodigo(code) {
   const data = await intercambiar({ grant_type: 'authorization_code', code });
   const c = leerConfig();
@@ -100,7 +112,7 @@ async function cambiarPorCodigo(code) {
     expires_at: Date.now() + Number(data.expires_in || 3600) * 1000,
   };
   guardarConfig(c);
-  return c.tokens.access_token;
+  return { accessToken: c.tokens.access_token, correo: correoDeIdToken(data.id_token) };
 }
 
 async function tokenFresco() {
@@ -139,16 +151,6 @@ async function graph(metodo, ruta, cuerpo) {
     throw new Error(`graph ${resp.status}: ${detalle.slice(0, 200)}`);
   }
   return resp.status === 204 ? null : resp.json();
-}
-
-/** Quién es el dueño según el token (para validar la cuenta del consentimiento). */
-async function quienSoy(accessToken) {
-  const resp = await fetch(`${BASE_GRAPH}/me`, {
-    headers: { Authorization: 'Bearer ' + accessToken },
-    signal: AbortSignal.timeout(30_000),
-  });
-  if (!resp.ok) throw new Error('graph /me ' + resp.status);
-  return resp.json();
 }
 
 /* -------------------------------------------------------------- disponibilidad */
@@ -255,7 +257,6 @@ module.exports = {
   conectado,
   urlConsentimiento,
   cambiarPorCodigo,
-  quienSoy,
   limpiarTokens,
   disponibilidad,
   agendarReunion,
