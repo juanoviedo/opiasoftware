@@ -68,7 +68,16 @@ async function dominioExiste(email) {
 }
 
 function marcarContacto(contactoId, estado) {
-  crm.contactos.actualizar(contactoId, { emailmarketing_status: estado }, 'emailmarketing');
+  const cambios = { emailmarketing_status: estado };
+  // Rebote duro: la dirección quedó muerta. Se le vacía el correo al contacto
+  // para que ninguna campaña vuelva a intentar escribirle; la dirección que
+  // rebotó sigue visible en la fila de la campaña.
+  if (estado === 'no_existe') {
+    const k = crm.contactos.porId(contactoId);
+    cambios.email = null;
+    console.log('[emailmarketing] correo borrado por rebote duro:', contactoId, k ? k.email : '');
+  }
+  crm.contactos.actualizar(contactoId, cambios, 'emailmarketing');
 }
 
 /* ----------------------------------------------------------- campañas */
