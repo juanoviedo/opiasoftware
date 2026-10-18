@@ -86,6 +86,16 @@
       }
       #eleccion .opcion-wa:hover { background: rgba(37, 211, 102, 0.22); }
 
+      /* botones de elección con los que el asistente cierra una pregunta
+         cerrada ([OPCIONES] a | b): se muestran hasta que la persona responde */
+      #opciones { display: flex; flex-wrap: wrap; gap: 8px; max-width: 82%; width: 100%; }
+      #opciones button {
+        text-align: left; background: rgba(8, 126, 245, 0.12);
+        border: 1px solid rgba(21, 184, 244, 0.5); border-radius: 12px;
+        padding: 10px 16px; font-size: 14.5px; line-height: 1.4; white-space: normal;
+      }
+      #opciones button:hover { background: rgba(8, 126, 245, 0.25); }
+
       form#formulario {
         border-top: 1px solid var(--line);
         background: rgba(4, 14, 28, 0.55);
@@ -119,6 +129,8 @@
       <a class="opcion-wa" href="https://wa.me/573332782483" target="_blank" rel="noopener">Prefiero escribir por WhatsApp</a>
     </div>
 
+    <div id="opciones" hidden></div>
+
     <form id="formulario" autocomplete="off">
       <div class="caja-envio">
         <input id="entrada" type="email" placeholder="tu@correo.com" maxlength="160" required />
@@ -138,6 +150,7 @@
     const entrada = document.querySelector('#entrada');
     const btnEnviar = document.querySelector('#btn-enviar');
     const eleccion = document.querySelector('#eleccion');
+    const cajaOpciones = document.querySelector('#opciones');
 
     // /aiagent/<guid> entra desde el enlace del correo (la sesión ya quedó
     // autenticada); /aiagent limpio pide el correo para mandar el magic link.
@@ -165,6 +178,55 @@
       if (!boton || btnEnviar.disabled) return;
       const texto = boton.textContent.trim();
       ocultarEleccion();
+      ocultarOpciones();
+      mensajesUsuario += 1;
+      burbuja(texto, 'usuario');
+      enviar(texto);
+    });
+
+    // el asistente resalta con **negrita** (markdown): se muestra como tal
+    function darFormato(texto) {
+      const seguro = String(texto).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return seguro.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+    }
+
+    // sus preguntas de elección cierran con una línea "[OPCIONES] a | b": se
+    // convierte en botones y la línea no se muestra como texto
+    function separarOpciones(texto) {
+      const lineas = String(texto).split('\n');
+      const m = /^\[OPCIONES\]\s*:?\s*(.+)$/i.exec(lineas[lineas.length - 1].trim());
+      if (!m) return { texto, opciones: null };
+      const etiquetas = m[1].split('|').map((t) => t.replace(/\*/g, '').trim()).filter(Boolean);
+      if (etiquetas.length < 2) return { texto, opciones: null };
+      lineas.pop();
+      while (lineas.length && !lineas[lineas.length - 1].trim()) lineas.pop();
+      return { texto: lineas.join('\n'), opciones: etiquetas.slice(0, 6) };
+    }
+
+    function ocultarOpciones() {
+      cajaOpciones.hidden = true;
+      cajaOpciones.replaceChildren();
+    }
+
+    function mostrarOpciones(etiquetas) {
+      if (modo !== 'chat') return;
+      ocultarOpciones();
+      for (const etiqueta of etiquetas) {
+        const boton = document.createElement('button');
+        boton.type = 'button';
+        boton.textContent = etiqueta;
+        cajaOpciones.appendChild(boton);
+      }
+      chat.appendChild(cajaOpciones); // al final del hilo, bajo la pregunta
+      cajaOpciones.hidden = false;
+      alFondo();
+    }
+
+    cajaOpciones.addEventListener('click', (ev) => {
+      const boton = ev.target.closest('button');
+      if (!boton || btnEnviar.disabled) return;
+      const texto = boton.textContent.trim();
+      ocultarOpciones();
       mensajesUsuario += 1;
       burbuja(texto, 'usuario');
       enviar(texto);
@@ -173,7 +235,8 @@
     function burbuja(texto, quien) {
       const div = document.createElement('div');
       div.className = 'msg ' + quien;
-      div.textContent = texto;
+      if (quien.startsWith('ia')) div.innerHTML = darFormato(texto);
+      else div.textContent = texto;
       chat.appendChild(div);
       alFondo();
       return div;
@@ -213,6 +276,7 @@
     function pantallaCorreo() {
       modo = 'correo';
       ocultarEleccion();
+      ocultarOpciones();
       entrada.type = 'email';
       entrada.placeholder = 'tu@correo.com';
       btnEnviar.textContent = 'Enviar enlace';
@@ -243,10 +307,23 @@
     async function cargarHistorial() {
       const r = await api('/api/aiagent/sesion?guid=' + encodeURIComponent(guid));
       if (!r.ok) return false;
-      for (const m of r.historial) burbuja(m.texto, m.rol === 'usuario' ? 'usuario' : 'ia');
+      // botones vigentes = los de la última pregunta del asistente sin
+      // respuesta todavía (quedan guardados en el propio texto del mensaje)
+      let pendientes = null;
+      for (const m of r.historial) {
+        if (m.rol === 'usuario') {
+          pendientes = null;
+          burbuja(m.texto, 'usuario');
+          continue;
+        }
+        const trozo = separarOpciones(m.texto);
+        burbuja(trozo.texto, 'ia');
+        pendientes = trozo.opciones;
+      }
       mensajesUsuario = r.historial.filter((m) => m.rol === 'usuario').length;
       pantallaChat();
       mostrarEleccion();
+      if (pendientes) mostrarOpciones(pendientes);
       return true;
     }
 
@@ -303,7 +380,9 @@
           return;
         }
         guid = r.guid;
-        burbuja(r.respuesta, 'ia');
+        const trozo = separarOpciones(r.respuesta);
+        burbuja(trozo.texto, 'ia');
+        if (trozo.opciones) mostrarOpciones(trozo.opciones);
       } catch {
         esperando.remove();
         aviso('Falló la conexión. Intenta de nuevo.');
@@ -328,6 +407,7 @@
       entrada.value = '';
       mensajesUsuario += 1;
       ocultarEleccion();
+      ocultarOpciones();
       burbuja(texto, 'usuario');
       enviar(texto);
     });
