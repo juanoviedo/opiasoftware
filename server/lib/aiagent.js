@@ -675,7 +675,7 @@ async function ejecutarHerramienta(s, nombre, args) {
     case 'solicitar_cotizacion':
       return solicitarCotizacion(s, args);
     case 'ver_disponibilidad':
-      return verDisponibilidad(args);
+      return verDisponibilidad(s, args);
     case 'agendar_reunion':
       return agendarReunionConCliente(s, args);
     default:
@@ -725,8 +725,33 @@ function horaIsoABogota(hora) {
   return { fecha: iso.slice(0, 10), hora: iso.slice(11, 16) };
 }
 
-async function verDisponibilidad(args) {
-  if (!teams.configurado() || !teams.conectado()) {
+/**
+ * El calendario no responde y la persona quiere reunión: el dueño debe enterarse
+ * por correo para confirmarle manualmente. Una sola vez por conversación.
+ */
+async function avisarCalendarioCaido(s, detalle) {
+  if (!s.contactoId || s.avisoCalendario === 'enviado') return;
+  const contacto = crm.contactos.porId(s.contactoId);
+  if (!contacto) return;
+  s.avisoCalendario = 'enviado';
+  guardarSesion(s, 'aiagent');
+  const empresa = crm.clientes.porId(s.clienteId);
+  const nombreCompleto = `${contacto.nombres || ''} ${contacto.apellidos || ''}`.trim() || contacto.email;
+  await crm.notificarEquipo({
+    subject: `Confirmar reunión a mano: ${nombreCompleto} (calendario de Teams no conectado)`,
+    text:
+      `El agente de IA no pudo usar el calendario de Teams: ${detalle}.\n\n` +
+      'DATOS DEL CONTACTO\n' +
+      `- Nombre: ${nombreCompleto}\n- Correo: ${contacto.email || '—'}\n- Celular: ${contacto.celular || '—'}\n` +
+      `- Empresa: ${empresa ? empresa.nombre : '—'}\n\n` +
+      'Confírmale la reunión por correo o WhatsApp y reconecta el calendario desde el panel.\n\n' +
+      `Conversación: ${(config.publicUrl || '') + '/aiagent/' + s.id}`,
+  });
+}
+
+async function verDisponibilidad(s, args) {
+  if (!(await teams.asegurarActivo())) {
+    await avisarCalendarioCaido(s, 'la persona pidió horario de reunión y no se pudo consultar el calendario');
     return 'El calendario del equipo no está conectado todavía. Dile a la persona que el equipo le confirmará la hora por correo o WhatsApp.';
   }
   const fecha = resolverFecha(args.fecha);
@@ -756,7 +781,11 @@ async function agendarReunionConCliente(s, args) {
   const contacto = crm.contactos.porId(s.contactoId);
   if (!contacto) return 'No encontré el contacto en el CRM.';
   if (!contacto.email) return 'Falta el correo de la persona para invitarla. Pídeselo y llama de nuevo a agendar_reunion.';
-  if (!teams.configurado() || !teams.conectado()) {
+  if (!(await teams.asegurarActivo())) {
+    await avisarCalendarioCaido(
+      s,
+      `la persona aceptó reunión (${args.fecha || 'sin fecha'}, ${args.duracion_minutos || 60} min) y no se pudo agendar`
+    );
     return 'El calendario del equipo no está conectado todavía. Dile a la persona que el equipo le confirmará la reunión por correo o WhatsApp.';
   }
 

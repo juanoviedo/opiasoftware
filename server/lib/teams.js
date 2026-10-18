@@ -54,6 +54,23 @@ function conectado() {
   return Boolean(c.tokens && c.tokens.access_token && c.tokens.expires_at > Date.now() + 5 * 60_000);
 }
 
+/**
+ * El access token dura ~1 hora y el refresh meses: si solo venció el de acceso
+ * se renueva solo. Sin esto el guarda de conectado() bloqueaba el refresh y el
+ * calendario quedaba "no conectado" para siempre.
+ */
+async function asegurarActivo() {
+  if (!configurado()) return false;
+  const c = leerConfig();
+  if (!c.tokens || !c.tokens.refresh_token) return false;
+  try {
+    await tokenFresco();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** URL de consentimiento firmada: el state evita que inyecten un callback ajenos. */
 function urlConsentimiento() {
   const c = leerConfig();
@@ -264,6 +281,7 @@ function limpiarTokens() {
 module.exports = {
   configurado,
   conectado,
+  asegurarActivo,
   urlConsentimiento,
   cambiarPorCodigo,
   limpiarTokens,
