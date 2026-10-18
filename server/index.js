@@ -514,10 +514,15 @@ function listadoContactos(url) {
     });
   }
   if (q) {
-    filas = filas.filter((k) =>
-      [k.nombres, k.apellidos, k.email, k.cargo, nombreCliente.get(k.clienteId)]
-        .some((v) => crm.normaliza(v).includes(q))
-    );
+    // el nombre completo se reparte entre nombres y apellidos: se buscan TODAS
+    // las palabras del texto en los campos unidos (da igual el orden)
+    const palabras = q.split(/\s+/).filter(Boolean);
+    filas = filas.filter((k) => {
+      const texto = crm.normaliza(
+        [k.nombres, k.apellidos, k.email, k.cargo, nombreCliente.get(k.clienteId)].join(' ')
+      );
+      return palabras.every((palabra) => texto.includes(palabra));
+    });
   }
   const orden = H.clean(url.searchParams.get('orden') || '', 20);
   const dir = H.clean(url.searchParams.get('dir') || '', 4) === 'desc' ? -1 : 1;
