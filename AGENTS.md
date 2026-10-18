@@ -21,6 +21,7 @@ python marketing/plan-leads/tools/meta_api.py --validate   # valida credenciales
 python scripts/importar-crm.py    # importa los Excel de DatosInicialesCRM/ al CRM (server/data/crm/)
 python scripts/asignar-empresas-por-dominio.py    # reagrupa contactos "sin empresa" bajo clientes nombrados por el dominio del correo
 python scripts/importar-bog-norte.py <csv>    # importa empresas_bognorte.csv con su número de trabajadores al CRM
+node server/scripts/importar-leads-meta.js   # trae de una vez los leads de Meta al CRM (en el servidor: docker exec opiasoftware-home-app-1 node server/scripts/importar-leads-meta.js)
 ```
 
 No hay tests automatizados ni linter: verificar con curl (`/api/health`, `/privacidad`, `/lp/diagnostico-gratis`) y revisando el HTML servido.
@@ -47,7 +48,7 @@ No hay tests automatizados ni linter: verificar con curl (`/api/health`, `/priva
 ## Mapa del repo
 
 - `/` — 13 páginas HTML prerenderizadas, incluidas `/lp/diagnostico-gratis` (landing de campaña) y `/privacidad` (política de datos exigida por Meta).
-- `server/` — servidor Node: `index.js` (rutas), `lib/` (config, auth scrypt+HMAC, analytics, geoip, bots, ua, static), `opadmin/` (panel), `public/` (beacon.js, conversions.js), `scripts/` (set-password, hash-password).
+- `server/` — servidor Node: `index.js` (rutas), `lib/` (config, auth scrypt+HMAC, analytics, geoip, bots, ua, static, crm, aiagent, teams, metaleads), `opadmin/` (panel), `public/` (beacon.js, conversions.js), `scripts/` (set-password, hash-password, importar-leads-meta).
 - `marketing/plan-leads/` — plan de medios, copys y cliente de Meta Marketing API. Interno, no se sirve.
 - `deploy-from-github.sh`, `Dockerfile`, `.dockerignore`, `docker-compose.yml` — despliegue en el Debian.
 - `api/`, `supabase/`, `opadmin/` (raíz), `js/` (raíz), `vercel.json` — port abandonado a Vercel+Supabase; producción es el servidor Node. No mantener ni extender.

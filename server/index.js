@@ -17,6 +17,7 @@ const crm = require('./lib/crm');
 const aiagent = require('./lib/aiagent');
 const teams = require('./lib/teams');
 const emailmkt = require('./lib/emailmarketing');
+const metaleads = require('./lib/metaleads');
 const { serveStatic, sendFile } = require('./lib/static');
 
 const visits = new JsonlStore(path.join(config.dataDir, 'visits.jsonl'));
@@ -1138,6 +1139,11 @@ function start() {
 
   purgeOld();
   setInterval(purgeOld, 6 * 60 * 60_000).unref();
+
+  // Los leads de Meta no empujan al túnel de Cloudflare: se consultan los
+  // formularios cada 10 minutos y los leads nuevos entran solos al CRM.
+  setTimeout(metaleads.ciclo, 30_000).unref();
+  setInterval(metaleads.ciclo, 10 * 60_000).unref();
 
   const shutdown = (signal) => {
     console.log(`\n[opia] ${signal}, cerrando…`);
