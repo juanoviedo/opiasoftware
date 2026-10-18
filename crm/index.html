@@ -471,6 +471,8 @@
             <input id="em-asunto" type="text" placeholder="Ej: OPIA Software — diagnóstico gratis para tu empresa" />
             <label for="em-remitente">Enviar desde</label>
             <select id="em-remitente"></select>
+            <label for="em-programar">Programar envío (opcional)</label>
+            <input id="em-programar" type="datetime-local" />
             <label>Cuerpo del mensaje</label>
             <div class="em-barra">
               <button type="button" class="chico" data-cmd="bold" title="Negrita"><b>N</b></button>
@@ -480,7 +482,7 @@
               <button type="button" class="chico" data-cmd="removeFormat">Quitar formato</button>
             </div>
             <div id="em-cuerpo" contenteditable="true" class="em-cuerpo" data-ejemplo="Escribe aquí el mensaje que recibirán los contactos…"></div>
-            <p class="mini mut" style="margin-bottom:0">El correo sale desde el remitente elegido. Cuando el contacto lo recibe, queda marcado como <b>Recibido</b>; si el buzón no existe, como <b>No existe</b>.</p>
+            <p class="mini mut" style="margin-bottom:0">El correo sale desde el remitente elegido. Si dejas una fecha, la campaña sale sola a esa hora (hora de tu computador) y puedes cancelarla mientras espera. Cuando el contacto lo recibe, queda marcado como <b>Recibido</b>; si el buzón no existe, como <b>No existe</b>.</p>
           </div>
           <div class="tarjeta">
             <h2>Destinatarios</h2>
@@ -586,7 +588,7 @@
       <div class="dialogo" role="alertdialog" aria-modal="true" aria-labelledby="em-env-titulo">
         <h3 id="em-env-titulo">Enviar correo electrónico</h3>
         <p>
-          Se iniciará el envío a <b id="em-env-n"></b> desde <b id="em-env-remitente"></b>.
+          Se iniciará el envío a <b id="em-env-n"></b> desde <b id="em-env-remitente"></b><span id="em-env-cuando"></span>.
           Cada contacto quedará marcado con el resultado. La campaña corre sola y se puede cancelar mientras avanza.
         </p>
         <label for="em-env-palabra">Escribe ENVIAR para confirmar</label>
@@ -1479,7 +1481,7 @@
       $('#em-tarjeta-envio').hidden = false;
       $('#em-envio-titulo').textContent = e.id + ' · ' + e.asunto;
       const estadosCampana = {
-        pendiente: 'En cola', en_curso: 'Enviándose…', terminada: 'Terminada',
+        pendiente: 'En cola', programada: 'Programada', en_curso: 'Enviándose…', terminada: 'Terminada',
         cancelada: 'Cancelada', interrumpida: 'Interrumpida',
       };
       const estadoSpam = el('span', estadosCampana[e.estado] || e.estado);
@@ -1488,10 +1490,11 @@
       caja.textContent = '';
       caja.appendChild(estadoSpam);
       caja.appendChild(document.createTextNode(' ' + fechaBonita(e.createdon) + ' · ' + lineaConteo(e.conteo || {})));
+      if (e.programadoPara) caja.appendChild(document.createTextNode(' · Programado para ' + fechaBonita(e.programadoPara)));
       const total = (e.destinatarios || []).length;
       const procesados = total - (e.conteo && e.conteo.pendiente ? e.conteo.pendiente : 0);
       $('#em-envio-barra').style.width = total ? Math.round((procesados * 100) / total) + '%' : '0%';
-      $('#em-btn-cancelar').hidden = !(e.estado === 'en_curso' || e.estado === 'pendiente');
+      $('#em-btn-cancelar').hidden = !(e.estado === 'en_curso' || e.estado === 'pendiente' || e.estado === 'programada');
       const tabla = $('#em-envio-tabla');
       tabla.textContent = '';
       for (const d of e.destinatarios || []) {
@@ -1517,6 +1520,11 @@
           if (r.envio.estado === 'pendiente' || r.envio.estado === 'en_curso') {
             // 4 s: una campaña larga no debe agotar el limitador de la API del CRM
             emPollTimer = setTimeout(paso, 4000);
+            return;
+          }
+          if (r.envio.estado === 'programada') {
+            // 30 s: puede faltar mucho para la hora y el limitador es de 600/h
+            emPollTimer = setTimeout(paso, 30000);
             return;
           }
           cargarHistorial();
@@ -1560,7 +1568,7 @@
         item.className = 'nota-item';
         const encabezado = el('div');
         encabezado.className = 'encabezado';
-        encabezado.appendChild(el('span', fechaBonita(e.createdon) + ' · ' + e.total + ' destinatario(s)')).className = 'fecha';
+        encabezado.appendChild(el('span', fechaBonita(e.createdon) + ' · ' + e.total + ' destinatario(s)' + (e.programadoPara ? ' · Programada para ' + fechaBonita(e.programadoPara) : ''))).className = 'fecha';
         const reutilizar = el('button', 'Reutilizar');
         reutilizar.className = 'chico';
         reutilizar.addEventListener('click', async () => {
@@ -1928,8 +1936,12 @@
       if (asunto.length < 2) return alert('Escribe el asunto del correo.');
       if (($('#em-cuerpo').textContent || '').trim().length < 2) return alert('Escribe el cuerpo del correo.');
       if (!em.seleccion.size) return alert('Selecciona al menos un contacto de la lista.');
+      const cuando = $('#em-programar').value;
+      if (cuando && new Date(cuando).getTime() <= Date.now()) return alert('La hora programada debe ser en el futuro.');
       $('#em-env-n').textContent = em.seleccion.size + (em.seleccion.size === 1 ? ' contacto' : ' contactos');
       $('#em-env-remitente').textContent = $('#em-remitente').value;
+      $('#em-env-cuando').textContent = cuando ? ' el ' + fechaBonita(cuando) : ' de inmediato';
+      $('#em-env-aceptar').textContent = cuando ? 'Programar' : 'Enviar ahora';
       const palabra = $('#em-env-palabra');
       palabra.value = '';
       $('#em-env-aceptar').disabled = true;
@@ -1949,17 +1961,26 @@
       $('#confirmar-envio').hidden = true;
       const asunto = $('#em-asunto').value.trim();
       const html = $('#em-cuerpo').innerHTML;
+      // se recalcula al confirmar: el diálogo puede quedar abierto y la hora vencerse
+      const cuando = $('#em-programar').value;
+      let programa = '';
+      if (cuando) {
+        const t = new Date(cuando).getTime();
+        if (!Number.isFinite(t) || t <= Date.now()) return alert('La hora programada ya pasó. Elige otra e inténtalo de nuevo.');
+        programa = new Date(t).toISOString();
+      }
       const boton = $('#em-btn-enviar');
       boton.disabled = true;
       try {
         const r = await api('/api/crm/emailmarketing/envios', {
           method: 'POST',
-          body: JSON.stringify({ asunto, html, contactoIds: [...em.seleccion], de: $('#em-remitente').value }),
+          body: JSON.stringify({ asunto, html, contactoIds: [...em.seleccion], de: $('#em-remitente').value, programadoPara: programa }),
         });
         if (!r.ok) return alert(r.error || 'No se pudo crear la campaña.');
         try { localStorage.removeItem(LLAVE_BORRADOR); } catch { /* igual se envió */ }
         $('#em-asunto').value = '';
         $('#em-cuerpo').innerHTML = '';
+        $('#em-programar').value = '';
         em.seleccion.clear();
         // esperar el refresco del selector: si la tabla cambia a mitad del
         // desplazamiento suave, el navegador lo cancela

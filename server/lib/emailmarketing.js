@@ -85,12 +85,21 @@ function marcarContacto(contactoId, estado) {
 let enCurso = null; // id del envío que se está mandando
 const canceladas = new Set();
 
-function crearEnvio({ asunto, cuerpoHtml, contactoIds, de }, actor) {
+function crearEnvio({ asunto, cuerpoHtml, contactoIds, de, programadoPara }, actor) {
   const titulo = String(asunto || '').trim();
   const cuerpo = String(cuerpoHtml || '').trim();
   if (titulo.length < 2) return { error: 'Escribe el asunto del correo.' };
   if (cuerpo.length < 2) return { error: 'Escribe el cuerpo del correo.' };
-  if (enCurso) return { error: 'Ya hay una campaña enviándose. Espera a que termine o cancélala.' };
+  const cuando = String(programadoPara || '').trim();
+  let programado = '';
+  if (cuando) {
+    const t = Date.parse(cuando);
+    if (!Number.isFinite(t)) return { error: 'La fecha de envío programada no es válida.' };
+    if (t <= Date.now()) return { error: 'No puedes programar un envío para una hora que ya pasó.' };
+    programado = new Date(t).toISOString();
+  }
+  // una campaña programada SÍ puede crearse mientras otra se envía: esperará su turno
+  if (!programado && enCurso) return { error: 'Ya hay una campaña enviándose. Espera a que termine o cancélala.' };
   const remitente = String(de || '').toLowerCase().trim();
   if (remitente && !crm.remitentesCorreo().some((r) => r.valor === remitente)) {
     return { error: 'Ese remitente no está permitido.' };
@@ -125,10 +134,12 @@ function crearEnvio({ asunto, cuerpoHtml, contactoIds, de }, actor) {
     de: remitente || undefined,
     html: cuerpo,
     texto: quitarEtiquetas(cuerpo),
-    estado: 'pendiente',
+    estado: programado ? 'programada' : 'pendiente',
     destinatarios,
   };
+  if (programado) fila.programadoPara = programado;
   envios.agregar(fila, actor);
+  if (programado) return { envio: envios.porId(fila.id) };
   enCurso = fila.id;
   enviarTodo(fila.id).catch((err) => {
     console.error('[emailmarketing] campaña', fila.id, err.message);
@@ -187,10 +198,40 @@ async function enviarTodo(envioId) {
 function cancelarEnvio(envioId) {
   const envio = envios.porId(envioId);
   if (!envio) return { error: 'Campaña no encontrada.' };
+  // una campaña que aún espera su hora se cancela directo (no hay proceso corriendo)
+  if (envio.estado === 'programada') {
+    envios.actualizar(envioId, { estado: 'cancelada' }, 'emailmarketing');
+    return { ok: true };
+  }
   if (enCurso !== envioId) return { error: 'Esa campaña ya terminó.' };
   canceladas.add(envioId);
   return { ok: true };
 }
+
+/* Las campañas programadas viven en la tabla: un tic cada 15 s revisa si ya es
+   la hora. Si el servidor se reinicia (los despliegues lo hacen seguido), la
+   campaña sobrevive al reinicio y sale igual, apenas haya turno libre. */
+function ticProgramadas() {
+  if (enCurso) return;
+  const ahora = Date.now();
+  const lista = envios
+    .todas()
+    .slice()
+    .sort((a, b) => String(a.programadoPara || '').localeCompare(String(b.programadoPara || '')));
+  for (const e of lista) {
+    if (e.estado !== 'programada') continue;
+    if (Date.parse(e.programadoPara || '') > ahora) continue;
+    enCurso = e.id;
+    enviarTodo(e.id).catch((err) => {
+      console.error('[emailmarketing] campaña', e.id, err.message);
+      enCurso = null;
+    });
+    return; // de una en una
+  }
+}
+const relojProgramadas = setInterval(ticProgramadas, 15_000);
+// los scripts que cargan la librería (importadores, pruebas) deben poder terminar
+relojProgramadas.unref();
 
 /* La cola vive en memoria: si el servidor se apaga a mitad de campaña, la
    marca como interrumpida para que la interfaz no espere para siempre. */
@@ -222,6 +263,7 @@ function listarEnvios() {
       id: e.id,
       asunto: e.asunto,
       de: e.de || '',
+      programadoPara: e.programadoPara || '',
       // el texto plano va en la lista para poder mostrarlo; el HTML solo en el detalle
       texto: e.texto,
       estado: e.estado,
@@ -242,6 +284,7 @@ function detalleEnvio(envioId) {
     id: envio.id,
     asunto: envio.asunto,
     de: envio.de || '',
+    programadoPara: envio.programadoPara || '',
     html: envio.html,
     texto: envio.texto,
     estado: envio.estado,

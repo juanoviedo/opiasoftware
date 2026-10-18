@@ -710,7 +710,13 @@ async function handleCrmApi(req, res, pathname, url) {
     }
     if (!partes[4] && metodo === 'POST') {
       const r = emailmkt.crearEnvio(
-        { asunto: body.asunto, cuerpoHtml: body.html, contactoIds: body.contactoIds, de: H.clean(body.de, 120) },
+        {
+          asunto: body.asunto,
+          cuerpoHtml: body.html,
+          contactoIds: body.contactoIds,
+          de: H.clean(body.de, 120),
+          programadoPara: H.clean(body.programadoPara, 40),
+        },
         email
       );
       if (r.error) return H.sendJson(res, 422, { ok: false, error: r.error });
