@@ -658,7 +658,13 @@ async function handleCrmApi(req, res, pathname, url) {
       // que no quede apuntando a un contacto que ya no existe
       const dueno = crm.clientes.todas().find((c) => c.contactoPrincipalId === id);
       if (dueno) crm.clientes.actualizar(dueno.id, { contactoPrincipalId: '' }, email);
-      return H.sendJson(res, 200, { ok: true });
+      // el borrado es en cascada: sus notas y todo el chat del agente de IA
+      // (conversación, mensajes y levantamiento) se van con el contacto
+      const notasRestantes = crm.notas.todas().filter((n) => n.contactoId !== id);
+      const notasBorradas = crm.notas.todas().length - notasRestantes.length;
+      crm.notas.guardar(notasRestantes);
+      const agente = aiagent.eliminarPorContacto(id);
+      return H.sendJson(res, 200, { ok: true, notasBorradas, ...agente });
     }
   }
 

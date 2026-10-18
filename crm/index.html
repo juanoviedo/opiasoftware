@@ -198,6 +198,21 @@
       .rejilla .ancho { grid-column: 1 / -1; }
       .modal .acciones { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
       .campo-error { color: var(--bad); font-size: 12px; margin-top: 4px; }
+
+      /* ---------- confirmación de borrado de contacto ---------- */
+      .dialogo-fondo {
+        position: fixed; inset: 0; background: rgba(2, 8, 18, 0.78);
+        display: grid; place-items: center; padding: 20px; z-index: 30;
+      }
+      .dialogo {
+        width: 100%; max-width: 430px; background: #0a2340;
+        border: 1px solid rgba(255, 107, 107, 0.4); border-radius: 16px; padding: 22px;
+      }
+      .dialogo h3 { margin: 0 0 10px; color: var(--bad); }
+      .dialogo p { margin: 0; font-size: 14px; line-height: 1.55; }
+      .dialogo .acciones { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+      button.peligro-solido { background: #d63a2f; border-color: transparent; color: #fff; font-weight: 600; }
+      button.peligro-solido:hover { background: #e74c3c; }
       [hidden] { display: none !important; }
 
       /* ---------- escritorio: se restaura la vista clásica ---------- */
@@ -398,6 +413,22 @@
         <div class="acciones">
           <button id="modal-cancelar">Cancelar</button>
           <button class="primario" id="modal-guardar">Guardar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONFIRMACIÓN DE BORRADO DE CONTACTO -->
+    <div id="confirmar-borrado" class="dialogo-fondo" hidden>
+      <div class="dialogo" role="alertdialog" aria-modal="true" aria-labelledby="confirmar-titulo">
+        <h3 id="confirmar-titulo">Eliminar contacto</h3>
+        <p>
+          Se eliminarán todos los datos de <b id="confirmar-nombre"></b>: su ficha en el CRM,
+          sus notas y la conversación completa con el asistente de IA (incluido el levantamiento de necesidades).
+          Esta acción no se puede deshacer.
+        </p>
+        <div class="acciones">
+          <button id="confirmar-cancelar">Cancelar</button>
+          <button class="peligro-solido" id="confirmar-aceptar">Sí, eliminar</button>
         </div>
       </div>
     </div>
@@ -1139,12 +1170,17 @@
       cargarClientes();
     }
 
-    async function borrarContacto(contacto) {
+    let accionConfirmada = null;
+    function borrarContacto(contacto) {
       const nombre = [contacto.nombres, contacto.apellidos].filter(Boolean).join(' ');
-      if (!confirm('¿Borrar el contacto "' + nombre + '"?')) return;
-      const resp = await api('/api/crm/contactos/' + contacto.id, { method: 'DELETE' });
-      if (!resp.ok) return alert(resp.error || 'No se pudo borrar.');
-      abrirCliente(estado.clienteActual.id);
+      $('#confirmar-nombre').textContent = nombre || 'este contacto';
+      $('#confirmar-borrado').hidden = false;
+      accionConfirmada = async () => {
+        $('#confirmar-borrado').hidden = true;
+        const resp = await api('/api/crm/contactos/' + contacto.id, { method: 'DELETE' });
+        if (!resp.ok) return alert(resp.error || 'No se pudo borrar.');
+        abrirCliente(estado.clienteActual.id);
+      };
     }
 
     /* ---------------- login ---------------- */
@@ -1210,6 +1246,11 @@
     });
     $('#modal-cancelar').addEventListener('click', cerrarModal);
     $('#modal-guardar').addEventListener('click', () => { if (modalGuardar) modalGuardar(); });
+    $('#confirmar-cancelar').addEventListener('click', () => {
+      $('#confirmar-borrado').hidden = true;
+      accionConfirmada = null;
+    });
+    $('#confirmar-aceptar').addEventListener('click', () => { if (accionConfirmada) accionConfirmada(); });
     $('#buscar-cliente').addEventListener('input', () => {
       clearTimeout(busquedaClientesTimer);
       busquedaClientesTimer = setTimeout(cargarClientes, 250);

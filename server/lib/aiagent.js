@@ -164,6 +164,24 @@ function podarSesiones() {
   return cambios;
 }
 
+/**
+ * Borra todo el rastro del agente de un contacto: sus conversaciones, los
+ * mensajes y los levantamientos. La llama el CRM al eliminar el contacto.
+ */
+function eliminarPorContacto(contactoId) {
+  const suyas = sesiones.todas().filter((s) => s.contactoId === contactoId);
+  const guids = new Set(suyas.map((s) => s.id));
+  const mensajesRestantes = mensajes.todas().filter((m) => !guids.has(m.guid));
+  const mensajesBorrados = mensajes.todas().length - mensajesRestantes.length;
+  mensajes.guardar(mensajesRestantes);
+  const levRestantes = crm.levantamientos.todas().filter((l) => l.contactoId !== contactoId);
+  const levantamientosBorrados = crm.levantamientos.todas().length - levRestantes.length;
+  crm.levantamientos.guardar(levRestantes);
+  const sesionesRestantes = sesiones.todas().filter((s) => s.contactoId !== contactoId);
+  sesiones.guardar(sesionesRestantes);
+  return { conversacionesBorradas: suyas.length, mensajesBorrados, levantamientosBorrados };
+}
+
 /* ------------------------------------------------------------- configuración */
 
 // Proveedor y clave viven SOLO en este archivo (ignorado por git): ni el código
@@ -840,6 +858,7 @@ module.exports = {
   obtenerSesion,
   historialVisible,
   podarSesiones,
+  eliminarPorContacto,
   solicitarEnlace,
   verificarEnlace,
   mensaje,
