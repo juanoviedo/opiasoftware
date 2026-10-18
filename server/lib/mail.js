@@ -63,6 +63,12 @@ function direccionPura(valor) {
   return m ? m[1] : String(valor).trim();
 }
 
+/** RCPT va uno por destinatario: Microsoft rechaza varias direcciones en un solo RCPT (5.1.3). */
+function listaDestinatarios(valor) {
+  const crudos = Array.isArray(valor) ? valor : String(valor || '').split(',');
+  return crudos.map((v) => direccionPura(v).trim()).filter(Boolean);
+}
+
 /**
  * Cliente SMTP mínimo (sin dependencias): soporta TLS directo (puerto 465) y
  * STARTTLS (puerto 587), con AUTH LOGIN. Suficiente para Gmail y similares.
@@ -123,8 +129,12 @@ async function sendMail({ host, port, secure, user, pass, from, to, subject, tex
 
   enviar(socket, `MAIL FROM:<${direccionPura(from)}>`);
   await esperar(250, 'remitente');
-  enviar(socket, `RCPT TO:<${direccionPura(to)}>`);
-  await esperar(250, 'destinatario');
+  const destinatarios = listaDestinatarios(to);
+  if (!destinatarios.length) throw new Error('sin destinatarios válidos');
+  for (const destino of destinatarios) {
+    enviar(socket, `RCPT TO:<${destino}>`);
+    await esperar(250, 'destinatario');
+  }
   enviar(socket, 'DATA');
   await esperar(354, 'datos');
   socket.write(mensaje + '.' + salto);
