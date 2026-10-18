@@ -646,6 +646,29 @@ async function handleCrmApi(req, res, pathname, url) {
     }
     const contacto = crm.contactos.porId(id);
     if (!contacto) return H.sendJson(res, 404, { ok: false, error: 'Contacto no encontrado.' });
+    if (metodo === 'GET') {
+      // ficha completa del contacto: su empresa, sus notas, las conversaciones
+      // del agente de IA y sus levantamientos (lo mismo que se borra en cascada)
+      const cliente = crm.clientes.porId(contacto.clienteId) || null;
+      const notas = crm.notas
+        .todas()
+        .filter((n) => n.contactoId === id)
+        .sort((a, b) => String(b.createdon || '').localeCompare(String(a.createdon || '')));
+      const levantamientos = crm.levantamientos
+        .todas()
+        .filter((l) => l.contactoId === id)
+        .sort((a, b) => String(b.modifiedon || b.createdon || '').localeCompare(String(a.modifiedon || a.createdon || '')));
+      return H.sendJson(res, 200, {
+        ok: true,
+        contacto,
+        empresa: cliente
+          ? { id: cliente.id, nombre: cliente.nombre, numEmpleadosAprox: cliente.numEmpleadosAprox, estadoSeguimiento: cliente.estadoSeguimiento }
+          : null,
+        notas,
+        conversaciones: aiagent.conversacionesDeContacto(id),
+        levantamientos,
+      });
+    }
     if (metodo === 'PUT') {
       const { datos, errores } = crm.validarContacto({ ...contacto, ...body });
       if (Object.keys(errores).length) return H.sendJson(res, 422, { ok: false, errors: errores });

@@ -182,6 +182,21 @@ function eliminarPorContacto(contactoId) {
   return { conversacionesBorradas: suyas.length, mensajesBorrados, levantamientosBorrados };
 }
 
+/** Conversaciones del asistente con un contacto, para la ficha del CRM:
+ *  la más reciente primero, con los turnos visibles de cada una. */
+function conversacionesDeContacto(contactoId) {
+  return sesiones
+    .todas()
+    .filter((s) => s.contactoId === contactoId)
+    .sort((a, b) => String(b.modifiedon || b.createdon || '').localeCompare(String(a.modifiedon || a.createdon || '')))
+    .map((s) => ({
+      guid: s.id,
+      createdon: s.createdon,
+      modifiedon: s.modifiedon,
+      mensajes: historialVisible(s),
+    }));
+}
+
 /* ------------------------------------------------------------- configuración */
 
 // Proveedor y clave viven SOLO en este archivo (ignorado por git): ni el código
@@ -863,6 +878,7 @@ module.exports = {
   historialVisible,
   podarSesiones,
   eliminarPorContacto,
+  conversacionesDeContacto,
   solicitarEnlace,
   verificarEnlace,
   mensaje,

@@ -184,6 +184,23 @@
       .lev-campo .etiqueta { color: var(--muted); font-size: 11.5px; display: block; margin-bottom: 1px; }
       .lev-campo .valor { white-space: pre-wrap; }
 
+      /* ---------- conversaciones del asistente en la ficha del contacto ---------- */
+      .conv { border: 1px solid var(--line); border-radius: 10px; margin-top: 10px; overflow: hidden; }
+      .conv summary {
+        cursor: pointer; padding: 10px 13px; font-size: 13px; color: var(--muted);
+        background: rgba(4, 16, 32, 0.55); list-style: revert; user-select: none;
+      }
+      .conv summary:hover { color: var(--text); }
+      .conv-cuerpo { padding: 10px 13px 13px; }
+      .conv-msg {
+        margin: 7px 0; padding: 8px 11px; border-radius: 10px;
+        font-size: 13.5px; line-height: 1.5; white-space: pre-wrap; word-break: break-word;
+      }
+      .conv-msg.usuario { background: rgba(8, 126, 245, 0.22); margin-left: 10%; border-bottom-right-radius: 3px; }
+      .conv-msg.ia { background: rgba(255, 255, 255, 0.06); margin-right: 10%; border-bottom-left-radius: 3px; }
+      .conv-rol { display: block; color: var(--muted); font-size: 10.5px; margin-bottom: 2px; letter-spacing: 0.04em; text-transform: uppercase; }
+      .conv-enlace { font-size: 12px; margin-top: 8px; }
+
       /* ---------- modal ---------- */
       .modal-fondo {
         position: fixed; inset: 0; background: rgba(2, 8, 18, 0.75);
@@ -355,6 +372,24 @@
             </thead>
             <tbody id="tabla-contactos"></tbody>
           </table>
+        </section>
+
+        <!-- detalle de contacto -->
+        <section id="panel-contacto" hidden>
+          <p><button class="chico" id="btn-volver-contacto">← Volver</button></p>
+          <div class="tarjeta" id="ficha-contacto"></div>
+          <div class="tarjeta" id="tarjeta-conversaciones" hidden>
+            <h2>Conversaciones con el asistente</h2>
+            <div id="conversaciones-cuerpo"></div>
+          </div>
+          <div class="tarjeta" id="tarjeta-levantamiento-contacto" hidden>
+            <h2>Levantamiento de necesidades</h2>
+            <div id="levantamiento-contacto-cuerpo"></div>
+          </div>
+          <div class="tarjeta" id="tarjeta-notas-contacto" hidden>
+            <h2>Notas del contacto</h2>
+            <div id="notas-contacto-cuerpo"></div>
+          </div>
         </section>
 
         <!-- buscador global de contactos -->
@@ -597,10 +632,11 @@
     function irA(vista) {
       estado.vista = vista;
       $('#tab-clientes').classList.toggle('activo', vista === 'clientes' || vista === 'cliente');
-      $('#tab-contactos').classList.toggle('activo', vista === 'contactos');
+      $('#tab-contactos').classList.toggle('activo', vista === 'contactos' || vista === 'contacto');
       $('#tab-acceso').classList.toggle('activo', vista === 'acceso');
       $('#panel-clientes').hidden = vista !== 'clientes';
       $('#panel-cliente').hidden = vista !== 'cliente';
+      $('#panel-contacto').hidden = vista !== 'contacto';
       $('#panel-contactos').hidden = vista !== 'contactos';
       $('#panel-acceso').hidden = vista !== 'acceso';
       if (vista === 'clientes') cargarClientes();
@@ -842,7 +878,7 @@
         acciones.appendChild(document.createTextNode(' '));
         acciones.appendChild(borrar);
         tr.appendChild(acciones);
-        tr.addEventListener('click', () => formularioContacto(k));
+        tr.addEventListener('click', () => abrirContacto(k.id));
         tabla.appendChild(tr);
       }
       if (!contactos.length) tabla.appendChild(el('tr')).appendChild(el('td', 'Este cliente no tiene contactos todavía.'));
@@ -954,6 +990,168 @@
       cargarNotas();
     }
 
+    /* ---------------- ficha del contacto ---------------- */
+
+    // el marcador [OPCIONES] de los botones es un comando de la interfaz del
+    // chat: en el CRM se muestra el mensaje sin esa línea
+    function textoSinOpciones(t) {
+      return String(t).split('\n').filter((l) => !/^\s*\[OPCIONES\]/i.test(l)).join('\n').trim();
+    }
+
+    async function abrirContacto(id) {
+      const r = await api('/api/crm/contactos/' + id);
+      if (!r.ok) return alert(r.error || 'No se pudo abrir el contacto.');
+      const { contacto, empresa, notas, conversaciones, levantamientos } = r;
+      const nombre = [contacto.nombres, contacto.apellidos].filter(Boolean).join(' ') || '—';
+      // a dónde volver: si se abrió desde la ficha de la empresa, ahí; si no, a la lista de contactos
+      const desdeCliente = estado.vista === 'cliente' && estado.clienteActual;
+      estado.regresoContacto = desdeCliente ? () => abrirCliente(estado.clienteActual.id) : () => irA('contactos');
+      estado.contactoActual = contacto;
+      estado.clienteActual = empresa || null;
+
+      const ficha = $('#ficha-contacto');
+      ficha.textContent = '';
+      ficha.appendChild(el('h2', nombre));
+      const badges = el('div');
+      badges.style.margin = '6px 0 2px';
+      badges.appendChild(estadoBadge(contacto.estado));
+      if (empresa && empresa.estadoSeguimiento) {
+        badges.appendChild(document.createTextNode(' '));
+        badges.appendChild(seguimientoBadge(empresa.estadoSeguimiento));
+      }
+      if (contacto.modifiedon || contacto.createdon) {
+        badges.appendChild(document.createTextNode(' '));
+        badges.appendChild(el('span', 'Actualizado: ' + fechaBonita(contacto.modifiedon || contacto.createdon))).className = 'mini mut';
+      }
+      ficha.appendChild(badges);
+
+      const acciones = el('div');
+      acciones.className = 'herramientas';
+      acciones.style.margin = '10px 0 4px';
+      const editar = el('button', 'Editar');
+      editar.className = 'primario';
+      editar.addEventListener('click', () => formularioContacto(contacto));
+      const borrar = el('button', 'Borrar');
+      borrar.className = 'peligro';
+      borrar.addEventListener('click', () => borrarContacto(contacto));
+      acciones.appendChild(editar);
+      acciones.appendChild(document.createTextNode(' '));
+      acciones.appendChild(borrar);
+      if (empresa) {
+        const verEmpresa = el('button', 'Ver empresa');
+        verEmpresa.className = 'chico';
+        verEmpresa.addEventListener('click', () => abrirCliente(empresa.id));
+        acciones.appendChild(document.createTextNode(' '));
+        acciones.appendChild(verEmpresa);
+      }
+      if (contacto.celular) {
+        const wsp = botonWhatsapp('WhatsApp a ' + nombre);
+        wsp.addEventListener('click', () => gestionarWhatsApp(contacto.clienteId, contacto));
+        acciones.appendChild(document.createTextNode(' '));
+        acciones.appendChild(wsp);
+      }
+      ficha.appendChild(acciones);
+
+      const datos = el('div');
+      datos.className = 'ficha';
+      const pares = [
+        ['Empresa', empresa ? empresa.nombre : ''],
+        ['Cargo', contacto.cargo],
+        ['Correo', contacto.email], ['Correo 2', contacto.email2], ['Correo 3', contacto.email3],
+        ['Celular', contacto.celular], ['Teléfono', contacto.telefono], ['Teléfono 2', contacto.telefono2],
+        ['Empleados de la empresa', empresa && empresa.numEmpleadosAprox != null ? String(empresa.numEmpleadosAprox) : ''],
+        ['Origen', contacto.origen], ['Archivo origen', contacto.archivoOrigen],
+        ['Notas', contacto.notas], ['Observaciones', contacto.observaciones], ['Descripción', contacto.descripcion],
+      ];
+      for (const [k, v] of pares) {
+        if (!v) continue;
+        const p = el('span');
+        p.appendChild(el('span', k + ': '));
+        let b;
+        if (/^Correo/.test(k)) {
+          b = el('a', v);
+          b.href = 'mailto:' + v;
+        } else {
+          b = el('b', v);
+        }
+        p.appendChild(b);
+        datos.appendChild(p);
+      }
+      ficha.appendChild(datos);
+
+      // conversaciones con el asistente de IA
+      const cuerpoConv = $('#conversaciones-cuerpo');
+      cuerpoConv.textContent = '';
+      const convs = conversaciones || [];
+      $('#tarjeta-conversaciones').hidden = !convs.length;
+      convs.forEach((c, i) => {
+        const det = el('details');
+        det.className = 'conv';
+        if (i === 0) det.open = true;
+        det.appendChild(el('summary', 'Conversación del ' + fechaBonita(c.modifiedon || c.createdon || '') + ' · ' + (c.mensajes || []).length + ' mensajes'));
+        const cuerpo = el('div');
+        cuerpo.className = 'conv-cuerpo';
+        for (const m of c.mensajes || []) {
+          const d = el('div', textoSinOpciones(m.texto));
+          d.className = 'conv-msg ' + (m.rol === 'usuario' ? 'usuario' : 'ia');
+          const rol = el('span', m.rol === 'usuario' ? nombre : 'Asistente');
+          rol.className = 'conv-rol';
+          d.prepend(rol);
+          cuerpo.appendChild(d);
+        }
+        const enlace = el('div');
+        enlace.className = 'conv-enlace';
+        const a = el('a', 'Abrir esta conversación en el chat del asistente');
+        a.href = '/aiagent/' + c.guid;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        enlace.appendChild(a);
+        cuerpo.appendChild(enlace);
+        det.appendChild(cuerpo);
+        cuerpoConv.appendChild(det);
+      });
+
+      // levantamientos hechos por el agente
+      const cuerpoLev = $('#levantamiento-contacto-cuerpo');
+      cuerpoLev.textContent = '';
+      const levs = levantamientos || [];
+      $('#tarjeta-levantamiento-contacto').hidden = !levs.length;
+      levs.forEach((lev, i) => {
+        const pista = lev.tipo === 'software' ? 'desarrollo de software' : lev.tipo === 'marketing' ? 'marketing' : 'pista sin definir';
+        const det = el('details');
+        det.className = 'conv';
+        if (i === 0) det.open = true;
+        det.appendChild(el('summary', 'Levantamiento · ' + pista + ' · ' + fechaBonita(lev.modifiedon || lev.createdon || '')));
+        const cuerpo = el('div');
+        cuerpo.className = 'conv-cuerpo';
+        for (const campo of Object.keys(ETIQUETAS_LEV)) {
+          if (!lev[campo]) continue;
+          const div = el('div');
+          div.className = 'lev-campo';
+          div.appendChild(el('span', ETIQUETAS_LEV[campo])).className = 'etiqueta';
+          div.appendChild(el('span', lev[campo])).className = 'valor';
+          cuerpo.appendChild(div);
+        }
+        det.appendChild(cuerpo);
+        cuerpoLev.appendChild(det);
+      });
+
+      // notas del contacto
+      const cuerpoNotas = $('#notas-contacto-cuerpo');
+      cuerpoNotas.textContent = '';
+      const ns = notas || [];
+      $('#tarjeta-notas-contacto').hidden = !ns.length;
+      for (const n of ns) {
+        const item = el('div');
+        item.className = 'nota-item';
+        item.appendChild(el('div', fechaBonita(n.createdon || ''))).className = 'fecha';
+        item.appendChild(el('div', n.texto)).className = 'texto';
+        cuerpoNotas.appendChild(item);
+      }
+
+      irA('contacto');
+    }
+
     /* ---------------- contactos globales ---------------- */
     async function cargarContactosGlobales() {
       const q = encodeURIComponent($('#buscar-contacto').value.trim());
@@ -998,7 +1196,7 @@
         tdEstado.appendChild(estadoBadge(k.estado));
         tr.appendChild(tdEstado);
         tr.appendChild(el('td', k.archivoOrigen || ''));
-        tr.addEventListener('click', () => abrirCliente(k.clienteId));
+        tr.addEventListener('click', () => abrirContacto(k.id));
         tabla.appendChild(tr);
       }
       if (!contactos.length) tabla.appendChild(el('tr')).appendChild(el('td', 'Sin resultados. Cambia la búsqueda o el filtro.'));
@@ -1151,15 +1349,17 @@
         form.appendChild(div);
         refs[largo] = t;
       }
-      const titulo = (contacto ? 'Editar contacto' : 'Nuevo contacto') + ' · ' + estado.clienteActual.nombre;
+      const titulo = (contacto ? 'Editar contacto' : 'Nuevo contacto') + (estado.clienteActual ? ' · ' + estado.clienteActual.nombre : '');
       abrirModal(titulo, form, async () => {
         const datos = recolectar(refs);
-        datos.clienteId = estado.clienteActual.id;
+        if (estado.clienteActual) datos.clienteId = estado.clienteActual.id;
         const ruta = contacto ? '/api/crm/contactos/' + contacto.id : '/api/crm/contactos';
         const resp = await api(ruta, { method: contacto ? 'PUT' : 'POST', body: JSON.stringify(datos) });
         if (!resp.ok) return mostrarErrores(resp.errors || { _: resp.error || 'No se pudo guardar.' });
         cerrarModal();
-        abrirCliente(estado.clienteActual.id);
+        // desde la ficha del contacto se queda ahí; desde la de la empresa refresca la empresa
+        if (estado.vista === 'contacto' && contacto) abrirContacto(contacto.id);
+        else abrirCliente(estado.clienteActual.id);
       });
     }
 
@@ -1179,6 +1379,13 @@
         $('#confirmar-borrado').hidden = true;
         const resp = await api('/api/crm/contactos/' + contacto.id, { method: 'DELETE' });
         if (!resp.ok) return alert(resp.error || 'No se pudo borrar.');
+        // borrado desde la ficha del contacto: se vuelve a donde se vino
+        if (estado.vista === 'contacto') {
+          estado.contactoActual = null;
+          if (estado.regresoContacto) estado.regresoContacto();
+          else irA('contactos');
+          return;
+        }
         abrirCliente(estado.clienteActual.id);
       };
     }
@@ -1238,6 +1445,11 @@
     $('#btn-agregar-correo').addEventListener('click', agregarCorreoAutorizado);
     $('#nuevo-correo').addEventListener('keydown', (ev) => { if (ev.key === 'Enter') agregarCorreoAutorizado(); });
     $('#btn-volver').addEventListener('click', () => irA('clientes'));
+    $('#btn-volver-contacto').addEventListener('click', () => {
+      estado.contactoActual = null;
+      if (estado.regresoContacto) estado.regresoContacto();
+      else irA('contactos');
+    });
     $('#btn-nuevo-cliente').addEventListener('click', () => formularioCliente(null));
     $('#btn-nuevo-contacto').addEventListener('click', () => formularioContacto(null));
     $('#btn-anadir-nota').addEventListener('click', anadirNota);
