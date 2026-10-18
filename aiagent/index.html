@@ -107,11 +107,9 @@
         border: 1px solid var(--line);
         background: rgba(4, 16, 32, 0.6);
         color: #fff; font-size: 16px; font-family: inherit; line-height: 1.35;
-        resize: none; /* crece con el texto hasta el tope y luego hace scroll */
-        max-height: 180px; overflow-y: auto;
-        scrollbar-width: none; /* la barra nativa rompe el diseño: se oculta y el scroll sigue igual */
+        resize: none; /* el campo crece sin tope y siempre muestra todo: jamás hace scroll interno */
+        overflow: hidden;
       }
-      .caja-envio textarea::-webkit-scrollbar { display: none; }
       .caja-envio textarea:focus { outline: 2px solid var(--blue); outline-offset: 1px; border-color: transparent; }
       .caja-envio button { background: var(--blue); border-color: transparent; color: #fff; font-weight: 600; padding: 12px 20px; border-radius: 12px; white-space: nowrap; }
       .caja-envio button:hover { background: #2b90ff; }
@@ -166,12 +164,10 @@
     // esté en 0 (solo el saludo) se ofrecen los botones de cómo empezar
     let mensajesUsuario = 0;
 
-    const ALTO_MAX_ENTRADA = 180; // igual al max-height del CSS: pasado ese tope hace scroll
-
-    // el campo crece con cada línea para que la persona siempre vea todo su texto
+    // el campo crece con cada línea y muestra todo el texto: sin scroll interno
     function ajustarAlto() {
       entrada.style.height = 'auto';
-      entrada.style.height = Math.min(entrada.scrollHeight, ALTO_MAX_ENTRADA) + 'px';
+      entrada.style.height = entrada.scrollHeight + 'px';
     }
     entrada.addEventListener('input', ajustarAlto);
 
