@@ -16,6 +16,7 @@ const auth = require('./lib/auth');
 const crm = require('./lib/crm');
 const aiagent = require('./lib/aiagent');
 const teams = require('./lib/teams');
+const emailmkt = require('./lib/emailmarketing');
 const { serveStatic, sendFile } = require('./lib/static');
 
 const visits = new JsonlStore(path.join(config.dataDir, 'visits.jsonl'));
@@ -60,6 +61,7 @@ const crmApiLimiter = makeLimiter(600, 60 * 60_000);
 const aiMessageLimiter = makeLimiter(15, 60_000);
 const aiHistoryLimiter = makeLimiter(120, 60_000);
 const aiEmailLimiter = makeLimiter(5, 15 * 60_000);
+const emPixelLimiter = makeLimiter(240, 60_000);
 
 setInterval(() => {
   trackLimiter.sweep();
@@ -70,6 +72,7 @@ setInterval(() => {
   aiMessageLimiter.sweep();
   aiHistoryLimiter.sweep();
   aiEmailLimiter.sweep();
+  emPixelLimiter.sweep();
 }, 5 * 60_000).unref();
 
 /* ------------------------------------------------------------------ útiles */
@@ -502,6 +505,10 @@ function listadoContactos(url) {
   );
   let filas = crm.contactos.todas();
   if (clienteId) filas = filas.filter((k) => k.clienteId === clienteId);
+  if (url.searchParams.get('conEmail') === '1') filas = filas.filter((k) => k.email);
+  const em = H.clean(url.searchParams.get('em'), 12);
+  if (em === 'ninguno') filas = filas.filter((k) => !k.emailmarketing_status);
+  else if (em) filas = filas.filter((k) => k.emailmarketing_status === em);
   if (soloSinDato) {
     filas = filas.filter((k) => empleadosPorCliente.get(k.clienteId) == null);
   } else if (Number.isFinite(empleadosMin) || Number.isFinite(empleadosMax)) {
@@ -576,7 +583,12 @@ async function handleCrmApi(req, res, pathname, url) {
   let body = {};
   if (metodo === 'POST' || metodo === 'PUT') {
     try {
-      body = await readFormOrJson(req);
+      // el cuerpo HTML de una campaña puede ser grande: tope mayor que el resto
+      if (pathname.startsWith('/api/crm/emailmarketing/')) {
+        body = JSON.parse((await H.readBody(req, 131_072)) || '{}');
+      } else {
+        body = await readFormOrJson(req);
+      }
     } catch {
       return H.sendJson(res, 400, { ok: false, error: 'Solicitud inválida.' });
     }
@@ -691,6 +703,29 @@ async function handleCrmApi(req, res, pathname, url) {
     }
   }
 
+  if (coleccion === 'emailmarketing' && partes[3] === 'envios') {
+    if (!partes[4] && metodo === 'GET') return H.sendJson(res, 200, { ok: true, envios: emailmkt.listarEnvios() });
+    if (!partes[4] && metodo === 'POST') {
+      const r = emailmkt.crearEnvio(
+        { asunto: body.asunto, cuerpoHtml: body.html, contactoIds: body.contactoIds },
+        email
+      );
+      if (r.error) return H.sendJson(res, 422, { ok: false, error: r.error });
+      return H.sendJson(res, 201, { ok: true, envio: emailmkt.detalleEnvio(r.envio.id) });
+    }
+    if (partes[4] && partes[5] === 'cancelar' && metodo === 'POST') {
+      const r = emailmkt.cancelarEnvio(partes[4]);
+      if (r.error) return H.sendJson(res, 409, { ok: false, error: r.error });
+      return H.sendJson(res, 200, { ok: true });
+    }
+    if (partes[4] && metodo === 'GET') {
+      const detalle = emailmkt.detalleEnvio(partes[4]);
+      if (!detalle) return H.sendJson(res, 404, { ok: false, error: 'Campaña no encontrada.' });
+      return H.sendJson(res, 200, { ok: true, envio: detalle });
+    }
+    return H.sendJson(res, 405, { ok: false, error: 'Método no permitido.' });
+  }
+
   if (coleccion === 'notas') {
     if (!id && metodo === 'GET') {
       const clienteId = url.searchParams.get('clienteId') || '';
@@ -729,6 +764,26 @@ async function handleCrmApi(req, res, pathname, url) {
   }
 
   return H.sendJson(res, 404, { ok: false, error: 'not_found' });
+}
+
+/** El cliente de correo descarga este GIF de 1x1: confirmación de buzón real. */
+function handleEmPixel(req, res, pathname) {
+  const responder = () => {
+    res.writeHead(200, {
+      'Content-Type': 'image/gif',
+      'Content-Length': emailmkt.PIXEL_GIF.length,
+      'Cache-Control': 'no-store, private',
+    });
+    res.end(req.method === 'HEAD' ? undefined : emailmkt.PIXEL_GIF);
+  };
+  if (!emPixelLimiter(H.clientIp(req, config.trustProxy))) return responder();
+  const token = pathname.slice('/api/em/pixel/'.length).replace(/\.gif$/, '');
+  try {
+    emailmkt.marcarEntregado(token);
+  } catch {
+    // el píxel nunca puede romper: siempre responde imagen
+  }
+  responder();
 }
 
 /* ------------------------------------------------------------- /aiagent */
@@ -962,6 +1017,7 @@ const server = http.createServer((req, res) => {
       if (req.method === 'POST' && pathname === '/api/crm/auth/solicitar') return await handleCrmSolicitar(req, res);
       if (req.method === 'GET' && pathname === '/api/crm/auth/verificar') return handleCrmVerificar(req, res, url);
       if (req.method === 'POST' && pathname === '/api/crm/auth/salir') return handleCrmSalir(req, res);
+      if (req.method === 'GET' && pathname.startsWith('/api/em/pixel/')) return handleEmPixel(req, res, pathname);
       if (pathname.startsWith('/api/crm/')) return await handleCrmApi(req, res, pathname, url);
 
       if (req.method === 'POST' && pathname === '/api/aiagent/mensaje') return await handleAiMensaje(req, res);
@@ -1011,7 +1067,7 @@ const server = http.createServer((req, res) => {
 
       // Cada pestaña del CRM vive en su propia URL: mismo HTML, la vista
       // inicial la decide location.pathname en el frontend.
-      const CRM_PESTANAS = new Set(['/crm/clientes', '/crm/contactos', '/crm/acceso']);
+      const CRM_PESTANAS = new Set(['/crm/clientes', '/crm/contactos', '/crm/emailmarketing', '/crm/acceso']);
       if (CRM_PESTANAS.has(pathname) && (req.method === 'GET' || req.method === 'HEAD')) {
         const archivo = path.join(config.publicRoot, 'crm', 'index.html');
         if (sendFile(res, req, archivo, pathname)) return;

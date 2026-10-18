@@ -215,14 +215,14 @@ const notas = new Tabla('notas.json');
 const levantamientos = new Tabla('levantamientos.json');
 
 function siguienteId(prefijo) {
-  let meta = { seqCliente: 0, seqContacto: 0, seqNota: 0, seqLevantamiento: 0 };
+  let meta = { seqCliente: 0, seqContacto: 0, seqNota: 0, seqLevantamiento: 0, seqEnvio: 0 };
   try {
     meta = { ...meta, ...JSON.parse(fs.readFileSync(path.join(CRM_DIR, 'meta.json'), 'utf8')) };
   } catch {
     // primer arranque
   }
-  const campos = { c: 'seqCliente', p: 'seqContacto', n: 'seqNota', l: 'seqLevantamiento' };
-  const rellenos = { c: 5, p: 6, n: 6, l: 6 };
+  const campos = { c: 'seqCliente', p: 'seqContacto', n: 'seqNota', l: 'seqLevantamiento', e: 'seqEnvio' };
+  const rellenos = { c: 5, p: 6, n: 6, l: 6, e: 6 };
   const campo = campos[prefijo];
   meta[campo] += 1;
   fs.writeFileSync(path.join(CRM_DIR, 'meta.json'), JSON.stringify(meta, null, 2), 'utf8');
@@ -462,8 +462,8 @@ function notificarEquipo({ subject, text }) {
     });
 }
 
-/** Correo transaccional a un destinatario arbitrario (magic link del agente). */
-function enviarCorreo({ to, subject, text }) {
+/** Correo transaccional a un destinatario arbitrario (magic link del agente y campañas). */
+function enviarCorreo({ to, subject, text, html }) {
   if (!emailConfigurado()) return Promise.resolve({ ok: false, error: 'SMTP no configurado' });
   const c = leerCrmConfig();
   return sendMail({
@@ -476,6 +476,7 @@ function enviarCorreo({ to, subject, text }) {
     to,
     subject,
     text,
+    html,
   })
     .then(() => ({ ok: true }))
     .catch((err) => {

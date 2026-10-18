@@ -1,5 +1,6 @@
 'use strict';
 
+const crypto = require('node:crypto');
 const net = require('node:net');
 const tls = require('node:tls');
 
@@ -57,6 +58,22 @@ function cabecera(subject) {
   return `=?UTF-8?B?${base64(subject)}?=`;
 }
 
+/** Versión de texto plano para la parte alternative del correo HTML. */
+function quitarEtiquetas(html) {
+  return String(html || '')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|tr|h[1-6]|li)>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 /** El sobre SMTP solo lleva la dirección pura; "Nombre <correo>" lo rechaza Microsoft (5.1.7). */
 function direccionPura(valor) {
   const m = /<([^<>\s]+@[^<>\s]+)>/.exec(String(valor).trim());
@@ -69,25 +86,40 @@ function listaDestinatarios(valor) {
   return crudos.map((v) => direccionPura(v).trim()).filter(Boolean);
 }
 
+/** Mensaje RFC 822 completo; función pura para poder probarla sin socket. */
+function construirMensaje({ from, to, subject, text, html }) {
+  const salto = '\r\n';
+  const comunes = [`From: ${from}`, `To: ${to}`, `Subject: ${cabecera(subject)}`, 'MIME-Version: 1.0'];
+  let cuerpo;
+  if (html) {
+    const boundary = 'opia_' + crypto.randomBytes(12).toString('hex');
+    const parte = (tipo, contenido) =>
+      `--${boundary}${salto}` +
+      `Content-Type: ${tipo}; charset=UTF-8${salto}` +
+      `Content-Transfer-Encoding: base64${salto}${salto}` +
+      base64(contenido).replace(/(.{76})/g, '$1\r\n') +
+      salto;
+    comunes.push(`Content-Type: multipart/alternative; boundary="${boundary}"`);
+    cuerpo =
+      parte('text/plain', text || quitarEtiquetas(html)) +
+      parte('text/html', html) +
+      `--${boundary}--`;
+  } else {
+    comunes.push('Content-Type: text/plain; charset=UTF-8', 'Content-Transfer-Encoding: base64');
+    cuerpo = base64(text).replace(/(.{76})/g, '$1\r\n');
+  }
+  return [...comunes, '', cuerpo, '', ''].join(salto);
+}
+
 /**
  * Cliente SMTP mínimo (sin dependencias): soporta TLS directo (puerto 465) y
  * STARTTLS (puerto 587), con AUTH LOGIN. Suficiente para Gmail y similares.
+ * Con html va multipart/alternative (texto + HTML): los clientes de correo lo
+ * piden así para mostrar la versión rica sin caer en spam.
  */
-async function sendMail({ host, port, secure, user, pass, from, to, subject, text }) {
+async function sendMail({ host, port, secure, user, pass, from, to, subject, text, html }) {
   const salto = '\r\n';
-  const cuerpo = Buffer.from(text, 'utf8').toString('base64').replace(/(.{76})/g, '$1\r\n');
-  const mensaje = [
-    `From: ${from}`,
-    `To: ${to}`,
-    `Subject: ${cabecera(subject)}`,
-    'MIME-Version: 1.0',
-    'Content-Type: text/plain; charset=UTF-8',
-    'Content-Transfer-Encoding: base64',
-    '',
-    cuerpo,
-    '',
-    '',
-  ].join(salto);
+  const mensaje = construirMensaje({ from, to, subject, text, html });
 
   let socket = secure
     ? tls.connect({ host, port, servername: host })
@@ -143,4 +175,4 @@ async function sendMail({ host, port, secure, user, pass, from, to, subject, tex
   socket.end();
 }
 
-module.exports = { sendMail };
+module.exports = { sendMail, construirMensaje, quitarEtiquetas };

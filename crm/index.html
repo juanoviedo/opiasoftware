@@ -132,7 +132,8 @@
       #tabla-contactos-global td:nth-child(5)::before { content: 'Celular'; }
       #tabla-contactos-global td:nth-child(6)::before { content: 'Empleados'; }
       #tabla-contactos-global td:nth-child(7)::before { content: 'Estado'; }
-      #tabla-contactos-global td:nth-child(8)::before { content: 'Archivo origen'; }
+      #tabla-contactos-global td:nth-child(8)::before { content: 'Email mkt'; }
+      #tabla-contactos-global td:nth-child(9)::before { content: 'Archivo origen'; }
       .tarjeta {
         background: var(--card); border: 1px solid var(--line); border-radius: 14px;
         padding: 18px 20px; margin-bottom: 18px;
@@ -156,6 +157,39 @@
       .estado.seg-negociacion { background: rgba(21, 184, 244, 0.18); color: #7fdcff; }
       .estado.seg-no_interesado { background: rgba(255, 107, 107, 0.18); color: #ff9d9d; }
       .estado.seg-listo_cotizar { background: rgba(176, 107, 255, 0.2); color: #d8b3ff; }
+      /* estados de email marketing por contacto */
+      .estado.em-enviado { background: rgba(21, 184, 244, 0.18); color: #7fdcff; }
+      .estado.em-entregado { background: rgba(46, 204, 143, 0.18); color: #7fe6bb; }
+      .estado.em-no_existe { background: rgba(255, 107, 107, 0.18); color: #ff9d9d; }
+      .estado.em-error { background: rgba(255, 176, 32, 0.18); color: #ffd37f; }
+      .estado.em-pendiente { background: rgba(143, 166, 189, 0.16); color: #b9cbdd; }
+      .estado.em-omitido { background: rgba(255, 255, 255, 0.05); color: var(--muted); }
+
+      /* ---------- email marketing ---------- */
+      .em-barra { display: flex; gap: 6px; margin: 6px 0; flex-wrap: wrap; }
+      .em-cuerpo {
+        min-height: 180px; border: 1px solid var(--line); border-radius: 9px;
+        background: rgba(4, 16, 32, 0.6); padding: 12px 13px;
+        font-size: 15px; line-height: 1.6; word-break: break-word;
+      }
+      .em-cuerpo:focus { outline: 2px solid var(--blue); outline-offset: 1px; }
+      .em-cuerpo:empty::before { content: attr(data-ejemplo); color: var(--muted); }
+      .em-cuerpo ul { padding-left: 22px; margin: 8px 0; }
+      .em-progreso {
+        height: 10px; border-radius: 999px; background: rgba(255, 255, 255, 0.08);
+        overflow: hidden; margin: 10px 0 14px;
+      }
+      .em-progreso > div { height: 100%; width: 0; background: var(--ok); transition: width 0.4s; }
+      #em-tabla input[type="checkbox"], #em-todos { width: auto; }
+      #em-tabla td:nth-child(1)::before { content: 'Elegir'; }
+      #em-tabla td:nth-child(3)::before { content: 'Empresa'; }
+      #em-tabla td:nth-child(4)::before { content: 'Cargo'; }
+      #em-tabla td:nth-child(5)::before { content: 'Correo'; }
+      #em-tabla td:nth-child(6)::before { content: 'Empleados'; }
+      #em-tabla td:nth-child(7)::before { content: 'Email mkt'; }
+      #em-envio-tabla td:nth-child(2)::before { content: 'Correo'; }
+      #em-envio-tabla td:nth-child(3)::before { content: 'Estado'; }
+      #em-envio-tabla td:nth-child(4)::before { content: 'Detalle'; }
 
       /* botón redondo de WhatsApp: abre el chat y registra la gestión */
       .btn-wsp {
@@ -292,6 +326,7 @@
         <nav>
           <a id="tab-clientes" class="activo" href="/crm/clientes">Clientes</a>
           <a id="tab-contactos" href="/crm/contactos">Contactos</a>
+          <a id="tab-em" href="/crm/emailmarketing">Email marketing</a>
           <a id="tab-acceso" href="/crm/acceso">Acceso</a>
         </nav>
         <div class="espacio"></div>
@@ -405,6 +440,14 @@
               <option value="1001-">Más de 1.000</option>
               <option value="-0">Sin dato de empleados</option>
             </select>
+            <select id="filtro-em" aria-label="Filtrar contactos por estado de email marketing">
+              <option value="">Email mkt: todos</option>
+              <option value="ninguno">Sin envío</option>
+              <option value="enviado">Enviado</option>
+              <option value="entregado">Recibido</option>
+              <option value="no_existe">No existe</option>
+              <option value="error">Error</option>
+            </select>
             <select id="orden-contactos" aria-label="Ordenar los contactos">
               <option value="empleados:desc">Empleados: mayor a menor</option>
               <option value="empleados:asc">Empleados: menor a mayor</option>
@@ -414,10 +457,78 @@
           </div>
           <table>
             <thead>
-              <tr><th>Nombre</th><th>Empresa</th><th>Cargo</th><th>Correo</th><th>Celular</th><th style="text-align:right">Empleados</th><th>Estado</th><th>Archivo origen</th></tr>
+              <tr><th>Nombre</th><th>Empresa</th><th>Cargo</th><th>Correo</th><th>Celular</th><th style="text-align:right">Empleados</th><th>Estado</th><th>Email mkt</th><th>Archivo origen</th></tr>
             </thead>
             <tbody id="tabla-contactos-global"></tbody>
           </table>
+        </section>
+
+        <!-- email marketing -->
+        <section id="panel-emailmarketing" hidden>
+          <div class="tarjeta">
+            <h2>Nuevo correo</h2>
+            <label for="em-asunto">Asunto</label>
+            <input id="em-asunto" type="text" placeholder="Ej: OPIA Software — diagnóstico gratis para tu empresa" />
+            <label>Cuerpo del mensaje</label>
+            <div class="em-barra">
+              <button type="button" class="chico" data-cmd="bold" title="Negrita"><b>N</b></button>
+              <button type="button" class="chico" data-cmd="italic" title="Cursiva"><i>I</i></button>
+              <button type="button" class="chico" data-cmd="insertUnorderedList" title="Lista con viñetas">• Lista</button>
+              <button type="button" class="chico" id="em-btn-enlace" title="Insertar enlace">Enlace</button>
+              <button type="button" class="chico" data-cmd="removeFormat">Quitar formato</button>
+            </div>
+            <div id="em-cuerpo" contenteditable="true" class="em-cuerpo" data-ejemplo="Escribe aquí el mensaje que recibirán los contactos…"></div>
+            <p class="mini mut" style="margin-bottom:0">El correo sale de OPIA Software con su diseño. Cuando el contacto lo recibe, queda marcado como <b>Recibido</b>; si el buzón no existe, como <b>No existe</b>.</p>
+          </div>
+          <div class="tarjeta">
+            <h2>Destinatarios</h2>
+            <p class="mini mut" style="margin-top:0">Contactos con correo, de mayor a menor número de empleados. Marca uno para una prueba, o los primeros N de la lista para una campaña.</p>
+            <div class="herramientas">
+              <input type="search" id="em-buscar" placeholder="Filtrar por nombre, correo, cargo o empresa…" />
+              <select id="em-filtro-estado" aria-label="Filtrar por estado de email marketing">
+                <option value="">Email mkt: todos</option>
+                <option value="ninguno">Sin envío</option>
+                <option value="enviado">Enviado</option>
+                <option value="entregado">Recibido</option>
+                <option value="no_existe">No existe</option>
+                <option value="error">Error</option>
+              </select>
+            </div>
+            <div class="herramientas">
+              <input type="number" id="em-primeros" min="1" max="500" value="10" style="max-width:110px" aria-label="Cuántos de los primeros contactos" />
+              <button class="chico" id="em-btn-primeros">Seleccionar los primeros N</button>
+              <button class="chico" id="em-btn-ninguno">Quitar selección</button>
+              <span class="contador" id="em-seleccionados"></span>
+            </div>
+            <table>
+              <thead>
+                <tr><th style="width:36px"><input type="checkbox" id="em-todos" aria-label="Marcar o desmarcar todos los mostrados" /></th><th>Nombre</th><th>Empresa</th><th>Cargo</th><th>Correo</th><th style="text-align:right">Empleados</th><th>Email mkt</th></tr>
+              </thead>
+              <tbody id="em-tabla"></tbody>
+            </table>
+            <div class="herramientas" style="margin-top:14px">
+              <span class="contador" id="em-conteo"></span>
+              <div style="flex:1"></div>
+              <button class="primario" id="em-btn-enviar">Enviar correo</button>
+            </div>
+          </div>
+          <div class="tarjeta" id="em-tarjeta-envio" hidden>
+            <h2 id="em-envio-titulo"></h2>
+            <div class="herramientas" style="margin-bottom:0">
+              <span id="em-envio-estado"></span>
+              <div style="flex:1"></div>
+              <button class="chico peligro" id="em-btn-cancelar" hidden>Cancelar campaña</button>
+            </div>
+            <div class="em-progreso"><div id="em-envio-barra"></div></div>
+            <table>
+              <thead><tr><th>Contacto</th><th>Correo</th><th>Estado</th><th>Detalle</th></tr></thead>
+              <tbody id="em-envio-tabla"></tbody>
+            </table>
+          </div>
+          <div class="tarjeta">
+            <h2>Campañas anteriores</h2>
+            <div id="em-historial"></div>
+          </div>
         </section>
 
         <!-- correos autorizados -->
@@ -544,6 +655,22 @@
       return s;
     }
 
+    /* ---------------- email marketing: etiquetas de estado ---------------- */
+    const ETIQUETAS_EM = {
+      enviado: 'Enviado',
+      entregado: 'Recibido',
+      no_existe: 'No existe',
+      error: 'Error',
+      pendiente: 'En cola',
+      omitido: 'Omitido',
+    };
+
+    function emBadge(estado) {
+      const s = el('span', ETIQUETAS_EM[estado] || '—');
+      s.className = 'estado' + (ETIQUETAS_EM[estado] ? ' em-' + estado : '');
+      return s;
+    }
+
     // wa.me pide el número en formato internacional sin "+": a los celulares
     // colombianos de 10 dígitos (3XX…) les falta el indicativo 57.
     function waNumero(celular) {
@@ -625,6 +752,7 @@
     // Cada pestaña tiene URL propia: al cargar, la vista inicial es la de la ruta.
     function vistaInicial() {
       if (location.pathname === '/crm/contactos') return 'contactos';
+      if (location.pathname === '/crm/emailmarketing') return 'emailmarketing';
       if (location.pathname === '/crm/acceso') return 'acceso';
       return 'clientes';
     }
@@ -640,14 +768,22 @@
       estado.vista = vista;
       $('#tab-clientes').classList.toggle('activo', vista === 'clientes' || vista === 'cliente');
       $('#tab-contactos').classList.toggle('activo', vista === 'contactos' || vista === 'contacto');
+      $('#tab-em').classList.toggle('activo', vista === 'emailmarketing');
       $('#tab-acceso').classList.toggle('activo', vista === 'acceso');
       $('#panel-clientes').hidden = vista !== 'clientes';
       $('#panel-cliente').hidden = vista !== 'cliente';
       $('#panel-contacto').hidden = vista !== 'contacto';
       $('#panel-contactos').hidden = vista !== 'contactos';
+      $('#panel-emailmarketing').hidden = vista !== 'emailmarketing';
       $('#panel-acceso').hidden = vista !== 'acceso';
+      detenerPoll();
       if (vista === 'clientes') cargarClientes();
       if (vista === 'contactos') cargarContactosGlobales();
+      if (vista === 'emailmarketing') {
+        cargarBorrador();
+        cargarPicker();
+        cargarHistorial();
+      }
       if (vista === 'acceso') cargarAcceso();
     }
 
@@ -1067,6 +1203,7 @@
         ['Correo', contacto.email], ['Correo 2', contacto.email2], ['Correo 3', contacto.email3],
         ['Celular', contacto.celular], ['Teléfono', contacto.telefono], ['Teléfono 2', contacto.telefono2],
         ['Empleados de la empresa', empresa && empresa.numEmpleadosAprox != null ? String(empresa.numEmpleadosAprox) : ''],
+        ['Email marketing', contacto.emailmarketing_status ? (ETIQUETAS_EM[contacto.emailmarketing_status] || contacto.emailmarketing_status) : ''],
         ['Origen', contacto.origen], ['Archivo origen', contacto.archivoOrigen],
         ['Notas', contacto.notas], ['Observaciones', contacto.observaciones], ['Descripción', contacto.descripcion],
       ];
@@ -1202,11 +1339,194 @@
         const tdEstado = el('td');
         tdEstado.appendChild(estadoBadge(k.estado));
         tr.appendChild(tdEstado);
+        tr.appendChild(emBadge(k.emailmarketing_status));
         tr.appendChild(el('td', k.archivoOrigen || ''));
         tr.addEventListener('click', () => abrirContacto(k.id));
         tabla.appendChild(tr);
       }
       if (!contactos.length) tabla.appendChild(el('tr')).appendChild(el('td', 'Sin resultados. Cambia la búsqueda o el filtro.'));
+    }
+
+    /* ---------------- email marketing ---------------- */
+    const em = { seleccion: new Set(), filas: [], actual: null };
+    const LLAVE_BORRADOR = 'opia-crm-em-borrador';
+    let emBusquedaTimer = null;
+    let emPollTimer = null;
+
+    function detenerPoll() {
+      clearTimeout(emPollTimer);
+      emPollTimer = null;
+    }
+
+    // El borrador sobrevive los cambios de pestaña (cada clic navega de verdad).
+    let borradorTimer = null;
+    function guardarBorrador() {
+      clearTimeout(borradorTimer);
+      borradorTimer = setTimeout(() => {
+        try {
+          localStorage.setItem(LLAVE_BORRADOR, JSON.stringify({ a: $('#em-asunto').value, h: $('#em-cuerpo').innerHTML }));
+        } catch { /* sin localStorage no pasa nada grave */ }
+      }, 400);
+    }
+
+    function cargarBorrador() {
+      if (($('#em-cuerpo').textContent || '').trim()) return;
+      try {
+        const d = JSON.parse(localStorage.getItem(LLAVE_BORRADOR) || 'null');
+        if (d && (d.a || d.h)) {
+          $('#em-asunto').value = d.a || '';
+          $('#em-cuerpo').innerHTML = d.h || '';
+        }
+      } catch { /* borrador corrupto: se ignora */ }
+    }
+
+    function refrescarSeleccion() {
+      $('#em-seleccionados').textContent = em.seleccion.size + ' seleccionado(s)';
+      const marcados = em.filas.filter((k) => em.seleccion.has(k.id)).length;
+      const todos = $('#em-todos');
+      todos.checked = em.filas.length > 0 && marcados === em.filas.length;
+      todos.indeterminate = marcados > 0 && marcados < em.filas.length;
+    }
+
+    function pintarPicker() {
+      const tabla = $('#em-tabla');
+      tabla.textContent = '';
+      for (const k of em.filas) {
+        const tr = el('tr');
+        const tdChk = el('td');
+        const chk = el('input');
+        chk.type = 'checkbox';
+        chk.checked = em.seleccion.has(k.id);
+        chk.setAttribute('aria-label', 'Elegir a ' + ([k.nombres, k.apellidos].filter(Boolean).join(' ') || k.email));
+        chk.addEventListener('change', () => {
+          if (chk.checked) em.seleccion.add(k.id);
+          else em.seleccion.delete(k.id);
+          refrescarSeleccion();
+        });
+        tdChk.appendChild(chk);
+        tr.appendChild(tdChk);
+        tr.appendChild(el('td', [k.nombres, k.apellidos].filter(Boolean).join(' ') || '—'));
+        tr.appendChild(el('td', k.empresa));
+        tr.appendChild(el('td', k.cargo));
+        tr.appendChild(el('td', k.email));
+        const emp = el('td', k.numEmpleadosAprox != null ? String(k.numEmpleadosAprox) : '');
+        emp.style.textAlign = 'right';
+        tr.appendChild(emp);
+        const tdEm = el('td');
+        tdEm.appendChild(emBadge(k.emailmarketing_status));
+        tr.appendChild(tdEm);
+        tabla.appendChild(tr);
+      }
+      if (!em.filas.length) tabla.appendChild(el('tr')).appendChild(el('td', 'Sin resultados. Cambia la búsqueda o el filtro.'));
+      refrescarSeleccion();
+    }
+
+    async function cargarPicker() {
+      const q = encodeURIComponent($('#em-buscar').value.trim());
+      let ruta = '/api/crm/contactos?conEmail=1&orden=empleados&dir=desc&q=' + q;
+      const emFiltro = $('#em-filtro-estado').value;
+      if (emFiltro) ruta += '&em=' + emFiltro;
+      const { contactos, total } = await api(ruta);
+      em.filas = contactos || [];
+      // al filtrar la lista, la selección puede quedar apuntando a filas que ya no se muestran: se conserva igual
+      $('#em-conteo').textContent = total + (total === 1 ? ' contacto con correo' : ' contactos con correo');
+      pintarPicker();
+    }
+
+    function lineaConteo(conteo) {
+      const partes = [];
+      for (const [clave, etiqueta] of Object.entries(ETIQUETAS_EM)) {
+        if (conteo[clave]) partes.push(conteo[clave] + ' ' + etiqueta.toLowerCase());
+      }
+      return partes.join(' · ') || 'sin destinatarios';
+    }
+
+    function pintarEnvio(e) {
+      em.actual = e.id;
+      $('#em-tarjeta-envio').hidden = false;
+      $('#em-envio-titulo').textContent = e.id + ' · ' + e.asunto;
+      const estadosCampana = {
+        pendiente: 'En cola', en_curso: 'Enviándose…', terminada: 'Terminada',
+        cancelada: 'Cancelada', interrumpida: 'Interrumpida',
+      };
+      const estadoSpam = el('span', estadosCampana[e.estado] || e.estado);
+      estadoSpam.className = 'estado';
+      const caja = $('#em-envio-estado');
+      caja.textContent = '';
+      caja.appendChild(estadoSpam);
+      caja.appendChild(document.createTextNode(' ' + fechaBonita(e.createdon) + ' · ' + lineaConteo(e.conteo || {})));
+      const total = (e.destinatarios || []).length;
+      const procesados = total - (e.conteo && e.conteo.pendiente ? e.conteo.pendiente : 0);
+      $('#em-envio-barra').style.width = total ? Math.round((procesados * 100) / total) + '%' : '0%';
+      $('#em-btn-cancelar').hidden = !(e.estado === 'en_curso' || e.estado === 'pendiente');
+      const tabla = $('#em-envio-tabla');
+      tabla.textContent = '';
+      for (const d of e.destinatarios || []) {
+        const tr = el('tr');
+        tr.appendChild(el('td', (d.nombre || '—') + (d.empresa ? ' (' + d.empresa + ')' : '')));
+        tr.appendChild(el('td', d.email || ''));
+        const tdEstado = el('td');
+        tdEstado.appendChild(emBadge(d.estado));
+        tr.appendChild(tdEstado);
+        tr.appendChild(el('td', d.detalle || ''));
+        tabla.appendChild(tr);
+      }
+    }
+
+    function vigilarEnvio(id) {
+      detenerPoll();
+      const paso = async () => {
+        if (estado.vista !== 'emailmarketing') return;
+        let r = null;
+        try { r = await api('/api/crm/emailmarketing/envios/' + id); } catch { /* reintenta */ }
+        if (r && r.ok) {
+          pintarEnvio(r.envio);
+          if (r.envio.estado === 'pendiente' || r.envio.estado === 'en_curso') {
+            // 4 s: una campaña larga no debe agotar el limitador de la API del CRM
+            emPollTimer = setTimeout(paso, 4000);
+            return;
+          }
+          cargarHistorial();
+          cargarPicker();
+          return;
+        }
+        emPollTimer = setTimeout(paso, 5000);
+      };
+      paso();
+    }
+
+    async function cargarHistorial() {
+      const caja = $('#em-historial');
+      let r = null;
+      try { r = await api('/api/crm/emailmarketing/envios'); } catch { return; }
+      caja.textContent = '';
+      const lista = (r && r.envios) || [];
+      if (!lista.length) {
+        caja.appendChild(el('p', 'Todavía no hay campañas.')).className = 'mini mut';
+        return;
+      }
+      for (const e of lista) {
+        const item = el('div');
+        item.className = 'nota-item';
+        const encabezado = el('div');
+        encabezado.className = 'encabezado';
+        encabezado.appendChild(el('span', fechaBonita(e.createdon) + ' · ' + e.total + ' destinatario(s)')).className = 'fecha';
+        const ver = el('button', 'Ver detalle');
+        ver.className = 'chico';
+        ver.addEventListener('click', async () => {
+          const det = await api('/api/crm/emailmarketing/envios/' + e.id);
+          if (det.ok) {
+            pintarEnvio(det.envio);
+            vigilarEnvio(e.id);
+            $('#em-tarjeta-envio').scrollIntoView({ behavior: 'smooth' });
+          }
+        });
+        encabezado.appendChild(ver);
+        item.appendChild(encabezado);
+        item.appendChild(el('b', e.asunto));
+        item.appendChild(el('div', lineaConteo(e.conteo || {}))).className = 'mini mut';
+        caja.appendChild(item);
+      }
     }
 
     /* ---------------- modal y formularios ---------------- */
@@ -1497,6 +1817,75 @@
       cargarContactosGlobales();
     });
     $('#filtro-seguimiento').addEventListener('change', cargarClientes);
+
+    /* ---------------- eventos de email marketing ---------------- */
+    for (const b of document.querySelectorAll('.em-barra button[data-cmd]')) {
+      b.addEventListener('click', () => {
+        document.execCommand(b.dataset.cmd, false, null);
+        $('#em-cuerpo').focus();
+        guardarBorrador();
+      });
+    }
+    $('#em-btn-enlace').addEventListener('click', () => {
+      const url = prompt('Dirección del enlace (https://…):');
+      if (url) {
+        document.execCommand('createLink', false, url);
+        guardarBorrador();
+      }
+    });
+    $('#em-asunto').addEventListener('input', guardarBorrador);
+    $('#em-cuerpo').addEventListener('input', guardarBorrador);
+    $('#em-buscar').addEventListener('input', () => {
+      clearTimeout(emBusquedaTimer);
+      emBusquedaTimer = setTimeout(cargarPicker, 250);
+    });
+    $('#em-filtro-estado').addEventListener('change', cargarPicker);
+    $('#em-btn-primeros').addEventListener('click', () => {
+      const n = Math.max(1, Math.min(500, Number($('#em-primeros').value) || 0));
+      em.seleccion = new Set(em.filas.slice(0, n).map((k) => k.id));
+      pintarPicker();
+    });
+    $('#em-btn-ninguno').addEventListener('click', () => {
+      em.seleccion.clear();
+      pintarPicker();
+    });
+    $('#em-todos').addEventListener('change', (ev) => {
+      if (ev.target.checked) em.filas.forEach((k) => em.seleccion.add(k.id));
+      else em.seleccion.clear();
+      pintarPicker();
+    });
+    $('#em-btn-enviar').addEventListener('click', async () => {
+      const asunto = $('#em-asunto').value.trim();
+      const html = $('#em-cuerpo').innerHTML;
+      if (asunto.length < 2) return alert('Escribe el asunto del correo.');
+      if (($('#em-cuerpo').textContent || '').trim().length < 2) return alert('Escribe el cuerpo del correo.');
+      if (!em.seleccion.size) return alert('Selecciona al menos un contacto de la lista.');
+      if (!confirm('¿Enviar el correo a ' + em.seleccion.size + ' contacto(s)? Se envía uno por uno y cada contacto queda marcado con el resultado.')) return;
+      const boton = $('#em-btn-enviar');
+      boton.disabled = true;
+      try {
+        const r = await api('/api/crm/emailmarketing/envios', {
+          method: 'POST',
+          body: JSON.stringify({ asunto, html, contactoIds: [...em.seleccion] }),
+        });
+        if (!r.ok) return alert(r.error || 'No se pudo crear la campaña.');
+        try { localStorage.removeItem(LLAVE_BORRADOR); } catch { /* igual se envió */ }
+        $('#em-asunto').value = '';
+        $('#em-cuerpo').innerHTML = '';
+        em.seleccion.clear();
+        cargarPicker();
+        pintarEnvio(r.envio);
+        vigilarEnvio(r.envio.id);
+      } finally {
+        boton.disabled = false;
+      }
+    });
+    $('#em-btn-cancelar').addEventListener('click', async () => {
+      if (!em.actual || !confirm('¿Cancelar la campaña? Los contactos pendientes no recibirán el correo.')) return;
+      await api('/api/crm/emailmarketing/envios/' + em.actual + '/cancelar', { method: 'POST' });
+      vigilarEnvio(em.actual);
+    });
+    $('#filtro-em').addEventListener('change', cargarContactosGlobales);
 
     iniciar();
     </script>
