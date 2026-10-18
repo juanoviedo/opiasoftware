@@ -511,7 +511,7 @@
             <div class="herramientas" style="margin-top:14px">
               <span class="contador" id="em-conteo"></span>
               <div style="flex:1"></div>
-              <button class="primario" id="em-btn-enviar">Enviar correo</button>
+              <button class="peligro-solido" id="em-btn-enviar">Enviar correo electrónico</button>
             </div>
           </div>
           <div class="tarjeta" id="em-tarjeta-envio" hidden>
@@ -577,6 +577,23 @@
         <div class="acciones">
           <button id="confirmar-cancelar">Cancelar</button>
           <button class="peligro-solido" id="confirmar-aceptar">Sí, eliminar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONFIRMACIÓN DE ENVÍO MASIVO: exige escribir ENVIAR -->
+    <div id="confirmar-envio" class="dialogo-fondo" hidden>
+      <div class="dialogo" role="alertdialog" aria-modal="true" aria-labelledby="em-env-titulo">
+        <h3 id="em-env-titulo">Enviar correo electrónico</h3>
+        <p>
+          Se iniciará el envío a <b id="em-env-n"></b> desde <b id="em-env-remitente"></b>.
+          Cada contacto quedará marcado con el resultado. La campaña corre sola y se puede cancelar mientras avanza.
+        </p>
+        <label for="em-env-palabra">Escribe ENVIAR para confirmar</label>
+        <input id="em-env-palabra" type="text" autocomplete="off" spellcheck="false" placeholder="ENVIAR" />
+        <div class="acciones">
+          <button id="em-env-cancelar">Cancelar</button>
+          <button class="peligro-solido" id="em-env-aceptar" disabled>Enviar ahora</button>
         </div>
       </div>
     </div>
@@ -1874,13 +1891,32 @@
       else em.seleccion.clear();
       pintarPicker();
     });
-    $('#em-btn-enviar').addEventListener('click', async () => {
+    $('#em-btn-enviar').addEventListener('click', () => {
       const asunto = $('#em-asunto').value.trim();
-      const html = $('#em-cuerpo').innerHTML;
       if (asunto.length < 2) return alert('Escribe el asunto del correo.');
       if (($('#em-cuerpo').textContent || '').trim().length < 2) return alert('Escribe el cuerpo del correo.');
       if (!em.seleccion.size) return alert('Selecciona al menos un contacto de la lista.');
-      if (!confirm('¿Enviar el correo a ' + em.seleccion.size + ' contacto(s)? Se envía uno por uno y cada contacto queda marcado con el resultado.')) return;
+      $('#em-env-n').textContent = em.seleccion.size + (em.seleccion.size === 1 ? ' contacto' : ' contactos');
+      $('#em-env-remitente').textContent = $('#em-remitente').value;
+      const palabra = $('#em-env-palabra');
+      palabra.value = '';
+      $('#em-env-aceptar').disabled = true;
+      $('#confirmar-envio').hidden = false;
+      palabra.focus();
+    });
+    $('#em-env-cancelar').addEventListener('click', () => {
+      $('#confirmar-envio').hidden = true;
+    });
+    $('#em-env-palabra').addEventListener('input', () => {
+      $('#em-env-aceptar').disabled = $('#em-env-palabra').value.trim() !== 'ENVIAR';
+    });
+    $('#em-env-palabra').addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' && $('#em-env-palabra').value.trim() === 'ENVIAR') $('#em-env-aceptar').click();
+    });
+    $('#em-env-aceptar').addEventListener('click', async () => {
+      $('#confirmar-envio').hidden = true;
+      const asunto = $('#em-asunto').value.trim();
+      const html = $('#em-cuerpo').innerHTML;
       const boton = $('#em-btn-enviar');
       boton.disabled = true;
       try {
