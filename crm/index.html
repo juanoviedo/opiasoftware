@@ -89,8 +89,8 @@
       }
       header.barra .marca { margin: 0; }
       header.barra nav { display: flex; gap: 4px; order: 3; flex-basis: 100%; overflow-x: auto; }
-      header.barra nav button { border: none; background: transparent; color: var(--muted); font-size: 14px; padding: 10px 14px; flex: 1 0 auto; min-height: 44px; }
-      header.barra nav button.activo { color: #fff; background: rgba(255, 255, 255, 0.08); border-radius: 9px; }
+      header.barra nav a { border: none; background: transparent; color: var(--muted); font-size: 14px; padding: 10px 14px; flex: 1 0 auto; min-height: 44px; text-decoration: none; text-align: center; }
+      header.barra nav a.activo { color: #fff; background: rgba(255, 255, 255, 0.08); border-radius: 9px; }
       header.barra .espacio { flex: 1; }
       header.barra .quien {
         color: var(--muted); font-size: 13px;
@@ -236,7 +236,7 @@
       @media (min-width: 700px) {
         header.barra { flex-wrap: nowrap; padding: 14px 22px; height: 56px; }
         header.barra nav { order: 0; flex-basis: auto; margin-left: 18px; overflow-x: visible; }
-        header.barra nav button { flex: 0 0 auto; min-height: 0; padding: 8px 12px; }
+        header.barra nav a { flex: 0 0 auto; min-height: 0; padding: 8px 12px; }
         main { padding: 22px; }
 
         table { display: table; width: 100%; border-collapse: collapse; font-size: 13.5px; }
@@ -290,9 +290,9 @@
       <header class="barra">
         <div class="marca"><b>OPIA</b><span>CRM</span></div>
         <nav>
-          <button id="tab-clientes" class="activo">Clientes</button>
-          <button id="tab-contactos">Contactos</button>
-          <button id="tab-acceso">Acceso</button>
+          <a id="tab-clientes" class="activo" href="/crm/clientes">Clientes</a>
+          <a id="tab-contactos" href="/crm/contactos">Contactos</a>
+          <a id="tab-acceso" href="/crm/acceso">Acceso</a>
         </nav>
         <div class="espacio"></div>
         <span class="quien" id="quien"></span>
@@ -622,11 +622,18 @@
       $('#vista-login').hidden = false;
     }
 
+    // Cada pestaña tiene URL propia: al cargar, la vista inicial es la de la ruta.
+    function vistaInicial() {
+      if (location.pathname === '/crm/contactos') return 'contactos';
+      if (location.pathname === '/crm/acceso') return 'acceso';
+      return 'clientes';
+    }
+
     function mostrarApp() {
       $('#vista-login').hidden = true;
       $('#vista-app').hidden = false;
       $('#quien').textContent = estado.email;
-      irA('clientes');
+      irA(vistaInicial());
     }
 
     function irA(vista) {
@@ -1401,7 +1408,7 @@
         aviso.textContent = error;
         aviso.className = 'aviso error';
         aviso.hidden = false;
-        history.replaceState(null, '', '/crm');
+        history.replaceState(null, '', location.pathname);
         return;
       }
       const { ok, email } = await api('/api/crm/sesion');
@@ -1439,9 +1446,6 @@
       await api('/api/crm/auth/salir', { method: 'POST' });
       location.href = '/crm';
     });
-    $('#tab-clientes').addEventListener('click', () => irA('clientes'));
-    $('#tab-contactos').addEventListener('click', () => irA('contactos'));
-    $('#tab-acceso').addEventListener('click', () => irA('acceso'));
     $('#btn-agregar-correo').addEventListener('click', agregarCorreoAutorizado);
     $('#nuevo-correo').addEventListener('keydown', (ev) => { if (ev.key === 'Enter') agregarCorreoAutorizado(); });
     $('#btn-volver').addEventListener('click', () => irA('clientes'));

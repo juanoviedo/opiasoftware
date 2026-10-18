@@ -1000,6 +1000,14 @@ const server = http.createServer((req, res) => {
         return H.sendJson(res, 404, { ok: false, error: 'not_found' });
       }
 
+      // Cada pestaña del CRM vive en su propia URL: mismo HTML, la vista
+      // inicial la decide location.pathname en el frontend.
+      const CRM_PESTANAS = new Set(['/crm/clientes', '/crm/contactos', '/crm/acceso']);
+      if (CRM_PESTANAS.has(pathname) && (req.method === 'GET' || req.method === 'HEAD')) {
+        const archivo = path.join(config.publicRoot, 'crm', 'index.html');
+        if (sendFile(res, req, archivo, pathname)) return;
+      }
+
       if (pathname.startsWith('/opadmin/') || pathname.startsWith('/api/')) {
         return H.sendJson(res, 404, { ok: false, error: 'not_found' });
       }
