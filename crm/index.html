@@ -501,6 +501,8 @@
               <button class="chico" id="em-btn-primeros">Seleccionar los primeros N</button>
               <button class="chico" id="em-btn-ninguno">Quitar selección</button>
               <span class="contador" id="em-seleccionados"></span>
+              <div style="flex:1"></div>
+              <button class="peligro-solido" id="em-btn-enviar">Enviar correo electrónico</button>
             </div>
             <table>
               <thead>
@@ -510,8 +512,6 @@
             </table>
             <div class="herramientas" style="margin-top:14px">
               <span class="contador" id="em-conteo"></span>
-              <div style="flex:1"></div>
-              <button class="peligro-solido" id="em-btn-enviar">Enviar correo electrónico</button>
             </div>
           </div>
           <div class="tarjeta" id="em-tarjeta-envio" hidden>
@@ -1555,7 +1555,7 @@
           if (det.ok) {
             pintarEnvio(det.envio);
             vigilarEnvio(e.id);
-            $('#em-tarjeta-envio').scrollIntoView({ behavior: 'smooth' });
+            $('#em-tarjeta-envio').scrollIntoView();
           }
         });
         encabezado.appendChild(ver);
@@ -1929,9 +1929,14 @@
         $('#em-asunto').value = '';
         $('#em-cuerpo').innerHTML = '';
         em.seleccion.clear();
-        cargarPicker();
+        // esperar el refresco del selector: si la tabla cambia a mitad del
+        // desplazamiento suave, el navegador lo cancela
+        await cargarPicker();
         pintarEnvio(r.envio);
         vigilarEnvio(r.envio.id);
+        // el botón quedó arriba: se salta a la tarjeta de progreso (el scroll
+        // suave falla con tablas de cientos de filas: distancia demasiado larga)
+        $('#em-tarjeta-envio').scrollIntoView();
       } finally {
         boton.disabled = false;
       }
