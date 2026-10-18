@@ -109,7 +109,9 @@
         color: #fff; font-size: 16px; font-family: inherit; line-height: 1.35;
         resize: none; /* crece con el texto hasta el tope y luego hace scroll */
         max-height: 180px; overflow-y: auto;
+        scrollbar-width: none; /* la barra nativa rompe el diseño: se oculta y el scroll sigue igual */
       }
+      .caja-envio textarea::-webkit-scrollbar { display: none; }
       .caja-envio textarea:focus { outline: 2px solid var(--blue); outline-offset: 1px; border-color: transparent; }
       .caja-envio button { background: var(--blue); border-color: transparent; color: #fff; font-weight: 600; padding: 12px 20px; border-radius: 12px; white-space: nowrap; }
       .caja-envio button:hover { background: #2b90ff; }
