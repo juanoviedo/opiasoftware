@@ -12,8 +12,9 @@ const auth = require('./auth');
  * del dueño y toca SOLO su calendario. La clave de la app y los tokens viven en
  * server/data/teams-config.json (ignorado por git), igual que ai-config.json.
  *
- * Disponibilidad: calendarView sobre el día y huecos de 30 min entre 8 y 18 h
- * (horario comercial del dueño). Reunión: evento con isOnlineMeeting=true, que
+ * Disponibilidad: calendarView sobre el día y huecos que caben completos
+ * entre 8 y 19 h (horario comercial del dueño) con la duración pedida.
+ * Reunión: evento con isOnlineMeeting=true, que
  * en cuentas organizacionales genera el joinUrl de Teams automáticamente.
  */
 const RUTA_CONFIG = path.join(config.dataDir, 'teams-config.json');
@@ -24,7 +25,7 @@ const BASE_GRAPH = 'https://graph.microsoft.com/v1.0';
 // Colombia no tiene horario de verano: -05:00 todo el año
 const TZ_WINDOWS = 'SA Pacific Standard Time';
 const APERTURA = 8;
-const CIERRE = 18;
+const CIERRE = 19; // nunca agendar reuniones que terminen después de las 7 pm
 const DURACION_SLOT = 30;
 
 function leerConfig() {
@@ -174,11 +175,14 @@ async function eventosEn(inicioIso, finIso) {
 }
 
 /**
- * Huecos libres de 30 min de un día (YYYY-MM-DD local a Bogotá).
+ * Huecos libres de un día (YYYY-MM-DD local a Bogotá) para una reunión de la
+ * duración indicada (por defecto 60 min): el hueco debe caber completo dentro
+ * del horario 8–19 y sin pisar eventos ocupados.
  * Devuelve { huecos: ['HH:MM'...], ocupados: [{inicio, fin}...] } en hora local.
  */
-async function disponibilidad(fecha) {
+async function disponibilidad(fecha, duracionMinutos = 60) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) throw new Error('fecha debe ser YYYY-MM-DD');
+  const dur = Math.min(Math.max(Number(duracionMinutos) || 60, 15), 240);
   const inicioDia = `${fecha}T00:00:00-05:00`;
   const finDia = `${fecha}T23:59:59-05:00`;
   const eventos = await eventosEn(inicioDia, finDia);
@@ -195,8 +199,8 @@ async function disponibilidad(fecha) {
     .filter((r) => Number.isFinite(r.ini) && Number.isFinite(r.fin));
 
   const huecos = [];
-  for (let min = APERTURA * 60; min + DURACION_SLOT <= CIERRE * 60; min += DURACION_SLOT) {
-    const pisa = ocupados.some((r) => min < r.fin && min + DURACION_SLOT > r.ini);
+  for (let min = APERTURA * 60; min + dur <= CIERRE * 60; min += DURACION_SLOT) {
+    const pisa = ocupados.some((r) => min < r.fin && min + dur > r.ini);
     if (!pisa) huecos.push(`${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`);
   }
   return { huecos, fecha };
@@ -206,22 +210,27 @@ async function disponibilidad(fecha) {
  * Crea la reunión de Teams en el calendario del dueño e invita al cliente.
  * fecha YYYY-MM-DD + hora HH:MM (Bogotá). Lanza error si el hueco está ocupado.
  */
-async function agendarReunion({ fecha, hora, duracion = 30, titulo, nombre, email, notas }) {
+async function agendarReunion({ fecha, hora, duracion = 60, titulo, nombre, email, notas }) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) throw new Error('fecha debe ser YYYY-MM-DD');
   if (!/^\d{2}:\d{2}$/.test(hora)) throw new Error('hora debe ser HH:MM');
+  const dur = Math.min(Math.max(Number(duracion) || 60, 15), 240);
+  const [hI, mI] = hora.split(':').map(Number);
+  // horario comercial: nunca antes de las 8:00 ni terminando después de las 19:00
+  if (hI * 60 + mI < APERTURA * 60 || hI * 60 + mI + dur > CIERRE * 60) {
+    throw new Error('ese horario queda fuera del horario de reuniones (8:00 a 19:00, hora de Colombia); ofrece otro');
+  }
   const inicio = new Date(`${fecha}T${hora}:00-05:00`);
   if (Number.isNaN(inicio.getTime()) || inicio < new Date(Date.now() + 15 * 60_000)) {
     throw new Error('la reunión debe ser en el futuro (mínimo 15 minutos)');
   }
-  const fin = new Date(inicio.getTime() + duracion * 60_000);
+  const fin = new Date(inicio.getTime() + dur * 60_000);
 
   // doble chequeo del hueco justo antes de escribir
   const solapados = (await eventosEn(inicio.toISOString(), fin.toISOString())).filter(estaOcupado);
   if (solapados.length) throw new Error('ese hueco acaba de ocuparse, vuelve a consultar la disponibilidad');
 
   // hora local de Bogotá: Graph la interpreta con la zona declarada
-  const [hI, mI] = hora.split(':').map(Number);
-  const finTotal = hI * 60 + mI + duracion;
+  const finTotal = hI * 60 + mI + dur;
   const horaFin = `${String(Math.floor(finTotal / 60)).padStart(2, '0')}:${String(finTotal % 60).padStart(2, '0')}`;
   const evento = {
     subject: titulo || `Reunión OPIA Software — ${nombre || 'cliente'}`,

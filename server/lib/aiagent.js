@@ -256,7 +256,7 @@ const SYSTEM_PROMPT = [
   '',
   'PASO 1 · CÓMO EMPEZAR. El saludo inicial ya le explicó que puedes entender su necesidad conversando o, si lo prefiere, agendarle una reunión por Teams con el equipo; en la pantalla le aparecen dos botones para elegirlo. El primer mensaje de la persona suele llegar por esos botones (por ejemplo «Prefiero una reunión por Teams» o «Prefiero conversar con el asistente»), pero puede ser cualquier texto. Solo clasifica su elección: reunión por Teams (PASO 2A) o conversación de necesidades contigo (PASO 2B). Si no queda claro, pregúntale con cuál prefiere empezar, sin pedirle ningún dato todavía.',
   '',
-  'PASO 2A · ELIGIÓ REUNIÓN POR TEAMS. Pregúntale si su necesidad es de software o de marketing (una sola pregunta). Con la respuesta, agenda la reunión: propón una fecha cercana que le quede bien, consulta los espacios libres con ver_disponibilidad, ofrécele los horarios que devuelva y cuando acepte uno llama a agendar_reunion con el título exacto «Reunión con cliente de software» o «Reunión con cliente de marketing». Guarda también una nota con agregar_nota indicando que prefirió reunión con el equipo y de qué es su necesidad. Cuando la reunión quede agendada, pasa al PASO 3; si el calendario no se puede consultar o agendar, dile que el equipo le confirmará la hora por correo o WhatsApp y pasa al PASO 3 igualmente.',
+  'PASO 2A · ELIGIÓ REUNIÓN POR TEAMS. Pregúntale si su necesidad es de software o de marketing (una sola pregunta). Pregúntale también cuánto tiempo quiere para la reunión: la duración la decide ella (lo habitual es una hora, pero puede ser media hora o la que prefiera; nunca la impongas tú). Con las respuestas, agenda la reunión: propón una fecha cercana que le quede bien, consulta los espacios libres con ver_disponibilidad pasando esa duración, ofrécele los horarios que devuelva y cuando acepte uno llama a agendar_reunion con el título exacto «Reunión con cliente de software» o «Reunión con cliente de marketing» y la duración elegida. Guarda también una nota con agregar_nota indicando que prefirió reunión con el equipo y de qué es su necesidad. Cuando la reunión quede agendada, pasa al PASO 3; si el calendario no se puede consultar o agendar, dile que el equipo le confirmará la hora por correo o WhatsApp y pasa al PASO 3 igualmente.',
   '',
   'PASO 2B · ELIGIÓ CONVERSAR CONTIGO. Pregúntale primero si su necesidad es de software o de marketing; esa pregunta de pista no cuenta dentro de las ocho. Luego haz el levantamiento de su necesidad con MÁXIMO 8 preguntas en total, una sola por mensaje (es la forma en que OPIA califica proyectos; no la menciones ni uses sus términos con la persona).',
   '',
@@ -272,9 +272,9 @@ const SYSTEM_PROMPT = [
   '',
   'PASO 4 · CIERRE. Si en esta conversación ya quedó una reunión de Teams agendada, despídete con calidez: dile que recibirá la invitación por correo con el enlace y recuérdale el WhatsApp. Si NO hay reunión agendada, agenda SIEMPRE una antes de despedirte: 1) si hiciste el levantamiento y la persona te dio nombre, celular y empresa, llama a solicitar_cotizacion con un resumen detallado de todo lo conversado, dile que su propuesta se la presentará el equipo en una reunión por Teams y ofrécele agendarla de una vez para entre una semana y dos meses; 2) si la persona no compartió sus datos o no hubo levantamiento, ofrece una reunión con el equipo para conocerse y hablar de su necesidad, con la fecha que le quede bien. Propón el día, verifica los espacios con ver_disponibilidad, ofrece los horarios y agenda con agendar_reunion solo cuando acepte uno. Si el calendario no se puede consultar o agendar, dile que el equipo le confirmará la reunión por correo o WhatsApp y despídete. Si vuelve a escribir después de la despedida, dile que el equipo ya tiene su solicitud y que conocerá su propuesta en la reunión.',
   '',
-  'FORMATO DEL CHAT. Puedes resaltar palabras clave entre dobles asteriscos, como **software**. Además, cuando tu pregunta sea de elección entre pocas opciones claras, ciérrala con una última línea exactamente con este formato: [OPCIONES] etiqueta 1 | etiqueta 2 — en la pantalla de la persona aparecerán botones con esas etiquetas y no tendrá que escribir. Úsala siempre en la pregunta de software o marketing del PASO 2, en el consentimiento del PASO 3 (por ejemplo [OPCIONES] Sí, con gusto | Prefiero no) y al ofrecer horarios de reunión (un botón por horario). Entre 2 y 4 etiquetas cortas; no la uses en preguntas abiertas de respuesta libre. Esa línea es un comando de la interfaz: nunca la menciones ni la expliques con la persona.',
+  'FORMATO DEL CHAT. Puedes resaltar palabras clave entre dobles asteriscos, como **software**. Además, cuando tu pregunta sea de elección entre pocas opciones claras, ciérrala con una última línea exactamente con este formato: [OPCIONES] etiqueta 1 | etiqueta 2 — en la pantalla de la persona aparecerán botones con esas etiquetas y no tendrá que escribir. Úsala siempre en la pregunta de software o marketing del PASO 2, en la pregunta de la duración de la reunión (por ejemplo [OPCIONES] Una hora | Media hora), en el consentimiento del PASO 3 (por ejemplo [OPCIONES] Sí, con gusto | Prefiero no) y al ofrecer horarios de reunión (un botón por horario). Entre 2 y 4 etiquetas cortas; no la uses en preguntas abiertas de respuesta libre. Esa línea es un comando de la interfaz: nunca la menciones ni la expliques con la persona.',
   '',
-  'Reuniones por Microsoft Teams: para calcular fechas usa el día de hoy que te doy y pásalo a las herramientas en formato YYYY-MM-DD. Nunca agendes sin que la persona haya aceptado un horario ofrecido. Después de agendar, dile que recibirá la invitación por correo con el enlace de Teams. Para la reunión de presentación del proyecto puedes usar 45 o 60 minutos; para las demás, 30.',
+  'Reuniones por Microsoft Teams: para calcular fechas usa el día de hoy que te doy y pásalo a las herramientas en formato YYYY-MM-DD. La duración de la reunión la decide SIEMPRE la persona: pregúntasela antes de consultar horarios (lo habitual es una hora, pero vale media hora o la que ella quiera) y pásala en duracion_minutos tanto a ver_disponibilidad como a agendar_reunion. Las reuniones van entre las 8:00 y las 19:00, hora de Colombia: nunca ofrezcas ni agendes una que empiece antes de las 8 o termine después de las 7 de la tarde. Nunca agendes sin que la persona haya aceptado un horario ofrecido. Después de agendar, dile que recibirá la invitación por correo con el enlace de Teams.',
   '',
   'Reglas:',
   '- NUNCA des valores, precios, costos ni rangos de inversión. La cotización con valores la prepara el equipo humano y se la presenta al cliente en la reunión de Teams. Tu trabajo es entender la necesidad, no cotizar.',
@@ -383,11 +383,12 @@ const HERRAMIENTAS = [
     function: {
       name: 'ver_disponibilidad',
       description:
-        'Consulta el calendario del dueño y devuelve los espacios libres de 30 minutos para una fecha. Usar antes de proponer hora de reunión o videollamada. La fecha puede ser "hoy", "mañana", un día de la semana o YYYY-MM-DD (para reuniones más lejanas, como dentro de dos semanas o un mes).',
+        'Consulta el calendario del dueño y devuelve los espacios libres para una fecha y la duración de la reunión. Usar antes de proponer horario, con la duración que la persona haya elegido (por defecto 60 minutos). La fecha puede ser "hoy", "mañana", un día de la semana o YYYY-MM-DD (para reuniones más lejanas, como dentro de dos semanas o un mes).',
       parameters: {
         type: 'object',
         properties: {
           fecha: { type: 'string', description: 'Fecha: YYYY-MM-DD, o "hoy", "mañana", "lunes", etc.' },
+          duracion_minutos: { type: 'number', description: 'Duración elegida por la persona en minutos (por defecto 60)' },
         },
         required: ['fecha'],
       },
@@ -398,13 +399,13 @@ const HERRAMIENTAS = [
     function: {
       name: 'agendar_reunion',
       description:
-        'Agenda una reunión de Microsoft Teams con la persona: crea el evento en el calendario del dueño, genera el enlace de Teams e invita al cliente por correo. Usar SOLO con fecha y hora que la persona haya aceptado (previamente ofrecida con ver_disponibilidad).',
+        'Agenda una reunión de Microsoft Teams con la persona: crea el evento en el calendario del dueño, genera el enlace de Teams e invita al cliente por correo. Usar SOLO con fecha y hora que la persona haya aceptado (previamente ofrecida con ver_disponibilidad) y con la duración que ella eligió.',
       parameters: {
         type: 'object',
         properties: {
           fecha: { type: 'string', description: 'Fecha: YYYY-MM-DD, o "hoy", "mañana", "lunes", etc.' },
           hora: { type: 'string', description: 'Hora de inicio HH:MM (hora de Colombia)' },
-          duracion_minutos: { type: 'number', description: 'Duración en minutos, por defecto 30' },
+          duracion_minutos: { type: 'number', description: 'Duración en minutos elegida por la persona (por defecto 60)' },
           titulo: { type: 'string', description: 'Asunto de la reunión' },
         },
         required: ['fecha', 'hora'],
@@ -692,11 +693,12 @@ async function verDisponibilidad(args) {
   }
   const fecha = resolverFecha(args.fecha);
   if (!fecha) return 'No entendí la fecha. Pídele el día en que quiere reunirse (por ejemplo "mañana" o "el lunes") y vuelve a llamar la herramienta.';
+  const duracion = Math.min(Math.max(Number(args.duracion_minutos) || 60, 15), 240);
   try {
-    const { huecos } = await teams.disponibilidad(fecha);
-    if (!huecos.length) return `No hay espacios disponibles el ${fecha}. Pregunta por otro día.`;
+    const { huecos } = await teams.disponibilidad(fecha, duracion);
+    if (!huecos.length) return `No hay espacios de ${duracion} minutos disponibles el ${fecha}. Pregunta por otro día.`;
     return (
-      `Huecos disponibles el ${DIAS[new Date(fecha + 'T12:00:00-05:00').getDay()]} ${fecha} (hora Colombia): ` +
+      `Huecos para una reunión de ${duracion} minutos el ${DIAS[new Date(fecha + 'T12:00:00-05:00').getDay()]} ${fecha} (hora Colombia): ` +
       huecos.join(', ') +
       '. Ofrece estos horarios a la persona.'
     );
@@ -725,7 +727,7 @@ async function agendarReunionConCliente(s, args) {
   if (!fecha) return 'No entendí la fecha de la reunión. Confírmala con la persona (por ejemplo "mañana" o "el lunes") y vuelve a llamar la herramienta.';
   if (!/^\d{1,2}:\d{2}$/.test(hora)) return 'La hora debe ser HH:MM en hora de Colombia.';
   const horaNorm = hora.padStart(5, '0');
-  const duracion = Math.min(Math.max(Number(args.duracion_minutos) || 30, 15), 120);
+  const duracion = Math.min(Math.max(Number(args.duracion_minutos) || 60, 15), 240);
   const empresa = crm.clientes.porId(s.clienteId);
   const nombreCompleto = `${contacto.nombres || ''} ${contacto.apellidos || ''}`.trim() || contacto.email;
   const titulo = H.clean(args.titulo, 200).trim() || `Reunión OPIA Software — ${empresa ? empresa.nombre : nombreCompleto}`;
