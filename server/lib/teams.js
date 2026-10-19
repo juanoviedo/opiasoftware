@@ -344,6 +344,18 @@ async function moverReunion(eventoId, { fecha, hora, duracion } = {}) {
   return { joinUrl, inicio: `${fecha} ${hora}`, fin: horaFin, eventoId };
 }
 
+/**
+ * Cancela la reunión y avisa al cliente: el «cancel» de Graph borra el evento
+ * y envía a los invitados el correo de cancelación con el motivo como comentario.
+ */
+async function cancelarReunion(eventoId, motivo) {
+  if (!eventoId) throw new Error('falta el id del evento');
+  await graph('POST', `/me/events/${encodeURIComponent(eventoId)}/cancel`, {
+    comment: String(motivo || '').trim().slice(0, 500) || 'La reunión fue cancelada.',
+  });
+  return { eventoId };
+}
+
 module.exports = {
   configurado,
   conectado,
@@ -354,6 +366,7 @@ module.exports = {
   disponibilidad,
   agendarReunion,
   moverReunion,
+  cancelarReunion,
   encontrarEvento,
   organizador: () => leerConfig().organizadorEmail || '',
 };

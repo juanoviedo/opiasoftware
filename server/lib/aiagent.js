@@ -289,7 +289,7 @@ const SYSTEM_PROMPT = [
   '',
   'FORMATO DEL CHAT. Puedes resaltar palabras clave entre dobles asteriscos, como **software**. Además, cuando tu pregunta sea de elección entre pocas opciones claras, ciérrala con una última línea exactamente con este formato: [OPCIONES] etiqueta 1 | etiqueta 2 — en la pantalla de la persona aparecerán botones con esas etiquetas y no tendrá que escribir. Úsala siempre en la pregunta de software o marketing del PASO 2, en la pregunta de la duración de la reunión (por ejemplo [OPCIONES] Una hora | Media hora), en el consentimiento del PASO 3 (por ejemplo [OPCIONES] Sí, con gusto | Prefiero no) y al ofrecer horarios de reunión (un botón por horario). Entre 2 y 4 etiquetas cortas; no la uses en preguntas abiertas de respuesta libre. Esa línea es un comando de la interfaz: nunca la menciones ni la expliques con la persona.',
   '',
-  'Reuniones por Microsoft Teams: para calcular fechas usa el día de hoy que te doy y pásalo a las herramientas en formato YYYY-MM-DD. La duración de la reunión la decide SIEMPRE la persona: pregúntasela antes de consultar horarios (lo habitual es una hora, pero vale media hora o la que ella quiera) y pásala en duracion_minutos tanto a ver_disponibilidad como a agendar_reunion. Las reuniones van entre las 8:00 y las 19:00, hora de Colombia: nunca ofrezcas ni agendes una que empiece antes de las 8 o termine después de las 7 de la tarde. Nunca agendes sin que la persona haya aceptado un horario ofrecido. Después de agendar, dile que recibirá la invitación por correo con el enlace de Teams. Si la persona pide cambiar la hora de su reunión, usa reagendar_reunion con la nueva fecha y hora que acepte (en ISO con su offset, igual que al agendar): el enlace de Teams es el mismo y ella recibe la actualización por correo; nunca uses agendar_reunion para mover una reunión existente, y recuerda que solo puedes mover la reunión de ESTA conversación.',
+  'Reuniones por Microsoft Teams: para calcular fechas usa el día de hoy que te doy y pásalo a las herramientas en formato YYYY-MM-DD. La duración de la reunión la decide SIEMPRE la persona: pregúntasela antes de consultar horarios (lo habitual es una hora, pero vale media hora o la que ella quiera) y pásala en duracion_minutos tanto a ver_disponibilidad como a agendar_reunion. Las reuniones van entre las 8:00 y las 19:00, hora de Colombia: nunca ofrezcas ni agendes una que empiece antes de las 8 o termine después de las 7 de la tarde. Nunca agendes sin que la persona haya aceptado un horario ofrecido. Después de agendar, dile que recibirá la invitación por correo con el enlace de Teams. Si la persona pide cambiar la hora de su reunión, usa reagendar_reunion con la nueva fecha y hora que acepte (en ISO con su offset, igual que al agendar): el enlace de Teams es el mismo y ella recibe la actualización por correo; nunca uses agendar_reunion para mover una reunión existente, y recuerda que solo puedes mover la reunión de ESTA conversación. Si la persona pide CANCELAR su reunión, no la canceles de inmediato: primero insiste con calidez en REAGENDARLA (ofrécele otros horarios con ver_disponibilidad y dile que moverla es muy fácil), porque una cancelación suele perder el contacto. Solo si, después de ofrecerle reagendar, insiste en cancelar, pídele el motivo de la cancelación y entonces usa cancelar_reunion con ese motivo en sus propias palabras: el cliente recibe el aviso de cancelación por correo con la razón. Nunca llames cancelar_reunion sin motivo: si la persona aún no lo dio, pregúntaselo primero.',
   '',
   'Ubicación, código de país y zona horaria. Cuando pidas el número de celular o WhatsApp, asegúrate de que incluya el código del país (+57, +1, +52…). Si te doy un país probable de la persona, úsalo SOLO como sugerencia amable y nunca de forma invasiva (por ejemplo: «Para estar en contacto, ¿me compartes tu número? Si estás en Colombia, recuerda incluir el +57, o dime desde qué país nos escribes»); si no te doy país probable, pídele el número con el prefijo internacional. Antes de confirmar una fecha y hora de reunión, valida dónde está la persona: ofrece siempre los horarios diciendo «(hora de Colombia)» y pregúntale si está en otra zona horaria; si menciona otro país o ciudad, confirma de inmediato la conversión de ambos lados (por ejemplo: «Queda a las 3:00 PM hora de México, 4:00 PM hora de Colombia»). Al agendar pasa la hora SIEMPRE en formato ISO 8601 con el offset UTC del país de la persona (por ejemplo 2026-10-22T15:00:00-05:00 si está en Colombia, 2026-10-22T15:00:00-06:00 en México, 2026-10-22T15:00:00+02:00 en España): el sistema la convierte a hora de Colombia y el calendario mostrará la reunión automáticamente en la hora local de cada quien. Como último recurso, si no conoces el offset, pasa HH:MM en hora de Colombia.',
   '',
@@ -445,6 +445,21 @@ const HERRAMIENTAS = [
           duracion_minutos: { type: 'number', description: 'Duración en minutos (solo si la persona la cambia; si no, omitir para conservar la actual)' },
         },
         required: ['fecha', 'hora'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'cancelar_reunion',
+      description:
+        'Cancela la reunión de Teams agendada en esta conversación: Microsoft envía al cliente el correo de cancelación con el motivo. Usar SOLO cuando la persona haya insistido en cancelar DESPUÉS de ofrecerle reagendar y te haya dado el motivo. Si aún no hay motivo, NO llames esta herramienta: primero pregúntaselo a la persona.',
+      parameters: {
+        type: 'object',
+        properties: {
+          motivo: { type: 'string', description: 'Motivo de la cancelación en las propias palabras de la persona' },
+        },
+        required: ['motivo'],
       },
     },
   },
@@ -698,6 +713,8 @@ async function ejecutarHerramienta(s, nombre, args) {
       return agendarReunionConCliente(s, args);
     case 'reagendar_reunion':
       return reagendarReunionConCliente(s, args);
+    case 'cancelar_reunion':
+      return cancelarReunionConCliente(s, args);
     default:
       return 'Herramienta desconocida.';
   }
@@ -981,6 +998,92 @@ async function reagendarReunionConCliente(s, args) {
     console.error('[teams] reagendar:', err.message);
     if (/ocup/i.test(err.message)) return err.message + ' Ofrece otros horarios con ver_disponibilidad.';
     return 'No pude reagendar la reunión (' + err.message + '). Ofrece que el equipo le confirme el cambio por correo.';
+  }
+}
+
+/**
+ * Cancela la reunión de esta conversación. Graph envía al cliente el correo de
+ * cancelación con el motivo y el dueño recibe una notificación con la razón;
+ * el motivo queda también en una nota del CRM.
+ */
+async function cancelarReunionConCliente(s, args) {
+  if (s.estado !== 'lead' || !s.contactoId) {
+    return 'Primero hay que registrar el lead con nombre y celular.';
+  }
+  if (!s.reunion || !s.reunion.joinUrl) {
+    return 'No hay reunión agendada en esta conversación, así que no hay nada que cancelar.';
+  }
+  const motivo = H.clean(args.motivo, 500).trim();
+  if (!motivo) {
+    return 'Antes de cancelarle la reunión a la persona, pregúntale el motivo de la cancelación y vuelve a llamar esta herramienta con motivo.';
+  }
+
+  // reuniones creadas antes de guardar eventoId: se busca el evento en el calendario
+  if (!s.reunion.eventoId) {
+    try {
+      const id = await teams.encontrarEvento(s.reunion.inicio);
+      if (id) {
+        s.reunion.eventoId = id;
+        guardarSesion(s, 'aiagent');
+      }
+    } catch (err) {
+      console.error('[teams] encontrar evento:', err.message);
+    }
+  }
+  if (!s.reunion.eventoId) {
+    await avisarCalendarioCaido(
+      s,
+      `la persona pidió cancelar la reunión (${s.reunion.inicio}), motivo: «${motivo}», y no se encontró en el calendario`
+    );
+    return 'No encuentro en el calendario la reunión agendada antes, así que no puedo cancelarla desde aquí. Dile que el equipo le confirmará la cancelación por correo o WhatsApp.';
+  }
+
+  if (!(await teams.asegurarActivo())) {
+    await avisarCalendarioCaido(
+      s,
+      `la persona pidió cancelar la reunión (${s.reunion.inicio}), motivo: «${motivo}», y el calendario no respondió`
+    );
+    return 'El calendario del equipo no está conectado todavía. Dile a la persona que el equipo le confirmará la cancelación por correo o WhatsApp.';
+  }
+
+  const viejo = s.reunion.inicio;
+  const contacto = crm.contactos.porId(s.contactoId);
+  const empresa = crm.clientes.porId(s.clienteId);
+  const nombreCompleto = contacto
+    ? `${contacto.nombres || ''} ${contacto.apellidos || ''}`.trim() || contacto.email
+    : 'cliente';
+
+  try {
+    await teams.cancelarReunion(s.reunion.eventoId, motivo);
+
+    crm.notas.agregar(
+      {
+        id: crm.siguienteId('n'),
+        clienteId: s.clienteId,
+        contactoId: contacto ? contacto.id : '',
+        texto: `Reunión de Teams cancelada por el agente de IA (${viejo}, hora Colombia). Motivo de la persona: ${motivo}`,
+      },
+      'aiagent'
+    );
+    await crm.notificarEquipo({
+      subject: `Reunión cancelada: ${nombreCompleto} — ${viejo}`,
+      text:
+        `El agente de IA canceló la reunión de Teams.\n\n` +
+        `Cliente: ${nombreCompleto}\nCorreo: ${contacto ? contacto.email : '—'}\nCelular: ${contacto ? contacto.celular || '—' : '—'}\n` +
+        `Empresa: ${empresa ? empresa.nombre : '—'}\nFecha cancelada: ${viejo} (hora Colombia)\n\n` +
+        `Motivo de la cancelación: ${motivo}\n\n` +
+        `El cliente recibió el aviso de cancelación por correo.\n\nConversación: ${(config.publicUrl || '') + '/aiagent/' + s.id}`,
+    });
+
+    s.reunion = null;
+    guardarSesion(s, 'aiagent');
+    return (
+      `Reunión del ${viejo} (hora Colombia) cancelada: el cliente recibió el aviso por correo con el motivo. ` +
+      'Dile a la persona que la cancelación quedó registrada y que el equipo está atento para cuando quiera retomar el proyecto.'
+    );
+  } catch (err) {
+    console.error('[teams] cancelar:', err.message);
+    return 'No pude cancelar la reunión (' + err.message + '). Dile que el equipo le confirmará la cancelación por correo o WhatsApp.';
   }
 }
 
