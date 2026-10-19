@@ -146,12 +146,12 @@ async function tokenFresco() {
   return c.tokens.access_token;
 }
 
-async function graph(metodo, ruta, cuerpo) {
+async function graph(metodo, ruta, cuerpo, headersExtra) {
   let token = await tokenFresco();
   const haz = (t) =>
     fetch(BASE_GRAPH + ruta, {
       method: metodo,
-      headers: { Authorization: 'Bearer ' + t, ...(cuerpo ? { 'Content-Type': 'application/json' } : {}) },
+      headers: { Authorization: 'Bearer ' + t, ...(cuerpo ? { 'Content-Type': 'application/json' } : {}), ...(headersExtra || {}) },
       body: cuerpo ? JSON.stringify(cuerpo) : undefined,
       signal: AbortSignal.timeout(30_000),
     });
@@ -187,7 +187,9 @@ async function eventosEn(inicioIso, finIso) {
     '&endDateTime=' +
     encodeURIComponent(finIso) +
     '&$select=subject,start,end,showAs,isAllDay,isCancelled,id';
-  const data = await graph('GET', ruta);
+  // sin este header Graph devuelve los dateTime en UTC y el "-05:00" que se
+  // agrega abajo queda 5 horas corrido (bug de huecos/encontrarEvento)
+  const data = await graph('GET', ruta, undefined, { Prefer: 'outlook.timezone="SA Pacific Standard Time"' });
   return (data.value || []).filter((e) => !e.isCancelled);
 }
 
