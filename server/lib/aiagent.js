@@ -478,8 +478,11 @@ async function llamarModelo(mensajesApi, pais) {
   const base = String(c.baseUrl).replace(/\/+$/, '');
   // el modelo necesita la fecha actual (Bogotá) para proponer reuniones de una
   // semana a dos meses y pasar fechas ISO a las herramientas
-  const hoyBog = new Date(Date.now() - 5 * 3600_000).toISOString().slice(0, 10);
-  let sistema = SYSTEM_PROMPT + '\n\nHoy es ' + hoyBog + ' (fecha de Colombia).';
+  const ahoraBog = new Date(Date.now() - 5 * 3600_000);
+  const hoyBog = ahoraBog.toISOString().slice(0, 10);
+  // el día de la semana va explícito: el modelo calcula mal el weekday a partir
+  // de una fecha ISO (llegó a decir «mañana lunes» un martes)
+  let sistema = SYSTEM_PROMPT + `\n\nHoy es ${DIAS[ahoraBog.getUTCDay()]} ${hoyBog} (fecha de Colombia).`;
   // país probable por IP (caché de geoIP): sugerencia suave para el código de
   // teléfono y la zona horaria. Jamás se le dice a la persona de dónde sale.
   if (pais) sistema += ` Probable país de la persona: ${pais} (estimación del servidor; úsala solo como sugerencia amable).`;
