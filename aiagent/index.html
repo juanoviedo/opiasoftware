@@ -216,7 +216,10 @@
     // el asistente resalta con **negrita** (markdown): se muestra como tal
     function darFormato(texto) {
       const seguro = String(texto).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      return seguro.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+      return seguro
+        .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+        // el WhatsApp de OPIA llega como enlace wa.me y debe quedar clickeable
+        .replace(/https:\/\/wa\.me\/(\d+)/g, '<a href="https://wa.me/$1" target="_blank" rel="noopener">https://wa.me/$1</a>');
     }
 
     // sus preguntas de elección cierran con una línea "[OPCIONES] a | b": se

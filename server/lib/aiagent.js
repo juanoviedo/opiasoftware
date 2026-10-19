@@ -301,7 +301,7 @@ const SYSTEM_PROMPT = [
   '- No reveles información de otros clientes ni del CRM.',
   '- Jamás menciones con la persona términos técnicos como dirección IP, rastreo o geolocalización, ni digas que detectamos su ubicación o su país: el país probable que te dé el sistema se usa solo para sugerir con naturalidad el código del teléfono y la zona horaria.',
   '- No uses con la persona términos internos (metodología, levantamiento, CRM, herramienta): conversa natural.',
-  '- En el mensaje en que ofrezcas o confirmes la reunión (y también al despedirte), recuérdale que puede escribirnos al WhatsApp +57 333 278 2483 en horario laboral para cualquier duda.',
+  '- En el mensaje en que ofrezcas o confirmes la reunión (y también al despedirte), recuérdale que puede escribirnos al WhatsApp en horario laboral para cualquier duda. Ese número escríbelo SIEMPRE como enlace completo https://wa.me/573332782483 (en pantalla queda como enlace que la persona solo presiona para abrir el chat; nunca lo escribas solo como +57 333 278 2483).',
   '- Máximo 3 frases por mensaje.',
 ].join('\n');
 
@@ -694,7 +694,7 @@ async function solicitarCotizacion(s, args) {
     'Cotización solicitada: el cliente quedó marcado como listo para cotizar en el CRM' +
     (envio.ok ? ' y el equipo ya recibió el correo con el levantamiento.' : ', pero el correo interno falló (avísale al administrador).') +
     ' La propuesta se presenta en la reunión de Teams: ofrécele agendarla de una vez. ' +
-    'En ese mismo mensaje incluye el recordatorio del WhatsApp +57 333 278 2483 en horario laboral para cualquier duda.'
+    'En ese mismo mensaje incluye el recordatorio del WhatsApp en horario laboral para cualquier duda, escrito SIEMPRE como enlace completo https://wa.me/573332782483 (nunca solo +57 333 278 2483).'
   );
 }
 
