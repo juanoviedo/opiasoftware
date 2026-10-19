@@ -20,6 +20,11 @@ const MAX_MENSAJES_DIA = 500;
 const MAX_ITER_HERRAMIENTAS = 4;
 // magic link: un solo uso, 15 minutos, igual filosofía que el acceso al CRM
 const TOKEN_MINUTOS = 15;
+// tras abrir el magic link el navegador queda autenticado este tiempo con un
+// token firmado en cookie (nunca en el URL); pasado ese toca pedir enlace de
+// nuevo: un enlace filtrado deja de servir solo
+const ACCESO_HORAS = 12;
+const ACCESO_SEGUNDOS = ACCESO_HORAS * 3600;
 const NOMBRE_SIN_REGISTRAR = 'AI user';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -140,6 +145,22 @@ function verificarEnlace(tokenCrudo) {
 
 function obtenerSesion(guid) {
   return sesiones.porId(guid) || null;
+}
+
+/**
+ * Token de acceso de la cookie: firmado (HMAC) y con vencimiento. El guid crudo
+ * ya no circula por URLs ni correos; quien tenga una cookie o un enlace viejo
+ * no entra: solo el magic link de un solo uso crea este token.
+ */
+function crearAcceso(guid) {
+  return auth.sign({ t: 'aiacc', g: guid, exp: Date.now() + ACCESO_SEGUNDOS * 1000 });
+}
+
+/** Resuelve la sesión a partir del valor de la cookie de acceso (o null). */
+function sesionDeAcceso(valorCookie) {
+  const payload = auth.unsign(valorCookie);
+  if (!payload || payload.t !== 'aiacc' || typeof payload.g !== 'string') return null;
+  return obtenerSesion(payload.g);
 }
 
 function guardarSesion(s, actor) {
@@ -678,7 +699,7 @@ async function solicitarCotizacion(s, args) {
     'IMPORTANTE: la cotización NO se envía por correo. El agente está agendando (o ya agendó) una reunión',
     'de Teams en la que se presenta la propuesta a este cliente: tenla preparada para la fecha de la reunión.',
     '',
-    `Conversación completa: ${(config.publicUrl || '') + '/aiagent/' + s.id}`,
+    `Conversación completa: busca al contacto en el CRM (${(config.publicUrl || '') + '/crm'}) y abre su ficha: ahí están todos los mensajes.`,
     `CRM: ${(config.publicUrl || '') + '/crm'}`,
     '',
     '— Agente virtual de OPIA Software'
@@ -814,7 +835,7 @@ async function avisarCalendarioCaido(s, detalle) {
       `- Nombre: ${nombreCompleto}\n- Correo: ${contacto.email || '—'}\n- Celular: ${contacto.celular || '—'}\n` +
       `- Empresa: ${empresa ? empresa.nombre : '—'}\n\n` +
       'Confírmale la reunión por correo o WhatsApp y reconecta el calendario desde el panel.\n\n' +
-      `Conversación: ${(config.publicUrl || '') + '/aiagent/' + s.id}`,
+      `Conversación: busca a ${nombreCompleto} en el CRM (${(config.publicUrl || '') + '/crm'}) y abre su ficha.`,
   });
 }
 
@@ -895,7 +916,7 @@ async function agendarReunionConCliente(s, args) {
         `Empresa: ${empresa ? empresa.nombre : '—'}\nFecha: ${r.inicio} (hora Colombia, ${duracion} min)${
           nh.horaPersona ? ` — ${nh.horaPersona} hora de la persona` : ''
         }\n\n` +
-        `Enlace Teams: ${r.joinUrl}\n\nConversación: ${(config.publicUrl || '') + '/aiagent/' + s.id}`,
+        `Enlace Teams: ${r.joinUrl}\n\nConversación: busca a ${nombreCompleto} en el CRM (${(config.publicUrl || '') + '/crm'}) y abre su ficha.`,
     });
 
     s.reunion = { joinUrl: r.joinUrl, inicio: r.inicio, eventoId: r.eventoId };
@@ -988,7 +1009,7 @@ async function reagendarReunionConCliente(s, args) {
         `Empresa: ${empresa ? empresa.nombre : '—'}\nNueva fecha: ${r.inicio} (hora Colombia)${
           nh.horaPersona ? ` — ${nh.horaPersona} hora de la persona` : ''
         }\n\n` +
-        `Enlace Teams (el mismo de siempre): ${r.joinUrl}\n\nConversación: ${(config.publicUrl || '') + '/aiagent/' + s.id}`,
+        `Enlace Teams (el mismo de siempre): ${r.joinUrl}\n\nConversación: busca a ${nombreCompleto} en el CRM (${(config.publicUrl || '') + '/crm'}) y abre su ficha.`,
     });
 
     s.reunion = { joinUrl: r.joinUrl, inicio: r.inicio, eventoId: r.eventoId };
@@ -1075,7 +1096,7 @@ async function cancelarReunionConCliente(s, args) {
         `Cliente: ${nombreCompleto}\nCorreo: ${contacto ? contacto.email : '—'}\nCelular: ${contacto ? contacto.celular || '—' : '—'}\n` +
         `Empresa: ${empresa ? empresa.nombre : '—'}\nFecha cancelada: ${viejo} (hora Colombia)\n\n` +
         `Motivo de la cancelación: ${motivo}\n\n` +
-        `El cliente recibió el aviso de cancelación por correo.\n\nConversación: ${(config.publicUrl || '') + '/aiagent/' + s.id}`,
+        `El cliente recibió el aviso de cancelación por correo.\n\nConversación: busca a ${nombreCompleto} en el CRM (${(config.publicUrl || '') + '/crm'}) y abre su ficha.`,
     });
 
     s.reunion = null;
@@ -1174,8 +1195,11 @@ async function mensaje(guidPropuesto, texto, pais) {
 
 module.exports = {
   COOKIE_AI,
+  ACCESO_SEGUNDOS,
   configurado,
   obtenerSesion,
+  crearAcceso,
+  sesionDeAcceso,
   historialVisible,
   podarSesiones,
   eliminarPorContacto,

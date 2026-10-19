@@ -797,8 +797,6 @@ function handleEmPixel(req, res, pathname) {
 
 /* ------------------------------------------------------------- /aiagent */
 
-const RE_GUID = /^[A-Za-z0-9_-]{8,64}$/;
-
 async function handleAiMensaje(req, res) {
   const ip = H.clientIp(req, config.trustProxy);
   if (!aiMessageLimiter(ip)) return H.sendJson(res, 429, { ok: false, error: 'rate_limited' });
@@ -811,8 +809,11 @@ async function handleAiMensaje(req, res) {
   }
   const texto = H.clean(body.texto, 2000).trim();
   if (texto.length < 1) return H.sendJson(res, 422, { ok: false, error: 'Escribe un mensaje.' });
-  let guid = H.clean(body.guid, 64);
-  if (!RE_GUID.test(guid)) guid = '';
+
+  // la conversación sale de la cookie de acceso firmada: el guid crudo ya no
+  // viaja en el cuerpo ni en el URL (un enlace filtrado no sirve de nada)
+  const s = aiagent.sesionDeAcceso(H.parseCookies(req.headers.cookie)[aiagent.COOKIE_AI]);
+  if (!s) return H.sendJson(res, 401, { ok: false, error: 'no_autenticado' });
 
   // Pista de país para el agente (código de teléfono y zona horaria): caché
   // de geoIP resuelta en segundo plano. La persona nunca ve de dónde sale.
@@ -824,9 +825,9 @@ async function handleAiMensaje(req, res) {
       : '';
 
   try {
-    const r = await aiagent.mensaje(guid, texto, pais);
+    const r = await aiagent.mensaje(s.id, texto, pais);
     if (r.error) return H.sendJson(res, r.status || 500, { ok: false, error: r.error });
-    return H.sendJson(res, 200, { ok: true, guid: r.guid, respuesta: r.texto });
+    return H.sendJson(res, 200, { ok: true, respuesta: r.texto });
   } catch (err) {
     console.error('[aiagent]', err.message);
     return H.sendJson(res, 502, { ok: false, error: 'El asistente falló. Intenta de nuevo en un momento.' });
@@ -854,16 +855,15 @@ async function handleAiEmail(req, res) {
   }
 }
 
-function handleAiSesion(req, res, url) {
+function handleAiSesion(req, res) {
   if (!aiHistoryLimiter(H.clientIp(req, config.trustProxy))) {
     return H.sendJson(res, 429, { ok: false, error: 'rate_limited' });
   }
-  // el guid puede venir por query (enlace directo) o por la cookie de sesión
-  let guid = H.clean(url.searchParams.get('guid'), 64);
-  if (!RE_GUID.test(guid)) guid = H.parseCookies(req.headers.cookie)[aiagent.COOKIE_AI] || '';
-  const s = RE_GUID.test(guid) ? aiagent.obtenerSesion(guid) : null;
-  if (!s) return H.sendJson(res, 404, { ok: false, error: 'not_found' });
-  return H.sendJson(res, 200, { ok: true, guid: s.id, estado: s.estado, historial: aiagent.historialVisible(s) });
+  // sin cookie de acceso firmada no hay conversación: cada visita entra por
+  // magic link de un solo uso (no hay URL de conversación compartible)
+  const s = aiagent.sesionDeAcceso(H.parseCookies(req.headers.cookie)[aiagent.COOKIE_AI]);
+  if (!s) return H.sendJson(res, 401, { ok: false, error: 'no_autenticado' });
+  return H.sendJson(res, 200, { ok: true, estado: s.estado, historial: aiagent.historialVisible(s) });
 }
 
 /* ------------------------------------------------------ teams del dueño */
@@ -914,12 +914,12 @@ async function handleTeamsCallback(req, res, url) {
 }
 
 /**
- * Página pública del asistente virtual.
- * /aiagent?token=…    → consume el magic link: crea/reusa la sesión del contacto,
- *                        planta la cookie (30 días, Strict) y redirige al chat.
- * /aiagent            → con cookie de sesión válida redirige al chat; si no,
- *                        sirve la página para pedir el correo.
- * /aiagent/<guid>     → sirve la página y refresca la cookie de continuidad.
+ * Página pública del asistente virtual. Acceso SOLO por magic link:
+ * /aiagent?token=…  → consume el magic link (un solo uso, 15 min): planta la
+ *                     cookie de acceso firmada (12 h) y redirige al chat limpio.
+ * /aiagent          → sirve la página; el frontend decide con /api/aiagent/sesion
+ *                     si hay cookie válida (chat) o toca pedir correo (magic link).
+ * /aiagent/<algo>   → ya no existe URL de conversación: a la entrada por correo.
  */
 async function handleAiAgentPage(req, res, pathname, url) {
   if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -938,15 +938,15 @@ async function handleAiAgentPage(req, res, pathname, url) {
         }
         res.setHeader(
           'Set-Cookie',
-          H.serializeCookie(aiagent.COOKIE_AI, r.guid, {
-            maxAgeSeconds: 30 * 86_400,
+          H.serializeCookie(aiagent.COOKIE_AI, aiagent.crearAcceso(r.guid), {
+            maxAgeSeconds: aiagent.ACCESO_SEGUNDOS,
             path: '/',
             httpOnly: true,
             sameSite: 'Strict',
             secure: isSecureRequest(req),
           })
         );
-        res.writeHead(303, { Location: '/aiagent/' + encodeURIComponent(r.guid) });
+        res.writeHead(303, { Location: '/aiagent' });
         return res.end();
       } catch (err) {
         console.error('[aiagent]', err.message);
@@ -954,29 +954,14 @@ async function handleAiAgentPage(req, res, pathname, url) {
         return res.end();
       }
     }
-    const cookies = H.parseCookies(req.headers.cookie);
-    const guid = cookies[aiagent.COOKIE_AI] || '';
-    if (RE_GUID.test(guid) && aiagent.obtenerSesion(guid)) {
-      res.writeHead(303, { Location: '/aiagent/' + encodeURIComponent(guid) });
-      return res.end();
-    }
     if (sendFile(res, req, archivo, pathname)) return;
     return serveStatic(req, res, req.url);
   }
 
-  const m = /^\/aiagent\/([A-Za-z0-9_-]{8,64})$/.exec(pathname);
-  if (m) {
-    res.setHeader(
-      'Set-Cookie',
-      H.serializeCookie(aiagent.COOKIE_AI, m[1], {
-        maxAgeSeconds: 30 * 86_400,
-        path: '/',
-        httpOnly: true,
-        sameSite: 'Strict',
-        secure: isSecureRequest(req),
-      })
-    );
-    if (sendFile(res, req, archivo, pathname)) return;
+  // enlaces viejos con el guid en la URL: ya no abren nada, a pedir correo
+  if (pathname.startsWith('/aiagent/')) {
+    res.writeHead(303, { Location: '/aiagent' });
+    return res.end();
   }
   return serveStatic(req, res, req.url);
 }
@@ -1031,7 +1016,7 @@ const server = http.createServer((req, res) => {
 
       if (req.method === 'POST' && pathname === '/api/aiagent/mensaje') return await handleAiMensaje(req, res);
       if (req.method === 'POST' && pathname === '/api/aiagent/email') return await handleAiEmail(req, res);
-      if (req.method === 'GET' && pathname === '/api/aiagent/sesion') return handleAiSesion(req, res, url);
+      if (req.method === 'GET' && pathname === '/api/aiagent/sesion') return handleAiSesion(req, res);
 
       if (req.method === 'GET' && pathname === '/api/teams/estado') {
         return H.sendJson(res, 200, {

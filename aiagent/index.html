@@ -166,11 +166,8 @@
     const eleccion = document.querySelector('#eleccion');
     const cajaOpciones = document.querySelector('#opciones');
 
-    // /aiagent/<guid> entra desde el enlace del correo (la sesión ya quedó
-    // autenticada); /aiagent limpio pide el correo para mandar el magic link.
-    const partes = location.pathname.split('/').filter(Boolean);
-    const guidUrl = partes.length === 2 ? partes[1] : '';
-    let guid = guidUrl;
+    // la sesión va en una cookie firmada que planta el magic link: el URL jamás
+    // lleva identificadores (un enlace compartido no abre nada)
     let modo = 'correo'; // 'correo' → espera el correo | 'chat' → conversación
     // mensajes ya escritos por el usuario en el historial visible: mientras
     // esté en 0 (solo el saludo) se ofrecen los botones de cómo empezar
@@ -340,7 +337,7 @@
     }
 
     async function cargarHistorial() {
-      const r = await api('/api/aiagent/sesion?guid=' + encodeURIComponent(guid));
+      const r = await api('/api/aiagent/sesion');
       if (!r.ok) return false;
       // botones vigentes = los de la última pregunta del asistente sin
       // respuesta todavía (quedan guardados en el propio texto del mensaje)
@@ -363,11 +360,9 @@
     }
 
     async function arranque() {
-      if (new URLSearchParams(location.search).get('enlace') === 'invalido') {
-        aviso('Ese enlace venció o ya se usó. Escribe tu correo para recibir uno nuevo.');
-      }
-      if (guid && (await cargarHistorial())) return;
-      if (guid) aviso('No encontramos esa conversación. Escribe tu correo para continuar donde quedaste.');
+      const invalido = new URLSearchParams(location.search).get('enlace') === 'invalido';
+      if (await cargarHistorial()) return;
+      if (invalido) aviso('Ese enlace venció o ya se usó. Escribe tu correo para recibir uno nuevo.');
       pantallaCorreo();
     }
 
@@ -402,19 +397,19 @@
       try {
         const r = await api('/api/aiagent/mensaje', {
           method: 'POST',
-          body: JSON.stringify({ guid, texto }),
+          body: JSON.stringify({ texto }),
         });
         esperando.remove();
         if (!r.ok) {
-          if (r.status === 404) {
-            aviso(r.error || 'Conversación no encontrada.');
+          if (r.status === 401) {
+            // la sesión de la cookie venció: hay que pedir un magic link nuevo
+            aviso('Tu sesión expiró. Escribe tu correo y te enviamos un enlace nuevo para continuar donde quedaste.');
             pantallaCorreo();
             return;
           }
           aviso(r.error || 'No pude responder. Intenta de nuevo.');
           return;
         }
-        guid = r.guid;
         const trozo = separarOpciones(r.respuesta);
         burbuja(trozo.texto, 'ia');
         if (trozo.opciones) mostrarOpciones(trozo.opciones);
