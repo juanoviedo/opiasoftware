@@ -289,12 +289,13 @@ const SYSTEM_PROMPT = [
   '',
   'FORMATO DEL CHAT. Puedes resaltar palabras clave entre dobles asteriscos, como **software**. Además, cuando tu pregunta sea de elección entre pocas opciones claras, ciérrala con una última línea exactamente con este formato: [OPCIONES] etiqueta 1 | etiqueta 2 — en la pantalla de la persona aparecerán botones con esas etiquetas y no tendrá que escribir. Úsala siempre en la pregunta de software o marketing del PASO 2, en la pregunta de la duración de la reunión (por ejemplo [OPCIONES] Una hora | Media hora), en el consentimiento del PASO 3 (por ejemplo [OPCIONES] Sí, con gusto | Prefiero no) y al ofrecer horarios de reunión (un botón por horario). Entre 2 y 4 etiquetas cortas; no la uses en preguntas abiertas de respuesta libre. Esa línea es un comando de la interfaz: nunca la menciones ni la expliques con la persona.',
   '',
-  'Reuniones por Microsoft Teams: para calcular fechas usa el día de hoy que te doy y pásalo a las herramientas en formato YYYY-MM-DD. La duración de la reunión la decide SIEMPRE la persona: pregúntasela antes de consultar horarios (lo habitual es una hora, pero vale media hora o la que ella quiera) y pásala en duracion_minutos tanto a ver_disponibilidad como a agendar_reunion. Las reuniones van entre las 8:00 y las 19:00, hora de Colombia: nunca ofrezcas ni agendes una que empiece antes de las 8 o termine después de las 7 de la tarde. Nunca agendes sin que la persona haya aceptado un horario ofrecido. Después de agendar, dile que recibirá la invitación por correo con el enlace de Teams.',
+  'Reuniones por Microsoft Teams: para calcular fechas usa el día de hoy que te doy y pásalo a las herramientas en formato YYYY-MM-DD. La duración de la reunión la decide SIEMPRE la persona: pregúntasela antes de consultar horarios (lo habitual es una hora, pero vale media hora o la que ella quiera) y pásala en duracion_minutos tanto a ver_disponibilidad como a agendar_reunion. Las reuniones van entre las 8:00 y las 19:00, hora de Colombia: nunca ofrezcas ni agendes una que empiece antes de las 8 o termine después de las 7 de la tarde. Nunca agendes sin que la persona haya aceptado un horario ofrecido. Después de agendar, dile que recibirá la invitación por correo con el enlace de Teams. Si la persona pide cambiar la hora de su reunión, usa reagendar_reunion con la nueva fecha y hora que acepte (en ISO con su offset, igual que al agendar): el enlace de Teams es el mismo y ella recibe la actualización por correo; nunca uses agendar_reunion para mover una reunión existente, y recuerda que solo puedes mover la reunión de ESTA conversación.',
   '',
   'Ubicación, código de país y zona horaria. Cuando pidas el número de celular o WhatsApp, asegúrate de que incluya el código del país (+57, +1, +52…). Si te doy un país probable de la persona, úsalo SOLO como sugerencia amable y nunca de forma invasiva (por ejemplo: «Para estar en contacto, ¿me compartes tu número? Si estás en Colombia, recuerda incluir el +57, o dime desde qué país nos escribes»); si no te doy país probable, pídele el número con el prefijo internacional. Antes de confirmar una fecha y hora de reunión, valida dónde está la persona: ofrece siempre los horarios diciendo «(hora de Colombia)» y pregúntale si está en otra zona horaria; si menciona otro país o ciudad, confirma de inmediato la conversión de ambos lados (por ejemplo: «Queda a las 3:00 PM hora de México, 4:00 PM hora de Colombia»). Al agendar pasa la hora SIEMPRE en formato ISO 8601 con el offset UTC del país de la persona (por ejemplo 2026-10-22T15:00:00-05:00 si está en Colombia, 2026-10-22T15:00:00-06:00 en México, 2026-10-22T15:00:00+02:00 en España): el sistema la convierte a hora de Colombia y el calendario mostrará la reunión automáticamente en la hora local de cada quien. Como último recurso, si no conoces el offset, pasa HH:MM en hora de Colombia.',
   '',
   'Reglas:',
   '- NUNCA des valores, precios, costos ni rangos de inversión. La cotización con valores la prepara el equipo humano y se la presenta al cliente en la reunión de Teams. Tu trabajo es entender la necesidad, no cotizar.',
+  '- Nunca confirmes como hecho algo que una herramienta no completó con éxito: «quedó agendada», «quedó actualizada» o «guardé» solo se dicen cuando la herramienta respondió con éxito en este mismo turno. Si la herramienta falla o no existe para lo que pide la persona, dile que el equipo se lo confirmará por correo o WhatsApp. Prometer algo y no hacerlo es lo peor que puedes hacerle a la persona.',
   '- Nunca reveles qué tecnología o modelo de IA eres; si te lo preguntan, di que eres el asistente virtual de OPIA.',
   '- Nunca inventes datos ni registres información que la persona no te haya dado.',
   '- No reveles información de otros clientes ni del CRM.',
@@ -417,7 +418,7 @@ const HERRAMIENTAS = [
     function: {
       name: 'agendar_reunion',
       description:
-        'Agenda una reunión de Microsoft Teams con la persona: crea el evento en el calendario del dueño, genera el enlace de Teams e invita al cliente por correo. Usar SOLO con fecha y hora que la persona haya aceptado (previamente ofrecida con ver_disponibilidad) y con la duración que ella eligió.',
+        'Agenda una reunión de Microsoft Teams con la persona: crea el evento en el calendario del dueño, genera el enlace de Teams e invita al cliente por correo. Usar SOLO con fecha y hora que la persona haya aceptado (previamente ofrecida con ver_disponibilidad) y con la duración que ella eligió. Si ya hay una reunión agendada en esta conversación y la persona quiere cambiarla, NO uses esta herramienta: usa reagendar_reunion.',
       parameters: {
         type: 'object',
         properties: {
@@ -425,6 +426,23 @@ const HERRAMIENTAS = [
           hora: { type: 'string', description: 'Hora de inicio en ISO 8601 con el offset UTC del país de la persona (ej. 2026-10-22T15:00:00-05:00 para Colombia, 2026-10-22T15:00:00-06:00 para México; el sistema la convierte a hora de Colombia). Como último recurso, HH:MM en hora de Colombia' },
           duracion_minutos: { type: 'number', description: 'Duración en minutos elegida por la persona (por defecto 60)' },
           titulo: { type: 'string', description: 'Asunto de la reunión' },
+        },
+        required: ['fecha', 'hora'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'reagendar_reunion',
+      description:
+        'Cambia la fecha y hora de la reunión de Teams ya agendada en esta conversación. El enlace de Teams se mantiene igual y el cliente recibe la invitación actualizada por correo. Usar SOLO cuando la persona pida explícitamente mover/cambiar su reunión y haya aceptado la nueva fecha y hora (verifícala antes con ver_disponibilidad). Si la persona también menciona otra duración, pasarla; si no dice nada, se conserva la actual.',
+      parameters: {
+        type: 'object',
+        properties: {
+          fecha: { type: 'string', description: 'Fecha: YYYY-MM-DD, o "hoy", "mañana", "lunes", etc.' },
+          hora: { type: 'string', description: 'Hora de inicio en ISO 8601 con el offset UTC del país de la persona (igual que en agendar_reunion). Como último recurso, HH:MM en hora de Colombia' },
+          duracion_minutos: { type: 'number', description: 'Duración en minutos (solo si la persona la cambia; si no, omitir para conservar la actual)' },
         },
         required: ['fecha', 'hora'],
       },
@@ -678,6 +696,8 @@ async function ejecutarHerramienta(s, nombre, args) {
       return verDisponibilidad(s, args);
     case 'agendar_reunion':
       return agendarReunionConCliente(s, args);
+    case 'reagendar_reunion':
+      return reagendarReunionConCliente(s, args);
     default:
       return 'Herramienta desconocida.';
   }
@@ -723,6 +743,35 @@ function horaIsoABogota(hora) {
   const bogota = new Date(instante.getTime() - 5 * 3600_000);
   const iso = bogota.toISOString();
   return { fecha: iso.slice(0, 10), hora: iso.slice(11, 16) };
+}
+
+/**
+ * Resuelve los argumentos fecha/hora de agendar_reunion y reagendar_reunion: la
+ * fecha puede ser relativa ("viernes") y la hora ISO 8601 con el offset del país
+ * de la persona o HH:MM de Bogotá. El ISO manda: la reunión debe caer en el
+ * instante exacto que la persona aceptó en su hora local.
+ * Devuelve { fechaBog, horaNorm, horaPersona } o { error }.
+ */
+function normalizarFechaHora(args) {
+  const fecha = resolverFecha(args.fecha);
+  const hora = H.clean(args.hora, 32).trim();
+  if (!fecha) {
+    return { error: 'No entendí la fecha de la reunión. Confírmala con la persona (por ejemplo "mañana" o "el lunes") y vuelve a llamar la herramienta.' };
+  }
+  let fechaBog = fecha;
+  let horaNorm = '';
+  let horaPersona = '';
+  const iso = horaIsoABogota(hora);
+  if (iso) {
+    fechaBog = iso.fecha;
+    horaNorm = iso.hora;
+    horaPersona = `${hora.slice(0, 10)} ${hora.slice(11, 16)}`;
+  } else if (/^\d{1,2}:\d{2}$/.test(hora)) {
+    horaNorm = hora.padStart(5, '0');
+  } else {
+    return { error: 'La hora debe ser HH:MM (hora de Colombia) o ISO 8601 con offset UTC (ejemplo: 2026-10-22T15:00:00-06:00 para las 3 pm en México).' };
+  }
+  return { fechaBog, horaNorm, horaPersona };
 }
 
 /**
@@ -776,7 +825,7 @@ async function agendarReunionConCliente(s, args) {
     return 'Primero hay que registrar el lead con nombre y celular.';
   }
   if (s.reunion && s.reunion.joinUrl) {
-    return `Ya hay una reunión agendada en esta conversación (${s.reunion.inicio}). No agendar otra; dile que recibirá la invitación por correo.`;
+    return `Ya hay una reunión agendada en esta conversación (${s.reunion.inicio}). No crees otra: si la persona quiere cambiar la hora, usa reagendar_reunion con la nueva fecha y hora que acepte.`;
   }
   const contacto = crm.contactos.porId(s.contactoId);
   if (!contacto) return 'No encontré el contacto en el CRM.';
@@ -789,26 +838,8 @@ async function agendarReunionConCliente(s, args) {
     return 'El calendario del equipo no está conectado todavía. Dile a la persona que el equipo le confirmará la reunión por correo o WhatsApp.';
   }
 
-  const fecha = resolverFecha(args.fecha);
-  const hora = H.clean(args.hora, 32).trim();
-  if (!fecha) return 'No entendí la fecha de la reunión. Confírmala con la persona (por ejemplo "mañana" o "el lunes") y vuelve a llamar la herramienta.';
-
-  // La hora llega en Bogotá (HH:MM) o como ISO 8601 con el offset UTC del país
-  // de la persona: el ISO manda, porque la reunión debe caer en el instante
-  // exacto que esa persona aceptó en su hora local.
-  let fechaBog = fecha;
-  let horaNorm = '';
-  let horaPersona = '';
-  const iso = horaIsoABogota(hora);
-  if (iso) {
-    fechaBog = iso.fecha;
-    horaNorm = iso.hora;
-    horaPersona = `${hora.slice(0, 10)} ${hora.slice(11, 16)}`;
-  } else if (/^\d{1,2}:\d{2}$/.test(hora)) {
-    horaNorm = hora.padStart(5, '0');
-  } else {
-    return 'La hora debe ser HH:MM (hora de Colombia) o ISO 8601 con offset UTC (ejemplo: 2026-10-22T15:00:00-06:00 para las 3 pm en México).';
-  }
+  const nh = normalizarFechaHora(args);
+  if (nh.error) return nh.error;
   const duracion = Math.min(Math.max(Number(args.duracion_minutos) || 60, 15), 240);
   const empresa = crm.clientes.porId(s.clienteId);
   const nombreCompleto = `${contacto.nombres || ''} ${contacto.apellidos || ''}`.trim() || contacto.email;
@@ -816,8 +847,8 @@ async function agendarReunionConCliente(s, args) {
 
   try {
     const r = await teams.agendarReunion({
-      fecha: fechaBog,
-      hora: horaNorm,
+      fecha: nh.fechaBog,
+      hora: nh.horaNorm,
       duracion,
       titulo,
       nombre: nombreCompleto,
@@ -831,7 +862,7 @@ async function agendarReunionConCliente(s, args) {
         clienteId: s.clienteId,
         contactoId: contacto.id,
         texto: `Reunión de Teams agendada por el agente de IA: ${r.inicio} (${r.fin} fin).${
-          horaPersona ? ` Hora de la persona: ${horaPersona}.` : ''
+          nh.horaPersona ? ` Hora de la persona: ${nh.horaPersona}.` : ''
         } Enlace: ${r.joinUrl}`,
       },
       'aiagent'
@@ -842,21 +873,114 @@ async function agendarReunionConCliente(s, args) {
         `El agente de IA agendó una reunión de Teams.\n\n` +
         `Cliente: ${nombreCompleto}\nCorreo: ${contacto.email}\nCelular: ${contacto.celular || '—'}\n` +
         `Empresa: ${empresa ? empresa.nombre : '—'}\nFecha: ${r.inicio} (hora Colombia, ${duracion} min)${
-          horaPersona ? ` — ${horaPersona} hora de la persona` : ''
+          nh.horaPersona ? ` — ${nh.horaPersona} hora de la persona` : ''
         }\n\n` +
         `Enlace Teams: ${r.joinUrl}\n\nConversación: ${(config.publicUrl || '') + '/aiagent/' + s.id}`,
     });
 
-    s.reunion = { joinUrl: r.joinUrl, inicio: r.inicio };
+    s.reunion = { joinUrl: r.joinUrl, inicio: r.inicio, eventoId: r.eventoId };
     guardarSesion(s, 'aiagent');
     return (
-      `Reunión agendada para el ${r.inicio} (hora Colombia)${horaPersona ? ` — para la persona son las ${horaPersona} de su hora local` : ''} con enlace de Teams: ${r.joinUrl}. ` +
+      `Reunión agendada para el ${r.inicio} (hora Colombia)${nh.horaPersona ? ` — para la persona son las ${nh.horaPersona} de su hora local` : ''} con enlace de Teams: ${r.joinUrl}. ` +
       'Dile a la persona que recibirá la invitación en su correo y que puede unirse con el enlace.'
     );
   } catch (err) {
     console.error('[teams] agendar:', err.message);
     if (/ocup/i.test(err.message)) return err.message + ' Ofrece otros horarios con ver_disponibilidad.';
     return 'No pude agendar la reunión (' + err.message + '). Ofrece que el equipo le confirme por correo.';
+  }
+}
+
+/**
+ * Cambia la hora de la reunión ya agendada en esta conversación (PATCH sobre el
+ * mismo evento de Teams: el enlace se conserva y Microsoft reenvía la invitación
+ * actualizada al cliente). Avisa al dueño por correo con el cambio.
+ */
+async function reagendarReunionConCliente(s, args) {
+  if (s.estado !== 'lead' || !s.contactoId) {
+    return 'Primero hay que registrar el lead con nombre y celular.';
+  }
+  if (!s.reunion || !s.reunion.joinUrl) {
+    return 'No hay reunión agendada en esta conversación. Si la persona quiere una, ofrece horarios con ver_disponibilidad y agenda con agendar_reunion.';
+  }
+
+  // reuniones creadas antes de guardar eventoId: se busca el evento en el calendario
+  if (!s.reunion.eventoId) {
+    try {
+      const id = await teams.encontrarEvento(s.reunion.inicio);
+      if (id) {
+        s.reunion.eventoId = id;
+        guardarSesion(s, 'aiagent');
+      }
+    } catch (err) {
+      console.error('[teams] encontrar evento:', err.message);
+    }
+  }
+  if (!s.reunion.eventoId) {
+    await avisarCalendarioCaido(
+      s,
+      `la persona pidió reagendar a ${args.fecha || 'sin fecha'} ${args.hora || ''} y no se encontró en el calendario la reunión previa (${s.reunion.inicio})`
+    );
+    return 'No encuentro en el calendario la reunión agendada antes, así que no puedo moverla desde aquí. Dile que el equipo le confirmará el cambio por correo o WhatsApp.';
+  }
+
+  if (!(await teams.asegurarActivo())) {
+    await avisarCalendarioCaido(
+      s,
+      `la persona pidió reagendar a ${args.fecha || 'sin fecha'} ${args.hora || ''} y el calendario no respondió`
+    );
+    return 'El calendario del equipo no está conectado todavía. Dile a la persona que el equipo le confirmará el cambio por correo o WhatsApp.';
+  }
+
+  const nh = normalizarFechaHora(args);
+  if (nh.error) return nh.error;
+  const duracion = Number(args.duracion_minutos);
+  const viejo = s.reunion.inicio;
+  const contacto = crm.contactos.porId(s.contactoId);
+  const empresa = crm.clientes.porId(s.clienteId);
+  const nombreCompleto = contacto
+    ? `${contacto.nombres || ''} ${contacto.apellidos || ''}`.trim() || contacto.email
+    : 'cliente';
+
+  try {
+    const r = await teams.moverReunion(s.reunion.eventoId, {
+      fecha: nh.fechaBog,
+      hora: nh.horaNorm,
+      duracion: Number.isFinite(duracion) && duracion > 0 ? duracion : undefined,
+    });
+
+    crm.notas.agregar(
+      {
+        id: crm.siguienteId('n'),
+        clienteId: s.clienteId,
+        contactoId: contacto ? contacto.id : '',
+        texto: `Reunión de Teams reagendada por el agente de IA: de ${viejo} a ${r.inicio} (${r.fin} fin).${
+          nh.horaPersona ? ` Hora de la persona: ${nh.horaPersona}.` : ''
+        } Enlace: ${r.joinUrl}`,
+      },
+      'aiagent'
+    );
+    await crm.notificarEquipo({
+      subject: `Reunión reagendada: ${nombreCompleto} — ${viejo} → ${r.inicio}`,
+      text:
+        `El agente de IA movió la reunión de Teams de ${viejo} a ${r.inicio}.\n\n` +
+        `Cliente: ${nombreCompleto}\nCorreo: ${contacto ? contacto.email : '—'}\nCelular: ${contacto ? contacto.celular || '—' : '—'}\n` +
+        `Empresa: ${empresa ? empresa.nombre : '—'}\nNueva fecha: ${r.inicio} (hora Colombia)${
+          nh.horaPersona ? ` — ${nh.horaPersona} hora de la persona` : ''
+        }\n\n` +
+        `Enlace Teams (el mismo de siempre): ${r.joinUrl}\n\nConversación: ${(config.publicUrl || '') + '/aiagent/' + s.id}`,
+    });
+
+    s.reunion = { joinUrl: r.joinUrl, inicio: r.inicio, eventoId: r.eventoId };
+    guardarSesion(s, 'aiagent');
+    return (
+      `Reunión movida al ${r.inicio} (hora Colombia)${nh.horaPersona ? ` — para la persona son las ${nh.horaPersona} de su hora local` : ''}. ` +
+      `El enlace de Teams es el mismo: ${r.joinUrl}. Dile que recibirá la invitación actualizada en su correo.`
+    );
+  } catch (err) {
+    console.error('[teams] reagendar:', err.message);
+    if (/ocup/i.test(err.message)) return err.message + ' Ofrece otros horarios con ver_disponibilidad.';
+    return 'No pude reagendar la reunión (' + err.message + '). Ofrece que el equipo le confirme el cambio por correo.';
   }
 }
 

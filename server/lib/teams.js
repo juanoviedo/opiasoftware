@@ -186,7 +186,7 @@ async function eventosEn(inicioIso, finIso) {
     encodeURIComponent(inicioIso) +
     '&endDateTime=' +
     encodeURIComponent(finIso) +
-    '&$select=subject,start,end,showAs,isAllDay,isCancelled';
+    '&$select=subject,start,end,showAs,isAllDay,isCancelled,id';
   const data = await graph('GET', ruta);
   return (data.value || []).filter((e) => !e.isCancelled);
 }
@@ -278,6 +278,70 @@ function limpiarTokens() {
   guardarConfig(c);
 }
 
+/**
+ * Busca en el calendario el evento de una reunión agendada cuando la sesión aún
+ * no guardaba eventoId (reuniones de antes de ese campo): coincide por la hora
+ * de inicio guardada y porque es un evento de reunión OPIA.
+ */
+async function encontrarEvento(inicio) {
+  const m = /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})$/.exec(String(inicio || ''));
+  if (!m) return '';
+  const fecha = m[1];
+  const eventos = await eventosEn(`${fecha}T00:00:00-05:00`, `${fecha}T23:59:59-05:00`);
+  for (const e of eventos) {
+    if (!/reunión/i.test(e.subject || '')) continue;
+    const crudo = e.start.dateTime;
+    const ini = new Date(crudo + (crudo.includes('Z') || /[+-]\d{2}:?\d{2}$/.test(crudo) ? '' : '-05:00'));
+    const horaBog = new Date(ini.getTime() - 5 * 3600_000).toISOString().slice(11, 16);
+    if (horaBog === m[2]) return e.id || '';
+  }
+  return '';
+}
+
+/**
+ * Mueve una reunión ya creada a otra fecha/hora: PATCH sobre el mismo evento,
+ * así el enlace de Teams y la lista de invitados se conservan y Microsoft reenvía
+ * la invitación actualizada al cliente. Lanza error si el hueco está ocupado.
+ */
+async function moverReunion(eventoId, { fecha, hora, duracion } = {}) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha || '')) throw new Error('fecha debe ser YYYY-MM-DD');
+  if (!/^\d{2}:\d{2}$/.test(hora || '')) throw new Error('hora debe ser HH:MM');
+  const [hI, mI] = hora.split(':').map(Number);
+
+  // sin duración nueva se conserva la del evento (se lee del calendario)
+  let dur = Number(duracion);
+  if (!Number.isFinite(dur) || dur <= 0) {
+    const previo = await graph('GET', `/me/events/${encodeURIComponent(eventoId)}?$select=start,end`);
+    const a = new Date(previo.start.dateTime + (previo.start.dateTime.includes('Z') || /[+-]\d{2}:?\d{2}$/.test(previo.start.dateTime) ? '' : '-05:00'));
+    const b = new Date(previo.end.dateTime + (previo.end.dateTime.includes('Z') || /[+-]\d{2}:?\d{2}$/.test(previo.end.dateTime) ? '' : '-05:00'));
+    dur = Math.round((b.getTime() - a.getTime()) / 60000);
+  }
+  dur = Math.min(Math.max(Number(dur) || 60, 15), 240);
+
+  if (hI * 60 + mI < APERTURA * 60 || hI * 60 + mI + dur > CIERRE * 60) {
+    throw new Error('ese horario queda fuera del horario de reuniones (8:00 a 19:00, hora de Colombia); ofrece otro');
+  }
+  const inicio = new Date(`${fecha}T${hora}:00-05:00`);
+  if (Number.isNaN(inicio.getTime()) || inicio < new Date(Date.now() + 15 * 60_000)) {
+    throw new Error('la reunión debe ser en el futuro (mínimo 15 minutos)');
+  }
+  const fin = new Date(inicio.getTime() + dur * 60_000);
+
+  // el evento propio en su hora vieja no cuenta como conflicto del hueco nuevo
+  const solapados = (await eventosEn(inicio.toISOString(), fin.toISOString())).filter((e) => estaOcupado(e) && e.id !== eventoId);
+  if (solapados.length) throw new Error('ese hueco acaba de ocuparse, vuelve a consultar la disponibilidad');
+
+  const finTotal = hI * 60 + mI + dur;
+  const horaFin = `${String(Math.floor(finTotal / 60)).padStart(2, '0')}:${String(finTotal % 60).padStart(2, '0')}`;
+  const actualizado = await graph('PATCH', `/me/events/${encodeURIComponent(eventoId)}`, {
+    start: { dateTime: `${fecha}T${hora}:00`, timeZone: TZ_WINDOWS },
+    end: { dateTime: `${fecha}T${horaFin}:00`, timeZone: TZ_WINDOWS },
+  });
+  const joinUrl = actualizado && actualizado.onlineMeeting && actualizado.onlineMeeting.joinUrl;
+  if (!joinUrl) throw new Error('se actualizó el evento pero Microsoft no devolvió el enlace de Teams');
+  return { joinUrl, inicio: `${fecha} ${hora}`, fin: horaFin, eventoId };
+}
+
 module.exports = {
   configurado,
   conectado,
@@ -287,5 +351,7 @@ module.exports = {
   limpiarTokens,
   disponibilidad,
   agendarReunion,
+  moverReunion,
+  encontrarEvento,
   organizador: () => leerConfig().organizadorEmail || '',
 };
