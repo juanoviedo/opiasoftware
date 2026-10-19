@@ -67,6 +67,26 @@ async function solicitarEnlace(correoCrudo) {
     console.error('[aiagent] no se pudo enviar el magic link:', envio.error);
     return { ok: false, status: 502, error: 'No pudimos enviar el correo. Intenta de nuevo en unos minutos.' };
   }
+  // aviso al dueño de que alguien está entrando al chat: con los datos del
+  // contacto si el correo ya está en el CRM. No bloquea: si el aviso falla,
+  // el visitante igual recibió su enlace.
+  const conocido = buscarContactoPorCorreo(correo);
+  const empresaConocida = conocido ? crm.clientes.porId(conocido.clienteId) : null;
+  crm
+    .notificarEquipo({
+      subject: `Visitante en el chat del agente: ${correo}`,
+      text:
+        `Alguien acaba de escribir su correo en el chat del asistente virtual.\n\n` +
+        `Correo: ${correo}\n` +
+        (conocido
+          ? `Contacto existente: ${`${conocido.nombres || ''} ${conocido.apellidos || ''}`.trim() || 'sin nombre'}\n` +
+            `Empresa: ${empresaConocida ? empresaConocida.nombre : '—'}\nCelular: ${conocido.celular || '—'}\n`
+          : 'Contacto nuevo: todavía no está en el CRM.\n') +
+        `\nEn cuanto abra el enlace del correo empezará a conversar. ` +
+        `Para ver los mensajes en vivo abre su ficha en el panel CRM (${(config.publicUrl || '') + '/crm'}): ` +
+        `tarjeta «conversaciones del asistente».\n\n— Agente virtual de OPIA Software`,
+    })
+    .catch((err) => console.error('[aiagent] aviso de visitante:', err.message));
   const r = { ok: true, correo };
   // comodín de desarrollo para poder probar el flujo sin buzón propio
   if (process.env.NODE_ENV !== 'production') r.token = token;
