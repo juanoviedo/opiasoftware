@@ -521,9 +521,19 @@ async function llamarModelo(mensajesApi, pais) {
   // semana a dos meses y pasar fechas ISO a las herramientas
   const ahoraBog = new Date(Date.now() - 5 * 3600_000);
   const hoyBog = ahoraBog.toISOString().slice(0, 10);
-  // el día de la semana va explícito: el modelo calcula mal el weekday a partir
-  // de una fecha ISO (llegó a decir «mañana lunes» un martes)
-  let sistema = SYSTEM_PROMPT + `\n\nHoy es ${DIAS[ahoraBog.getUTCDay()]} ${hoyBog} (fecha de Colombia).`;
+  // el modelo calcula mal la aritmética de fechas a partir de una fecha ISO
+  // (llegó a decir «lunes 27» cuando el lunes era 26): se le da la tabla de
+  // próximos días ya resuelta para que solo copie la fecha exacta
+  const diasLista = [];
+  for (let i = 0; i < 14; i += 1) {
+    const d = new Date(ahoraBog.getTime() + i * 86_400_000);
+    diasLista.push(`${DIAS[d.getUTCDay()]} ${d.toISOString().slice(0, 10)}`);
+  }
+  let sistema =
+    SYSTEM_PROMPT +
+    `\n\nHoy es ${DIAS[ahoraBog.getUTCDay()]} ${hoyBog} (fecha de Colombia). ` +
+    `Próximos días para agendar: ${diasLista.join(', ')}. ` +
+    `Cuando propongas o confirmes una fecha, copia la fecha ISO exacta de esta tabla según el día de la semana que la persona elija; nunca calcules ni inventes la fecha de un día.`;
   // país probable por IP (caché de geoIP): sugerencia suave para el código de
   // teléfono y la zona horaria. Jamás se le dice a la persona de dónde sale.
   if (pais) sistema += ` Probable país de la persona: ${pais} (estimación del servidor; úsala solo como sugerencia amable).`;
