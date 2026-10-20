@@ -6,8 +6,9 @@ const config = require('./config');
 const { mimeFor, SECURITY_HEADERS } = require('./http');
 
 // Nada de esto debe servirse aunque exista dentro de la raíz pública.
-// plan-leads y supabase no son páginas: documentación interna y esquema.
-const DENY_SEGMENTS = new Set(['server', 'node_modules', '.git', '.tools', 'scripts', 'plan-leads', 'supabase']);
+// plan-leads y supabase no son páginas: documentación interna y esquemas.
+// haztek es otro sitio (host virtual propio): servirse aquí duplicaría URLs.
+const DENY_SEGMENTS = new Set(['server', 'node_modules', '.git', '.tools', 'scripts', 'plan-leads', 'supabase', 'haztek']);
 
 const IMMUTABLE_PREFIXES = ['/assets/'];
 

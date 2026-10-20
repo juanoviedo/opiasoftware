@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Haztek | Reality capture: escaneo láser, LiDAR y fotogrametría en Latinoamérica</title>
+  <meta name="description" content="Capturamos infraestructura, industria y construcción con escaneo láser terrestre, LiDAR aéreo, fotogrametría y SLAM. Precisión milimétrica, entregables BIM y nubes de puntos explorables en 3D.">
+  <link rel="canonical" href="https://haztek.opiasoftware.com/">
+  <meta name="theme-color" content="#0c1b2a">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Haztek">
+  <meta property="og:title" content="Haztek — Reality capture con precisión milimétrica">
+  <meta property="og:description" content="Escaneo láser, LiDAR aéreo, fotogrametría y SLAM para infraestructura, industria y construcción. Explora nuestras nubes de puntos en 3D.">
+  <meta property="og:url" content="https://haztek.opiasoftware.com/">
+  <meta property="og:image" content="https://haztek.opiasoftware.com/img/og-image.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:locale" content="es_CO">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <link rel="icon" type="image/svg+xml" href="/img/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload" as="image" href="/img/hero-1920.webp" fetchpriority="high">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/estilos.css?v=2">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    "name": "Haztek",
+    "description": "Reality capture: escaneo láser terrestre, LiDAR aéreo, fotogrametría, SLAM y topografía de precisión para infraestructura, industria y construcción en Latinoamérica.",
+    "url": "https://haztek.opiasoftware.com/",
+    "image": "https://haztek.opiasoftware.com/img/og-image.jpg",
+    "priceRange": "$$",
+    "address": { "@type": "PostalAddress", "addressLocality": "Bogotá", "addressCountry": "CO" },
+    "areaServed": ["Colombia", "Ecuador", "Perú", "México"],
+    "knowsAbout": ["LiDAR", "Escaneo láser terrestre", "Fotogrametría", "Topografía de precisión", "BIM", "Nubes de puntos"],
+    "hasOfferCatalog": {
+      "@type": "OfferCatalog",
+      "name": "Servicios de reality capture",
+      "itemListElement": [
+        { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Escaneo láser terrestre" } },
+        { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "LiDAR aéreo con drones" } },
+        { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Fotogrametría" } },
+        { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Escaneo móvil SLAM" } },
+        { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Topografía de precisión" } },
+        { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Modelos BIM y entregables digitales" } }
+      ]
+    }
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "¿Qué entregan exactamente?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Una nube de puntos georreferenciada (LAS/E57), y según el alcance: ortofotos, mallas 3D, planimetría y modelos BIM. Todo en formatos que su software de ingeniería ya abre." }
+      },
+      {
+        "@type": "Question",
+        "name": "¿Cuánto tarda un levantamiento?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Depende del alcance: un corredor vial de 5 km se captura en días con LiDAR aéreo, y una planta completa se escanea en horas con escaneo móvil. El procesamiento y control de calidad se entrega en días, no semanas." }
+      },
+      {
+        "@type": "Question",
+        "name": "¿En qué países operan?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Operamos en Colombia con cobertura en Latinoamérica, movilizando equipo y operadores propios a cada país." }
+      },
+      {
+        "@type": "Question",
+        "name": "¿Puedo ver una nube de puntos antes de contratar?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Sí. En la sección Explora en 3D puede navegar nubes de puntos reales de nuestros proyectos, y en una visita técnica hacemos una demostración con datos de su propio activo." }
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+
+  <!-- ============================================================= cabecera -->
+  <header class="cab">
+    <div class="contenedor">
+      <a class="marca" href="#inicio" aria-label="Haztek — inicio">
+        <svg class="marca__logo" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#0c1b2a"/><g fill="#38bdf8"><circle cx="14" cy="18" r="3.2"/><circle cx="14" cy="32" r="3.2"/><circle cx="14" cy="46" r="3.2"/><circle cx="26" cy="18" r="3.2"/><circle cx="26" cy="46" r="3.2"/><circle cx="38" cy="32" r="3.2"/></g><g fill="#fff"><circle cx="50" cy="18" r="3.2"/><circle cx="50" cy="32" r="3.2"/><circle cx="50" cy="46" r="3.2"/><circle cx="26" cy="32" r="3.2"/><circle cx="38" cy="18" r="3.2"/><circle cx="38" cy="46" r="3.2"/></g></svg>
+        <span class="marca__nombre">HAZTEK</span>
+      </a>
+
+      <nav class="navegacion" aria-label="Principal">
+        <a href="#servicios">Servicios</a>
+        <a href="#industrias">Industrias</a>
+        <a href="#explora">Explora en 3D</a>
+        <a href="#proyectos">Proyectos</a>
+        <a href="#nosotros">Nosotros</a>
+        <a href="#contacto">Contacto</a>
+      </nav>
+
+      <div class="cab__acciones">
+        <a class="boton-wa-mini" data-wa="cabecera" href="#" target="_blank" rel="noopener" aria-label="Abrir WhatsApp de Haztek">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413"/></svg>
+        </a>
+        <a class="boton boton--primario" href="#contacto">Cotizar</a>
+        <button class="cab__btn-menu" id="btnMenu" type="button" aria-label="Abrir menú" aria-expanded="false">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="inicio">
+
+    <!-- ================================================================= hero -->
+    <section class="hero">
+      <img class="hero__img" src="/img/hero-1920.webp" srcset="/img/hero-960.webp 960w, /img/hero-1920.webp 1920w" sizes="100vw" width="1376" height="768" alt="Dron de levantamiento con sensor LiDAR sobrevolando un intercambiador vial en construcción entre montañas, con cuadrillas de obra abajo" fetchpriority="high">
+      <canvas class="hero__canvas" id="heroCanvas" aria-hidden="true"></canvas>
+
+      <div class="contenedor">
+        <div class="hero__contenido">
+          <p class="hero__sobretitulo">Reality capture · Latinoamérica</p>
+          <h1>La realidad, capturada con <span class="hero__resaltado">precisión milimétrica</span></h1>
+          <p class="hero__sub">Escaneo láser, LiDAR aéreo y fotogrametría para infraestructura, industria y construcción. Del terreno al modelo 3D listo para decidir.</p>
+          <div class="hero__ctas">
+            <a class="boton boton--primario" href="#contacto">Cotizar proyecto</a>
+            <a class="boton boton--fantasma" href="#explora">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+              Explora en 3D
+            </a>
+          </div>
+          <div class="hero__chips">
+            <span>Precisión de ±2 mm</span>
+            <span>LiDAR · SLAM · Fotogrametría</span>
+            <span>Entregables BIM · CAD · GIS</span>
+          </div>
+        </div>
+      </div>
+      <p class="hero__scroll" aria-hidden="true">Desliza</p>
+    </section>
+
+    <!-- =============================================================== cifras -->
+    <section class="cifras" aria-label="Cifras de Haztek">
+      <div class="contenedor cifras__grid">
+        <div class="cifra"><span class="cifra-num" data-fin="10">0</span><span class="cifra-etq">años de experiencia</span></div>
+        <div class="cifra"><span class="cifra-num" data-fin="120" data-sufijo="+">0</span><span class="cifra-etq">proyectos entregados</span></div>
+        <div class="cifra"><span class="cifra-num" data-fin="5">0</span><span class="cifra-etq">países de operación</span></div>
+        <div class="cifra"><span class="cifra-num" data-fin="2,4" data-sufijo="M m²">0</span><span class="cifra-etq">capturados y procesados</span></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ servicios -->
+    <section class="seccion" id="servicios">
+      <div class="contenedor">
+        <div class="encab rev">
+          <p class="encab__eyebrow">Servicios</p>
+          <h2>Cada activo, medido con la tecnología que exige</h2>
+          <p>Seis formas de capturar la realidad. Su proyecto define la combinación; nosotros garantizamos la precisión del resultado.</p>
+        </div>
+
+        <div class="tarjetas">
+          <article class="tarjeta rev">
+            <span class="tarjeta__tag">TLS</span>
+            <div class="tarjeta__icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/></svg></div>
+            <h3>Escaneo láser terrestre</h3>
+            <p>Estaciones que miden con ±2 mm: plantas, interiores, fachadas y cada detalle que un método aéreo no alcanza a ver.</p>
+            <a class="tarjeta__enlace" href="#contacto">Cotizar este servicio <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+          </article>
+
+          <article class="tarjeta rev">
+            <span class="tarjeta__tag">UAV</span>
+            <div class="tarjeta__icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="6" r="2.2"/><circle cx="18" cy="6" r="2.2"/><circle cx="6" cy="18" r="2.2"/><circle cx="18" cy="18" r="2.2"/><path d="M8 8l8 8M16 8l-8 8"/></svg></div>
+            <h3>LiDAR aéreo con drones</h3>
+            <p>Corredores viales, áreas extensas y cálculo de volúmenes: kilómetros de terreno con exactitud centimétrica en días.</p>
+            <a class="tarjeta__enlace" href="#contacto">Cotizar este servicio <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+          </article>
+
+          <article class="tarjeta rev">
+            <span class="tarjeta__tag">RGB</span>
+            <div class="tarjeta__icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
+            <h3>Fotogrametría</h3>
+            <p>Modelos 3D y ortofotos con color real para avance de obra, censos y comunicación de proyecto con cualquier audiencia.</p>
+            <a class="tarjeta__enlace" href="#contacto">Cotizar este servicio <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+          </article>
+
+          <article class="tarjeta rev">
+            <span class="tarjeta__tag">SLAM</span>
+            <div class="tarjeta__icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h6a4 4 0 0 0 0-8H10a4 4 0 0 1 0-8h6"/></svg></div>
+            <h3>Escaneo móvil SLAM</h3>
+            <p>Mochila o vehículo: túneles, vías y plantas completas capturadas en horas, caminando el activo con sensor de trayectoria continua.</p>
+            <a class="tarjeta__enlace" href="#contacto">Cotizar este servicio <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+          </article>
+
+          <article class="tarjeta rev">
+            <span class="tarjeta__tag">GEODESIA</span>
+            <div class="tarjeta__icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2L2 20h20L12 2z"/><path d="M12 8l-5 12M12 8l5 12"/></svg></div>
+            <h3>Topografía de precisión</h3>
+            <p>Levantamientos, replanteos y control con normativa vigente y trazabilidad completa de cada punto calculado.</p>
+            <a class="tarjeta__enlace" href="#contacto">Cotizar este servicio <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+          </article>
+
+          <article class="tarjeta rev">
+            <span class="tarjeta__tag">BIM</span>
+            <div class="tarjeta__icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12"/></svg></div>
+            <h3>Modelos BIM y gemelos digitales</h3>
+            <p>La nube de puntos convertida en BIM, planimetría y entregables digitales listos para el software de su equipo.</p>
+            <a class="tarjeta__enlace" href="#contacto">Cotizar este servicio <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================== industrias -->
+    <section class="seccion seccion--clara seccion--puntos" id="industrias">
+      <div class="contenedor">
+        <div class="encab rev">
+          <p class="encab__eyebrow">Industrias</p>
+          <h2>Elige tu sector y mira qué resuelve el reality capture en él</h2>
+          <p>Cada industria tiene sus propias decisiones: filtre los proyectos por su sector y vea resultados medibles de capturas similares a la suya.</p>
+        </div>
+
+        <div class="tarjetas industrias">
+          <article class="tarjeta rev">
+            <div class="tarjeta__icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 20l4-16M20 20l-4-16M12 5v3M12 10.5v3M12 16v3"/></svg></div>
+            <div class="tarjeta__cuerpo">
+              <h3>Infraestructura vial</h3>
+              <p>Corredores, intercambiadores y túneles: diseño sobre la realidad exacta y control de volúmenes de movimiento de tierra.</p>
+              <a class="tarjeta__cta" href="#proyectos" data-ir-a-industria="vial">Explorar industria <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+            </div>
+          </article>
+
+          <article class="tarjeta rev">
+            <div class="tarjeta__icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
+            <div class="tarjeta__cuerpo">
+              <h3>Energía y redes</h3>
+              <p>Subestaciones, líneas e infraestructura crítica digitalizadas sin apagar la operación y sin exponer al personal.</p>
+              <a class="tarjeta__cta" href="#proyectos" data-ir-a-industria="energia">Explorar industria <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+            </div>
+          </article>
+
+          <article class="tarjeta rev">
+            <div class="tarjeta__icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4M9 6h.01M15 6h.01M12 6h.01M9 10h.01M15 10h.01M12 10h.01M9 14h.01M15 14h.01M12 14h.01"/></svg></div>
+            <div class="tarjeta__cuerpo">
+              <h3>Construcción y arquitectura</h3>
+              <p>As-built reales, control de avance de obra y gemelos digitales desde la primera excavación hasta la entrega.</p>
+              <a class="tarjeta__cta" href="#proyectos" data-ir-a-industria="edificacion">Explorar industria <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+            </div>
+          </article>
+
+          <article class="tarjeta rev">
+            <div class="tarjeta__icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3l4 8 5-5 5 15H2L8 3z"/></svg></div>
+            <div class="tarjeta__cuerpo">
+              <h3>Minería y agregados</h3>
+              <p>Volumetría de pits y canteras con cierre mensual en días, y monitoreo de taludes con comparación entre épocas.</p>
+              <a class="tarjeta__cta" href="#proyectos" data-ir-a-industria="mineria">Explorar industria <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+            </div>
+          </article>
+
+          <article class="tarjeta rev">
+            <div class="tarjeta__icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="22" x2="21" y2="22"/><line x1="6" y1="18" x2="6" y2="11"/><line x1="10" y1="18" x2="10" y2="11"/><line x1="14" y1="18" x2="14" y2="11"/><line x1="18" y1="18" x2="18" y2="11"/><polygon points="12 2 20 7 4 7"/></svg></div>
+            <div class="tarjeta__cuerpo">
+              <h3>Sector público</h3>
+              <p>Entidades y concesiones: inventarios de infraestructura, auditorías de obra y soporte técnico para licitaciones con respaldo medible.</p>
+              <a class="tarjeta__cta" href="#contacto">Solicitar propuesta técnica <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+            </div>
+          </article>
+
+          <article class="tarjeta rev">
+            <div class="tarjeta__icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8l-7 5V8l-7 5V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M17 18h1M12 18h1M7 18h1"/></svg></div>
+            <div class="tarjeta__cuerpo">
+              <h3>Industria y plantas</h3>
+              <p>Plantas de proceso digitalizadas sin detener producción: interferencias, revamps y administración de activos sobre el gemelo real.</p>
+              <a class="tarjeta__cta" href="#proyectos" data-ir-a-industria="industrial">Explorar industria <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================= explora en 3D -->
+    <section class="seccion explora" id="explora">
+      <div class="contenedor">
+        <div class="encab rev">
+          <p class="encab__eyebrow">Explora en 3D</p>
+          <h2>No es un render: navega la nube de puntos real</h2>
+          <p>La demostración técnica más honesta que existe. Arrastra, acerca y mida con sus propios ojos la densidad y precisión de nuestras capturas.</p>
+        </div>
+
+        <div class="explora__grid">
+          <button class="nube rev" type="button" data-nube="corredor-vial">
+            <img class="nube__img" src="/img/vial-600.webp" srcset="/img/vial-600.webp 600w, /img/vial-1200.webp 1200w" sizes="(max-width: 1020px) 100vw, 560px" width="600" height="403" alt="Fotografía aérea del corredor vial de montaña escaneado con LiDAR" loading="lazy">
+            <div class="nube__velo" aria-hidden="true"></div>
+            <div class="nube__cuerpo">
+              <div>
+                <h3 class="nube__nombre">Corredor vial de montaña</h3>
+                <div class="nube__specs">
+                  <span class="nube__spec">LiDAR aéreo</span>
+                  <span class="nube__spec">5 km</span>
+                  <span class="nube__spec">±3 cm</span>
+                </div>
+              </div>
+              <span class="nube__abrir">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                Explorar
+              </span>
+            </div>
+          </button>
+
+          <button class="nube rev" type="button" data-nube="planta">
+            <img class="nube__img" src="/img/planta-600.webp" srcset="/img/planta-600.webp 600w, /img/planta-1200.webp 1200w" sizes="(max-width: 1020px) 100vw, 560px" width="600" height="403" alt="Planta de proceso industrial con escáner láser terrestre en operación" loading="lazy">
+            <div class="nube__velo" aria-hidden="true"></div>
+            <div class="nube__cuerpo">
+              <div>
+                <h3 class="nube__nombre">Planta de proceso</h3>
+                <div class="nube__specs">
+                  <span class="nube__spec">Escaneo láser</span>
+                  <span class="nube__spec">7.000 m²</span>
+                  <span class="nube__spec">±2 mm</span>
+                </div>
+              </div>
+              <span class="nube__abrir">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                Explorar
+              </span>
+            </div>
+          </button>
+
+          <button class="nube rev" type="button" data-nube="edificacion">
+            <img class="nube__img" src="/img/edificacion-600.webp" srcset="/img/edificacion-600.webp 600w, /img/edificacion-1200.webp 1200w" sizes="(max-width: 1020px) 100vw, 560px" width="600" height="403" alt="Edificación en construcción relevada con fotogrametría" loading="lazy">
+            <div class="nube__velo" aria-hidden="true"></div>
+            <div class="nube__cuerpo">
+              <div>
+                <h3 class="nube__nombre">Edificación en obra</h3>
+                <div class="nube__specs">
+                  <span class="nube__spec">Fotogrametría</span>
+                  <span class="nube__spec">12 pisos</span>
+                  <span class="nube__spec">As-built</span>
+                </div>
+              </div>
+              <span class="nube__abrir">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                Explorar
+              </span>
+            </div>
+          </button>
+
+          <button class="nube rev" type="button" data-nube="subestacion">
+            <img class="nube__img" src="/img/subestacion-600.webp" srcset="/img/subestacion-600.webp 600w, /img/subestacion-1200.webp 1200w" sizes="(max-width: 1020px) 100vw, 560px" width="600" height="403" alt="Subestación eléctrica de alta tensión escaneada con LiDAR móvil" loading="lazy">
+            <div class="nube__velo" aria-hidden="true"></div>
+            <div class="nube__cuerpo">
+              <div>
+                <h3 class="nube__nombre">Subestación eléctrica</h3>
+                <div class="nube__specs">
+                  <span class="nube__spec">SLAM</span>
+                  <span class="nube__spec">4,5 ha</span>
+                  <span class="nube__spec">Sin apagón</span>
+                </div>
+              </div>
+              <span class="nube__abrir">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                Explorar
+              </span>
+            </div>
+          </button>
+        </div>
+
+        <p class="explora__nota">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          Los visores cargan bajo demanda en versión LOD web. En conexiones lentas o navegadores sin WebGL se muestra una alternativa fotográfica del proyecto.
+        </p>
+      </div>
+    </section>
+
+    <!-- =========================================================== proyectos -->
+    <section class="seccion" id="proyectos">
+      <div class="contenedor">
+        <div class="encab rev">
+          <p class="encab__eyebrow">Proyectos</p>
+          <h2>Casos con resultados medibles, no solo fotos bonitas</h2>
+          <p>A cada proyecto le sacamos las cifras que le importan a un ingeniero: precisión lograda y tiempo ahorrado.</p>
+        </div>
+
+        <div class="filtros rev" role="group" aria-label="Filtrar proyectos por industria">
+          <button class="filtro filtro--activo" type="button" data-filtro="todos">Todos</button>
+          <button class="filtro" type="button" data-filtro="vial">Vial</button>
+          <button class="filtro" type="button" data-filtro="energia">Energía</button>
+          <button class="filtro" type="button" data-filtro="edificacion">Edificación</button>
+          <button class="filtro" type="button" data-filtro="industrial">Industrial</button>
+          <button class="filtro" type="button" data-filtro="mineria">Minería</button>
+        </div>
+
+        <div class="proyectos__grid">
+          <article class="proyecto rev" data-categorias="vial">
+            <div class="proyecto__foto">
+              <img src="/img/vial-600.webp" srcset="/img/vial-600.webp 600w, /img/vial-1200.webp 1200w" sizes="(max-width: 1020px) 100vw, (max-width: 560px) 100vw, 360px" width="600" height="403" alt="Corredor vial doble calzada entre montañas andinas, capturado con LiDAR aéreo" loading="lazy">
+              <div class="proyecto__etiquetas">
+                <span class="proyecto__etiqueta">Vial</span>
+                <span class="proyecto__etiqueta">LiDAR aéreo</span>
+              </div>
+            </div>
+            <div class="proyecto__cuerpo">
+              <h3>Doble calzada — corredor de 5 km</h3>
+              <p class="proyecto__lugar">Diseño y movimiento de tierras sobre el terreno exacto</p>
+              <div class="proyecto__resultados">
+                <span class="resultado">±3 cm de exactitud</span>
+                <span class="resultado resultado--azul">60% menos tiempo en campo</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="proyecto rev" data-categorias="industrial energia">
+            <div class="proyecto__foto">
+              <img src="/img/planta-600.webp" srcset="/img/planta-600.webp 600w, /img/planta-1200.webp 1200w" sizes="(max-width: 1020px) 100vw, (max-width: 560px) 100vw, 360px" width="600" height="403" alt="Planta de proceso con tuberías y tanques escaneada con láser terrestre" loading="lazy">
+              <div class="proyecto__etiquetas">
+                <span class="proyecto__etiqueta">Industrial</span>
+                <span class="proyecto__etiqueta">Escaneo láser</span>
+              </div>
+            </div>
+            <div class="proyecto__cuerpo">
+              <h3>Modernización de planta de proceso</h3>
+              <p class="proyecto__lugar">Interferencias y revamp sobre el gemelo digital</p>
+              <div class="proyecto__resultados">
+                <span class="resultado">±2 mm de precisión</span>
+                <span class="resultado resultado--azul">0 paradas de producción</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="proyecto rev" data-categorias="edificacion">
+            <div class="proyecto__foto">
+              <img src="/img/edificacion-600.webp" srcset="/img/edificacion-600.webp 600w, /img/edificacion-1200.webp 1200w" sizes="(max-width: 1020px) 100vw, (max-width: 560px) 100vw, 360px" width="600" height="403" alt="Torre de oficinas en construcción controlada con fotogrametría y escáner" loading="lazy">
+              <div class="proyecto__etiquetas">
+                <span class="proyecto__etiqueta">Edificación</span>
+                <span class="proyecto__etiqueta">Fotogrametría</span>
+              </div>
+            </div>
+            <div class="proyecto__cuerpo">
+              <h3>Control de obra — torre de 12 pisos</h3>
+              <p class="proyecto__lugar">As-built semanal contra modelo para interventoría</p>
+              <div class="proyecto__resultados">
+                <span class="resultado">As-built en 72 horas</span>
+                <span class="resultado resultado--azul">12 pisos modelados</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="proyecto rev" data-categorias="energia">
+            <div class="proyecto__foto">
+              <img src="/img/subestacion-600.webp" srcset="/img/subestacion-600.webp 600w, /img/subestacion-1200.webp 1200w" sizes="(max-width: 1020px) 100vw, (max-width: 560px) 100vw, 360px" width="600" height="403" alt="Subestación eléctrica de 230 kV con estructuras de celosía escaneada sin apagón" loading="lazy">
+              <div class="proyecto__etiquetas">
+                <span class="proyecto__etiqueta">Energía</span>
+                <span class="proyecto__etiqueta">SLAM</span>
+              </div>
+            </div>
+            <div class="proyecto__cuerpo">
+              <h3>Expansión de subestación 230 kV</h3>
+              <p class="proyecto__lugar">Modelo BIM desde nube de puntos para la ampliación</p>
+              <div class="proyecto__resultados">
+                <span class="resultado">Sin apagón operativo</span>
+                <span class="resultado resultado--azul">BIM listo en 8 días</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="proyecto rev" data-categorias="mineria">
+            <div class="proyecto__foto">
+              <img src="/img/mineria-600.webp" srcset="/img/mineria-600.webp 600w, /img/mineria-1200.webp 1200w" sizes="(max-width: 1020px) 100vw, (max-width: 560px) 100vw, 360px" width="600" height="403" alt="Pit minero a cielo abierto con terrazas y volúmenes calculados con dron" loading="lazy">
+              <div class="proyecto__etiquetas">
+                <span class="proyecto__etiqueta">Minería</span>
+                <span class="proyecto__etiqueta">UAV</span>
+              </div>
+            </div>
+            <div class="proyecto__cuerpo">
+              <h3>Volumetría mensual de pit</h3>
+              <p class="proyecto__lugar">Cierre de volúmenes de arrastre con control cruzado</p>
+              <div class="proyecto__resultados">
+                <span class="resultado">±1,5% vs. GPS RTK</span>
+                <span class="resultado resultado--azul">Cierre en 2 días</span>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================= nosotros -->
+    <section class="seccion seccion--clara" id="nosotros">
+      <div class="contenedor nosotros__grid">
+        <div class="nosotros__foto rev">
+          <img src="/img/nosotros-600.webp" srcset="/img/nosotros-600.webp 600w, /img/nosotros-1200.webp 1200w" sizes="(max-width: 1020px) 100vw, 520px" width="600" height="403" alt="Ingeniero de campo de Haztek operando un escáner láser terrestre junto a la vía, con tablet mostrando la nube de puntos" loading="lazy">
+        </div>
+        <div class="nosotros__texto rev">
+          <p class="encab__eyebrow">Nosotros</p>
+          <h2>Nacimos midiendo terreno. Hoy capturamos la realidad completa.</h2>
+          <p>Haztek es un equipo de ingenieros y pilotos que convierte activos físicos en datos exactos y listos para decidir. Operamos con equipos propios y un estándar internacional de calidad, en proyectos donde un centímetro equivale a millones.</p>
+          <ul class="nosotros__lista">
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-6"/></svg><span><strong>Operación propia:</strong> drones, escáneres y personal certificado, sin intermediarios.</span></li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-6"/></svg><span><strong>Estándar internacional:</strong> metodología y control de calidad al nivel de las grandes firmas de geociencia.</span></li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-6"/></svg><span><strong>Cobertura regional:</strong> proyectos en varios países de Latinoamérica con el mismo estándar.</span></li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-6"/></svg><span><strong>Entregable que se integra:</strong> BIM, CAD y GIS: el dato entra al flujo que su equipo ya usa.</span></li>
+          </ul>
+          <a class="boton boton--primario" href="#contacto">Hablemos de su proyecto</a>
+
+          <div class="stack">
+            <p class="stack__titulo">Stack técnico que operamos</p>
+            <div class="stack__logos">
+              <span class="stack__logo">DJI</span>
+              <span class="stack__logo">Leica Geosystems</span>
+              <span class="stack__logo">RIEGL</span>
+              <span class="stack__logo">Trimble</span>
+              <span class="stack__logo">Autodesk</span>
+              <span class="stack__logo">Potree</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================== por qué Haztek -->
+    <section class="seccion" id="porque">
+      <div class="contenedor">
+        <div class="encab rev">
+          <p class="encab__eyebrow">Por qué Haztek</p>
+          <h2>Lo que un competidor local no le puede garantizar</h2>
+        </div>
+
+        <div class="ventajas__grid">
+          <div class="ventaja rev">
+            <span class="ventaja__num">01</span>
+            <div>
+              <h3>Un solo socio técnico</h3>
+              <p>Captura, procesamiento y entregable corren con el mismo responsable. Sin intermediarios, sin versiones perdidas, sin culpables ausentes.</p>
+            </div>
+          </div>
+          <div class="ventaja rev">
+            <span class="ventaja__num">02</span>
+            <div>
+              <h3>Precisión auditable</h3>
+              <p>Cada levantamiento llega con su metodología y control de calidad documentados: puede defender el dato ante un interventor o una entidad.</p>
+            </div>
+          </div>
+          <div class="ventaja rev">
+            <span class="ventaja__num">03</span>
+            <div>
+              <h3>Velocidad de campo</h3>
+              <p>Drones y SLAM reducen hasta 60% el tiempo de jornada en campo frente a métodos tradicionales, con igual o mayor densidad de datos.</p>
+            </div>
+          </div>
+          <div class="ventaja rev">
+            <span class="ventaja__num">04</span>
+            <div>
+              <h3>Escala regional</h3>
+              <p>Mismo equipo, mismo estándar y mismos entregables en varios países de la región. Una sola vía de comunicación para todas sus obras.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================= cumplimiento -->
+    <section class="seccion seccion--clara seccion--puntos" id="cumplimiento">
+      <div class="contenedor">
+        <div class="encab rev">
+          <p class="encab__eyebrow">Cumplimiento y confidencialidad</p>
+          <h2>Su infraestructura es crítica. La tratamos así.</h2>
+        </div>
+        <div class="cumplimiento">
+          <div class="cumple rev">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+            <div>
+              <h3>Confidencialidad por diseño</h3>
+              <p>Acuerdos de confidencialidad, acceso restringido por proyecto y custodia controlada de los datos de cada activo capturado.</p>
+            </div>
+          </div>
+          <div class="cumple rev">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413"/></svg>
+            <div>
+              <h3>Operación aérea legal</h3>
+              <p>Permisos de operación de drones vigentes y conocimiento del marco regulatorio de cada país donde operamos.</p>
+            </div>
+          </div>
+          <div class="cumple rev">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <div>
+              <h3>Datos personales protegidos</h3>
+              <p>Tratamiento de datos conforme a la Ley 1581 de 2012 y buenas prácticas de seguridad de la información en todo el ciclo del proyecto.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================= testimonios -->
+    <section class="seccion" id="testimonios">
+      <div class="contenedor">
+        <div class="encab encab--centrado rev">
+          <p class="encab__eyebrow">Testimonios</p>
+          <h2>Lo que dicen quienes ya decidieron con nuestros datos</h2>
+        </div>
+
+        <div class="testimonios__grid">
+          <figure class="testimonio rev">
+            <blockquote>Pasamos de semanas de topografía tradicional a días de escaneo, con un nivel de detalle que el método clásico sencillamente no nos da. La interventoría dejó de discutir cifras.</blockquote>
+            <figcaption><strong>Ingeniero de interventoría</strong> · Concesión vial</figcaption>
+          </figure>
+          <figure class="testimonio rev">
+            <blockquote>La nube de puntos nos permitió resolver dudas de diseño sin volver a la planta. Eso es ahorro directo en visitas, tiempos y paradas.</blockquote>
+            <figcaption><strong>Líder de ingeniería</strong> · Sector energético</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================================== faq -->
+    <section class="seccion seccion--clara" id="faq">
+      <div class="contenedor">
+        <div class="encab encab--centrado rev">
+          <p class="encab__eyebrow">Preguntas frecuentes</p>
+          <h2>Lo que casi todos preguntan antes de cotizar</h2>
+        </div>
+
+        <div class="faq rev">
+          <div class="faq__item">
+            <button class="faq__pregunta" type="button" aria-expanded="false">
+              ¿Qué entregan exactamente?
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+            <div class="faq__respuesta"><div><p>Una nube de puntos georreferenciada (LAS/E57) y, según el alcance: ortofotos, mallas 3D, planimetría y modelos BIM. Todo en formatos que su software de ingeniería ya abre.</p></div></div>
+          </div>
+          <div class="faq__item">
+            <button class="faq__pregunta" type="button" aria-expanded="false">
+              ¿Cuánto tarda un levantamiento?
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+            <div class="faq__respuesta"><div><p>Depende del alcance: un corredor vial de 5 km se captura en días con LiDAR aéreo, y una planta completa se escanea en horas con escaneo móvil. El procesamiento y control de calidad se entrega en días, no semanas.</p></div></div>
+          </div>
+          <div class="faq__item">
+            <button class="faq__pregunta" type="button" aria-expanded="false">
+              ¿En qué países operan?
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+            <div class="faq__respuesta"><div><p>Operamos en Colombia con cobertura en Latinoamérica, movilizando equipo y operadores propios a cada país.</p></div></div>
+          </div>
+          <div class="faq__item">
+            <button class="faq__pregunta" type="button" aria-expanded="false">
+              ¿Puedo ver una nube de puntos antes de contratar?
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+            <div class="faq__respuesta"><div><p>Sí. En la sección <a href="#explora">Explora en 3D</a> puede navegar nubes de puntos de nuestros proyectos, y en una visita técnica hacemos una demostración con datos de su propio activo.</p></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================= contacto -->
+    <section class="seccion seccion--puntos" id="contacto">
+      <div class="contenedor contacto__grid">
+        <div class="contacto__datos rev">
+          <p class="encab__eyebrow">Cotizar</p>
+          <h2>Cuéntenos qué necesita levantar</h2>
+          <p>Cinco campos y le respondemos con una propuesta clara: tecnología recomendada, tiempos y valor. Si su caso es una licitación o proceso formal de entidad pública, use la opción de propuesta técnica.</p>
+
+          <div class="dato">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <div><strong>Bogotá D.C., Colombia</strong><span>Cobertura en Latinoamérica</span></div>
+          </div>
+          <div class="dato">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            <div><strong>Lunes a viernes</strong><span>8:00 a 18:00 (GMT-5)</span></div>
+          </div>
+          <div class="dato">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413"/></svg>
+            <div><strong>WhatsApp directo</strong><span>Respuesta en minutos en horario laboral</span></div>
+          </div>
+        </div>
+
+        <form class="formulario rev" id="formCotizar" novalidate>
+          <div class="formulario__campos">
+            <div class="campo">
+              <label for="nombre">Nombre <em>*</em></label>
+              <input id="nombre" name="nombre" type="text" autocomplete="name" maxlength="120" required>
+              <span class="campo__error">Escribe tu nombre.</span>
+            </div>
+            <div class="campo">
+              <label for="telefono">Teléfono / WhatsApp <em>*</em></label>
+              <input id="telefono" name="telefono" type="tel" inputmode="tel" autocomplete="tel" maxlength="40" placeholder="+57 300 000 0000" required>
+              <span class="campo__error">Necesitamos un teléfono válido para responderte.</span>
+            </div>
+            <div class="campo">
+              <label for="correo">Correo (opcional)</label>
+              <input id="correo" name="correo" type="email" autocomplete="email" maxlength="160">
+              <span class="campo__error">Ese correo no parece válido.</span>
+            </div>
+            <div class="campo">
+              <label for="tipo">Tipo de solicitud</label>
+              <select id="tipo" name="tipo">
+                <option value="Cotización rápida">Cotización rápida</option>
+                <option value="Propuesta técnica — sector público">Propuesta técnica — sector público</option>
+              </select>
+              <span class="campo__error"></span>
+            </div>
+            <div class="campo campo--ancho">
+              <label for="detalle">¿Qué necesita levantar? <em>*</em></label>
+              <textarea id="detalle" name="detalle" maxlength="2000" placeholder="Ej.: corredor vial de 3 km cerca de Medellín; necesito topografía y volúmenes de tierra…" required></textarea>
+              <span class="campo__error">Cuéntanos un poco más (mínimo 10 caracteres).</span>
+            </div>
+
+            <label class="consentimiento" for="consentimiento">
+              <input type="checkbox" id="consentimiento" name="consentimiento" required>
+              <span>Autorizo el tratamiento de mis datos conforme a la <a href="/privacidad">política de privacidad</a>, únicamente para responder esta solicitud. <em>*</em></span>
+            </label>
+
+            <div class="hp" aria-hidden="true">
+              <label>No llenar: <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+              <label>No llenar: <input type="text" name="url_field" tabindex="-1" autocomplete="off"></label>
+            </div>
+
+            <button class="boton boton--primario formulario__enviar" type="submit">Enviar solicitud</button>
+            <p id="formAviso" class="campo__error" style="display:none; grid-column:1/-1; margin:0;"></p>
+          </div>
+
+          <div class="formulario__exito" id="formExito">
+            <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-6"/></svg>
+            <h3>Solicitud enviada</h3>
+            <p>Gracias. Un ingeniero de Haztek revisa su caso y responde en horario laboral. Si es urgente, escríbanos ahora mismo:</p>
+            <a class="boton boton--primario" data-wa="exito" id="waExito" href="#" target="_blank" rel="noopener">Continuar por WhatsApp</a>
+          </div>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <!-- =============================================================== footer -->
+  <footer class="pie">
+    <div class="contenedor">
+      <div class="pie__grid">
+        <div>
+          <a class="marca" href="#inicio" aria-label="Haztek — inicio">
+            <svg class="marca__logo" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#0c1b2a"/><g fill="#38bdf8"><circle cx="14" cy="18" r="3.2"/><circle cx="14" cy="32" r="3.2"/><circle cx="14" cy="46" r="3.2"/><circle cx="26" cy="18" r="3.2"/><circle cx="26" cy="46" r="3.2"/><circle cx="38" cy="32" r="3.2"/></g><g fill="#fff"><circle cx="50" cy="18" r="3.2"/><circle cx="50" cy="32" r="3.2"/><circle cx="50" cy="46" r="3.2"/><circle cx="26" cy="32" r="3.2"/><circle cx="38" cy="18" r="3.2"/><circle cx="38" cy="46" r="3.2"/></g></svg>
+            <span class="marca__nombre">HAZTEK</span>
+          </a>
+          <p class="pie__tagline">Reality capture con estándar internacional: escaneo láser, LiDAR aéreo, fotogrametría y SLAM para infraestructura, industria y construcción.</p>
+        </div>
+        <div>
+          <h4>Sitio</h4>
+          <ul class="pie__lista">
+            <li><a href="#servicios">Servicios</a></li>
+            <li><a href="#industrias">Industrias</a></li>
+            <li><a href="#explora">Explora en 3D</a></li>
+            <li><a href="#proyectos">Proyectos</a></li>
+            <li><a href="#nosotros">Nosotros</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4>Contacto</h4>
+          <ul class="pie__lista">
+            <li><a data-wa="pie" href="#" target="_blank" rel="noopener">WhatsApp</a></li>
+            <li><a href="#contacto">Cotizar proyecto</a></li>
+            <li><a href="#contacto">Propuesta técnica — sector público</a></li>
+            <li>Bogotá D.C., Colombia</li>
+          </ul>
+        </div>
+      </div>
+      <div class="pie__legal">
+        <span>© <span id="anio">2026</span> Haztek. Todos los derechos reservados.</span>
+        <a href="/privacidad">Política de privacidad</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ==================================================== botón WhatsApp flotante -->
+  <a class="wa-flotante" data-wa="flotante" href="#" target="_blank" rel="noopener" aria-label="Abrir WhatsApp de Haztek">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413"/></svg>
+    <span>WhatsApp</span>
+  </a>
+
+  <!-- ========================================================== visor 3D -->
+  <div class="visor" id="visor" role="dialog" aria-modal="true" aria-label="Visor de nube de puntos" hidden>
+    <div class="visor__barra">
+      <div>
+        <p class="visor__titulo" id="visorTitulo"></p>
+        <p class="visor__sub" id="visorSub"></p>
+      </div>
+      <div class="visor__acciones">
+        <button class="visor__btn" id="visorGirar" type="button" aria-pressed="true">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21.5 2v6h-6M2.5 22v-6h6"/><path d="M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+          Rotación automática
+        </button>
+        <button class="visor__btn" id="visorReiniciar" type="button">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"/><path d="M21 3v5h-5"/></svg>
+          Reiniciar vista
+        </button>
+        <button class="visor__btn visor__btn--cerrar" id="visorCerrar" type="button">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          Cerrar
+        </button>
+      </div>
+    </div>
+    <div class="visor__lienzo">
+      <canvas id="visorCanvas"></canvas>
+
+      <div class="visor__cargando" id="visorCargando">
+        <svg class="visor__puntos" viewBox="0 0 60 60" fill="none" aria-hidden="true">
+          <circle cx="30" cy="30" r="26" stroke="rgba(56,189,248,.25)" stroke-width="2"/>
+          <circle cx="30" cy="4" r="4" fill="#38bdf8"/>
+          <circle cx="54" cy="42" r="3" fill="#38bdf8"/>
+          <circle cx="6" cy="42" r="3" fill="#38bdf8"/>
+        </svg>
+        <div class="visor__barra-progreso"><div id="visorProgreso"></div></div>
+        <p class="visor__estado" id="visorEstado">Cargando nube de puntos… 0%</p>
+      </div>
+
+      <div class="visor__fallo" id="visorFallo">
+        <img id="visorFalloImg" src="" alt="Vista fotográfica del proyecto">
+        <p>Tu navegador no pudo iniciar el visor 3D.<br>Esta es la vista fotográfica del proyecto; para la experiencia completa ábrela en un navegador actualizado.</p>
+      </div>
+
+      <p class="visor__pista" aria-hidden="true">
+        <span>arrastrar · rotar</span>
+        <span>rueda / pellizco · zoom</span>
+        <span>doble clic · reiniciar</span>
+      </p>
+    </div>
+  </div>
+
+  <script src="/js/principal.js?v=2" defer></script>
+  <script src="/js/explora3d.js?v=2" defer></script>
+</body>
+</html>

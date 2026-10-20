@@ -11,3 +11,6 @@ services:
       OPIA_PUBLIC_URL: https://opiasoftware.com
     volumes:
       - ./server/data:/app/server/data
+      # Almacén propio de Haztek: separado del de OPIA para poder exportar
+      # el proyecto a otro contenedor sin arrastrar datos de este sitio.
+      - ./haztek/data:/app/haztek/data

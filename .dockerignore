@@ -4,6 +4,7 @@ server/data
 server/ads-config.json
 server/meta-config.json
 server/cf-config.json
+haztek/data
 api
 supabase
 opadmin

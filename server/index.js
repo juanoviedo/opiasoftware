@@ -18,6 +18,7 @@ const aiagent = require('./lib/aiagent');
 const teams = require('./lib/teams');
 const emailmkt = require('./lib/emailmarketing');
 const metaleads = require('./lib/metaleads');
+const haztek = require('./lib/haztek');
 const { serveStatic, sendFile } = require('./lib/static');
 
 const visits = new JsonlStore(path.join(config.dataDir, 'visits.jsonl'));
@@ -986,6 +987,13 @@ const server = http.createServer((req, res) => {
         return res.end();
       }
 
+      // Host virtual del cliente: todo lo que llega por haztek.opiasoftware.com
+      // se atiende desde haztek/ con su propio almacén de datos.
+      if (haztek.esHostHaztek(req.headers.host)) {
+        if (pathname === '/api/health') return H.sendJson(res, 200, { ok: true, ts: Date.now() });
+        return await haztek.manejar(req, res, url);
+      }
+
       const asset = PUBLIC_ASSETS[pathname];
       if (asset) {
         const file = path.join(PUBLIC_ASSETS_DIR, asset.file);
@@ -1083,8 +1091,12 @@ function purgeOld() {
   const removedVisits = visits.prune(cutoff);
   const removedLeads = leadsStore.prune(cutoff);
   const removedAi = aiagent.podarSesiones();
+  const removedHaztek = haztek.podar();
   if (removedVisits || removedLeads || removedAi) {
     console.log(`[opia] retención: -${removedVisits} visitas, -${removedLeads} leads, -${removedAi} chats de agente (>${config.retentionDays} días)`);
+  }
+  if (removedHaztek) {
+    console.log(`[haztek] retención: -${removedHaztek} leads (>90 días)`);
   }
 }
 
