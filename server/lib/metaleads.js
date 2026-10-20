@@ -220,6 +220,21 @@ function fechaLegible(iso) {
 
 /* -------------------------------------------------------------- alta en CRM */
 
+// El mismo lead puede entrar por dos vías (a mano hoy, por API mañana):
+// si ya existe un contacto con ese correo o celular, no se crea de nuevo.
+function contactoDuplicado(email, celular) {
+  const emailN = crm.normaliza(email || '');
+  const digitos = String(celular || '').replace(/\D/g, '');
+  if (!emailN && !(digitos.length >= 7)) return null;
+  return (
+    crm.contactos.todas().find((c) => {
+      if (emailN && crm.normaliza(c.email || '') === emailN) return true;
+      if (digitos.length >= 7 && String(c.celular || '').replace(/\D/g, '') === digitos) return true;
+      return false;
+    }) || null
+  );
+}
+
 function empresaDelFormulario(form) {
   const nombre = `Meta · ${(form.name || 'formulario').trim()}`;
   const previa = crm.clientes.todas().find((c) => crm.normaliza(c.nombre) === crm.normaliza(nombre));
@@ -313,6 +328,13 @@ async function importarCiclo() {
     );
     for (const lead of (leads.data || []).filter((l) => l && l.id)) {
       if (estado.vistos[lead.id]) continue;
+      const f = camposDeLead(lead);
+      const previo = contactoDuplicado(f.email, f.celular);
+      if (previo) {
+        console.log(`[metaleads] lead ${lead.id} omitido: ya existe el contacto ${previo.id} (${previo.email || previo.celular}).`);
+        estado.vistos[lead.id] = ahora;
+        continue;
+      }
       try {
         const r = crearRegistroLead(lead, form);
         if (r.omitido) omitidos.push({ lead: lead.id, razon: r.omitido });
@@ -356,4 +378,4 @@ function ciclo() {
     });
 }
 
-module.exports = { importarCiclo, ciclo, configurado, camposDeLead, crearRegistroLead };
+module.exports = { importarCiclo, ciclo, configurado, camposDeLead, crearRegistroLead, contactoDuplicado };
