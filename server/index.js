@@ -17,6 +17,8 @@ const crm = require('./lib/crm');
 const aiagent = require('./lib/aiagent');
 const teams = require('./lib/teams');
 const emailmkt = require('./lib/emailmarketing');
+// arranca solo el reloj que lee los avisos de devolución del buzón (rebotes tardíos)
+require('./lib/rebotes');
 const metaleads = require('./lib/metaleads');
 const haztek = require('./lib/haztek');
 const { serveStatic, sendFile } = require('./lib/static');
@@ -1067,6 +1069,7 @@ const server = http.createServer((req, res) => {
           configurado: teams.configurado(),
           conectado: teams.conectado(),
           organizador: teams.organizador(),
+          correo: teams.correoAccesible(),
         });
       }
       if (req.method === 'GET' && pathname === '/api/teams/conectar') return handleTeamsConectar(req, res);

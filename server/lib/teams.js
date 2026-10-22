@@ -19,7 +19,9 @@ const auth = require('./auth');
  */
 const RUTA_CONFIG = path.join(config.dataDir, 'teams-config.json');
 const TENANT = 'b1c9a1d1-edc0-4d43-bb85-ba82c9e5b493';
-const SCOPES = 'Calendars.ReadWrite offline_access openid email profile';
+const SCOPES_BASE = 'offline_access openid email profile';
+// Mail.Read lo usa lib/rebotes.js para leer los avisos de devolución del buzón
+const SCOPES = 'Calendars.ReadWrite Mail.Read ' + SCOPES_BASE;
 const BASE_TOKEN = `https://login.microsoftonline.com/${TENANT}/oauth2/v2.0`;
 const BASE_GRAPH = 'https://graph.microsoft.com/v1.0';
 // Colombia no tiene horario de verano: -05:00 todo el año
@@ -52,6 +54,12 @@ function configurado() {
 function conectado() {
   const c = leerConfig();
   return Boolean(c.tokens && c.tokens.access_token && c.tokens.expires_at > Date.now() + 5 * 60_000);
+}
+
+/** ¿El consentimiento vigente incluye lectura de correo? (lo pide lib/rebotes.js) */
+function correoAccesible() {
+  const c = leerConfig();
+  return conectado() && /(^|\s)Mail\.Read(\s|$)/i.test(String(c.scopeConcedido || ''));
 }
 
 /**
@@ -89,11 +97,15 @@ function urlConsentimiento() {
 
 async function intercambiar(params) {
   const c = leerConfig();
+  // Al renovar se pide solo lo que YA se consintió: si se pidiera Mail.Read
+  // antes de que el dueño lo autorice, Azure rechaza el refresco y el calendario
+  // del agente se cae con él.
+  const scope = params.grant_type === 'refresh_token' ? c.scopeConcedido || 'Calendars.ReadWrite ' + SCOPES_BASE : SCOPES;
   const body = new URLSearchParams({
     client_id: c.clientId,
     client_secret: c.clientSecret,
     redirect_uri: c.redirectUri,
-    scope: SCOPES,
+    scope,
     ...params,
   });
   const resp = await fetch(`${BASE_TOKEN}/token`, {
@@ -129,6 +141,7 @@ async function cambiarPorCodigo(code) {
     refresh_token: data.refresh_token,
     expires_at: Date.now() + Number(data.expires_in || 3600) * 1000,
   };
+  if (data.scope) c.scopeConcedido = data.scope;
   guardarConfig(c);
   return { accessToken: c.tokens.access_token, correo: correoDeIdToken(data.id_token) };
 }
@@ -142,6 +155,7 @@ async function tokenFresco() {
     refresh_token: data.refresh_token || c.tokens.refresh_token,
     expires_at: Date.now() + Number(data.expires_in || 3600) * 1000,
   };
+  if (data.scope) c.scopeConcedido = data.scope;
   guardarConfig(c);
   return c.tokens.access_token;
 }
@@ -359,10 +373,12 @@ async function cancelarReunion(eventoId, motivo) {
 module.exports = {
   configurado,
   conectado,
+  correoAccesible,
   asegurarActivo,
   urlConsentimiento,
   cambiarPorCodigo,
   limpiarTokens,
+  graph,
   disponibilidad,
   agendarReunion,
   moverReunion,

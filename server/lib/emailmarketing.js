@@ -123,6 +123,32 @@ function marcarContacto(contactoId, estado) {
   crm.contactos.actualizar(contactoId, cambios, 'emailmarketing');
 }
 
+/**
+ * Rebote tardío: Microsoft aceptó el mensaje y la devolución llegó después al
+ * buzón (la ve lib/rebotes.js). Se corrigen las filas de las campañas donde esa
+ * dirección aparecía como enviada, para que el historial refleje el error.
+ */
+function marcarReboteTardio(email, estado, detalle) {
+  const buscado = String(email || '').toLowerCase().trim();
+  if (!buscado) return 0;
+  let tocadas = 0;
+  for (const envio of envios.todas()) {
+    let cambio = false;
+    for (const d of envio.destinatarios || []) {
+      if (String(d.email || '').toLowerCase() !== buscado) continue;
+      if (d.estado !== 'enviado' && d.estado !== 'entregado' && d.estado !== 'error') continue;
+      d.estado = estado;
+      d.detalle = detalle;
+      cambio = true;
+    }
+    if (cambio) {
+      envios.actualizar(envio.id, { destinatarios: envio.destinatarios }, 'rebotes');
+      tocadas += 1;
+    }
+  }
+  return tocadas;
+}
+
 /* ----------------------------------------------------------- campañas */
 
 let enCurso = null; // id del envío que se está mandando
@@ -390,6 +416,8 @@ module.exports = {
   detalleEnvio,
   marcarEntregado,
   clasificarError,
+  marcarContacto,
+  marcarReboteTardio,
   guardarImagen,
   leerImagen,
 };
