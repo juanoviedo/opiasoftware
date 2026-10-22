@@ -509,6 +509,8 @@
                 <option value="no_existe">No existe</option>
                 <option value="error">Error</option>
               </select>
+              <input type="number" id="em-emp-min" min="0" step="1" placeholder="Mín. empleados" aria-label="Mínimo de empleados de la empresa" style="max-width:150px" />
+              <input type="number" id="em-emp-max" min="0" step="1" placeholder="Máx. empleados" aria-label="Máximo de empleados de la empresa" style="max-width:150px" />
             </div>
             <div class="herramientas">
               <input type="number" id="em-primeros" min="1" max="500" value="10" style="max-width:110px" aria-label="Cuántos de los primeros contactos" />
@@ -1477,6 +1479,10 @@
       let ruta = '/api/crm/contactos?conEmail=1&orden=empleados&dir=desc&q=' + q;
       const emFiltro = $('#em-filtro-estado').value;
       if (emFiltro) ruta += '&em=' + emFiltro;
+      const empMin = $('#em-emp-min').value.trim();
+      const empMax = $('#em-emp-max').value.trim();
+      if (empMin) ruta += '&empleadosMin=' + encodeURIComponent(empMin);
+      if (empMax) ruta += '&empleadosMax=' + encodeURIComponent(empMax);
       const { contactos, total } = await api(ruta);
       em.filas = contactos || [];
       // al filtrar la lista, la selección puede quedar apuntando a filas que ya no se muestran: se conserva igual
@@ -2055,6 +2061,17 @@
       emBusquedaTimer = setTimeout(cargarPicker, 250);
     });
     $('#em-filtro-estado').addEventListener('change', cargarPicker);
+    for (const campo of ['#em-emp-min', '#em-emp-max']) {
+      $(campo).addEventListener('input', () => {
+        clearTimeout(emBusquedaTimer);
+        emBusquedaTimer = setTimeout(cargarPicker, 250);
+      });
+      // al usar las flechitas del input o al salir del campo: recarga sin espera
+      $(campo).addEventListener('change', () => {
+        clearTimeout(emBusquedaTimer);
+        cargarPicker();
+      });
+    }
     $('#em-btn-primeros').addEventListener('click', () => {
       const n = Math.max(1, Math.min(500, Number($('#em-primeros').value) || 0));
       em.seleccion = new Set(em.filas.slice(0, n).map((k) => k.id));
