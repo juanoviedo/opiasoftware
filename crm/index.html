@@ -583,6 +583,21 @@
       </div>
     </div>
 
+    <!-- CONFIRMACIÓN DE BORRADO DE CAMPAÑA DEL HISTORIAL -->
+    <div id="confirmar-campana" class="dialogo-fondo" hidden>
+      <div class="dialogo" role="alertdialog" aria-modal="true" aria-labelledby="campana-titulo">
+        <h3 id="campana-titulo">Eliminar campaña</h3>
+        <p>
+          Se eliminará el registro de <b id="campana-nombre"></b> con su lista de destinatarios y sus resultados.
+          Los contactos no se tocan. Esta acción no se puede deshacer.
+        </p>
+        <div class="acciones">
+          <button id="campana-cancelar">Conservar</button>
+          <button class="peligro-solido" id="campana-aceptar">Sí, eliminar</button>
+        </div>
+      </div>
+    </div>
+
     <!-- CONFIRMACIÓN DE ENVÍO MASIVO: exige escribir ENVIAR -->
     <div id="confirmar-envio" class="dialogo-fondo" hidden>
       <div class="dialogo" role="alertdialog" aria-modal="true" aria-labelledby="em-env-titulo">
@@ -1592,6 +1607,10 @@
           }
         });
         encabezado.appendChild(ver);
+        const borrar = el('button', 'Borrar');
+        borrar.className = 'chico peligro';
+        borrar.addEventListener('click', () => borrarCampana(e));
+        encabezado.appendChild(borrar);
         item.appendChild(encabezado);
         item.appendChild(el('b', e.asunto));
         item.appendChild(el('div', resumenCampania(e.conteo || {}))).className = 'mini mut';
@@ -1793,6 +1812,26 @@
         abrirCliente(estado.clienteActual.id);
       };
     }
+
+    let campanaAEliminar = null;
+    function borrarCampana(envio) {
+      $('#campana-nombre').textContent = envio.asunto || 'esta campaña';
+      $('#confirmar-campana').hidden = false;
+      campanaAEliminar = envio.id;
+    }
+    $('#campana-cancelar').addEventListener('click', () => {
+      $('#confirmar-campana').hidden = true;
+      campanaAEliminar = null;
+    });
+    $('#campana-aceptar').addEventListener('click', async () => {
+      const id = campanaAEliminar;
+      $('#confirmar-campana').hidden = true;
+      campanaAEliminar = null;
+      if (!id) return;
+      const resp = await api('/api/crm/emailmarketing/envios/' + id, { method: 'DELETE' });
+      if (!resp.ok) return alert(resp.error || 'No se pudo eliminar la campaña.');
+      cargarHistorial();
+    });
 
     /* ---------------- login ---------------- */
     async function iniciar() {

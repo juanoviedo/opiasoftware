@@ -251,6 +251,18 @@ function cancelarEnvio(envioId) {
   return { ok: true };
 }
 
+function eliminarEnvio(envioId) {
+  const envio = envios.porId(envioId);
+  if (!envio) return { error: 'Campaña no encontrada.' };
+  // mientras el proceso de envío recorre los destinatarios la fila no se puede
+  // tocar: primero se cancela y al terminar queda borrable
+  if (envio.estado === 'en_curso' || envio.estado === 'pendiente') {
+    return { error: 'Esa campaña se está enviando. Cancélala primero y espera a que termine.' };
+  }
+  envios.eliminar(envioId);
+  return { ok: true };
+}
+
 /* Las campañas programadas viven en la tabla: un tic cada 15 s revisa si ya es
    la hora. Si el servidor se reinicia (los despliegues lo hacen seguido), la
    campaña sobrevive al reinicio y sale igual, apenas haya turno libre. */
@@ -373,6 +385,7 @@ module.exports = {
   MAX_DESTINATARIOS,
   crearEnvio,
   cancelarEnvio,
+  eliminarEnvio,
   listarEnvios,
   detalleEnvio,
   marcarEntregado,
