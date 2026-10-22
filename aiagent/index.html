@@ -379,7 +379,7 @@
           aviso(r.error || 'No pudimos enviar el correo. Intenta de nuevo.');
           return;
         }
-        burbuja('¡Listo! Te acabamos de enviar un enlace seguro de acceso directo a ' + correo + '. Revisa tu bandeja para continuar.', 'ia');
+        burbuja('¡Listo! Te acabamos de enviar un enlace seguro de acceso directo a ' + correo + '. Revisa tu bandeja de entrada; si no lo encuentras en unos minutos, búscalo también en la carpeta de correo no deseado (spam).', 'ia');
         btnEnviar.textContent = 'Reenviar enlace';
       } catch {
         aviso('Falló la conexión. Intenta de nuevo.');
