@@ -466,6 +466,8 @@
               <option value="">Sin orden</option>
             </select>
             <span class="contador" id="contador-contactos"></span>
+            <div style="flex:1"></div>
+            <button class="primario" id="btn-nuevo-contacto-global">+ Nuevo contacto</button>
           </div>
           <table>
             <thead>
@@ -752,6 +754,9 @@
         return;
       }
       window.open('https://wa.me/' + waNumero(contacto.celular), '_blank', 'noopener');
+      // contacto sin empresa: el chat se abre igual, pero no hay ficha donde
+      // registrar la gestión
+      if (!clienteId) return;
       try {
         const resp = await api('/api/crm/clientes/' + clienteId + '/whatsapp', {
           method: 'POST',
@@ -818,6 +823,9 @@
 
     function irA(vista) {
       estado.vista = vista;
+      // al salir de una ficha ya no hay empresa de contexto: evita prellenar o
+      // navegar a una empresa vieja al crear contactos desde la lista global
+      if (vista === 'clientes' || vista === 'contactos') estado.clienteActual = null;
       $('#tab-clientes').classList.toggle('activo', vista === 'clientes' || vista === 'cliente');
       $('#tab-contactos').classList.toggle('activo', vista === 'contactos' || vista === 'contacto');
       $('#tab-em').classList.toggle('activo', vista === 'emailmarketing');
@@ -1768,13 +1776,26 @@
         const resp = await api(ruta, { method: cliente ? 'PUT' : 'POST', body: JSON.stringify(datos) });
         if (!resp.ok) return mostrarErrores(resp.errors || { _: resp.error || 'No se pudo guardar.' });
         cerrarModal();
+        cacheEmpresas = null; // pudo haber una empresa nueva o renombrada
         if (estado.vista === 'cliente' && estado.clienteActual) abrirCliente(cliente ? cliente.id : estado.clienteActual.id);
         else cargarClientes();
       });
     }
 
-    function formularioContacto(contacto) {
-      const valores = contacto ? { ...contacto } : { clienteId: estado.clienteActual.id };
+    // nombres de empresas para el autocompletar del formulario de contacto:
+    // son miles, un <select> sería inmanejable
+    let cacheEmpresas = null;
+    async function nombresEmpresas() {
+      if (!cacheEmpresas) {
+        const r = await api('/api/crm/clientes/nombres');
+        if (r.ok) cacheEmpresas = r.clientes || [];
+      }
+      return cacheEmpresas || [];
+    }
+
+    async function formularioContacto(contacto) {
+      const empresas = await nombresEmpresas();
+      const valores = contacto ? { ...contacto } : {};
       // los empleados viven en la empresa; el formulario los muestra y al
       // guardar se propagan a la empresa (y a todos sus contactos)
       if (valores.numEmpleadosAprox == null && estado.clienteActual) {
@@ -1792,17 +1813,52 @@
         form.appendChild(div);
         refs[largo] = t;
       }
+      // empresa: opcional. Se escribe el nombre y el navegador sugiere las
+      // empresas reales del CRM; al guardar el nombre se traduce al id.
+      const divEmpresa = el('div');
+      divEmpresa.className = 'ancho';
+      const lblEmpresa = el('label', 'Empresa');
+      lblEmpresa.htmlFor = 'f-empresa';
+      const inputEmpresa = el('input');
+      inputEmpresa.type = 'text';
+      inputEmpresa.id = 'f-empresa';
+      inputEmpresa.setAttribute('list', 'dl-empresas');
+      inputEmpresa.placeholder = 'Escribe para buscar una empresa (opcional)';
+      const dl = el('datalist');
+      dl.id = 'dl-empresas';
+      for (const c of empresas) dl.appendChild(el('option', c.nombre));
+      divEmpresa.appendChild(lblEmpresa);
+      divEmpresa.appendChild(inputEmpresa);
+      divEmpresa.appendChild(dl);
+      // preseleccionada: la del contacto al editar, la de la ficha abierta al crear
+      const idEmpresa = valores.clienteId || '';
+      const pre =
+        empresas.find((c) => c.id === idEmpresa) ||
+        (estado.clienteActual && estado.clienteActual.id === idEmpresa ? estado.clienteActual : null);
+      inputEmpresa.value = pre ? pre.nombre : '';
+      form.prepend(divEmpresa);
       const titulo = (contacto ? 'Editar contacto' : 'Nuevo contacto') + (estado.clienteActual ? ' · ' + estado.clienteActual.nombre : '');
       abrirModal(titulo, form, async () => {
         const datos = recolectar(refs);
-        if (estado.clienteActual) datos.clienteId = estado.clienteActual.id;
+        const textoEmpresa = inputEmpresa.value.trim();
+        if (!textoEmpresa) {
+          datos.clienteId = '';
+        } else {
+          const encontrada = empresas.find((c) => c.nombre.toLowerCase() === textoEmpresa.toLowerCase());
+          if (!encontrada) {
+            return mostrarErrores({ empresa: `La empresa «${textoEmpresa}» no está en el CRM. Elige una de la lista o deja el campo vacío.` });
+          }
+          datos.clienteId = encontrada.id;
+        }
         const ruta = contacto ? '/api/crm/contactos/' + contacto.id : '/api/crm/contactos';
         const resp = await api(ruta, { method: contacto ? 'PUT' : 'POST', body: JSON.stringify(datos) });
         if (!resp.ok) return mostrarErrores(resp.errors || { _: resp.error || 'No se pudo guardar.' });
         cerrarModal();
-        // desde la ficha del contacto se queda ahí; desde la de la empresa refresca la empresa
+        // desde la ficha del contacto se queda ahí; desde la de la empresa
+        // refresca la empresa; desde la lista global abre el contacto recién creado
         if (estado.vista === 'contacto' && contacto) abrirContacto(contacto.id);
-        else abrirCliente(estado.clienteActual.id);
+        else if (estado.vista === 'cliente' && estado.clienteActual) abrirCliente(estado.clienteActual.id);
+        else abrirContacto(resp.contacto.id);
       });
     }
 
@@ -1810,6 +1866,7 @@
       if (!confirm('¿Borrar "' + cliente.nombre + '" y todos sus contactos? Esta acción no se puede deshacer.')) return;
       const resp = await api('/api/crm/clientes/' + cliente.id, { method: 'DELETE' });
       if (!resp.ok) return alert(resp.error || 'No se pudo borrar.');
+      cacheEmpresas = null;
       cargarClientes();
     }
 
@@ -1912,6 +1969,7 @@
     });
     $('#btn-nuevo-cliente').addEventListener('click', () => formularioCliente(null));
     $('#btn-nuevo-contacto').addEventListener('click', () => formularioContacto(null));
+    $('#btn-nuevo-contacto-global').addEventListener('click', () => formularioContacto(null));
     $('#btn-anadir-nota').addEventListener('click', anadirNota);
     $('#nueva-nota').addEventListener('keydown', (ev) => {
       if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) anadirNota();

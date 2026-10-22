@@ -631,6 +631,16 @@ async function handleCrmApi(req, res, pathname, url) {
 
   if (coleccion === 'clientes') {
     if (!id && metodo === 'GET') return H.sendJson(res, 200, { ok: true, ...listadoClientes(url) });
+    // solo id y nombre: alimenta el autocompletar de empresa del formulario de
+    // contacto (son miles; la lista completa de la tabla no sirve para eso)
+    if (id === 'nombres' && metodo === 'GET') {
+      const nombres = crm.clientes
+        .todas()
+        .map((c) => ({ id: c.id, nombre: String(c.nombre || '').trim() }))
+        .filter((c) => c.nombre)
+        .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+      return H.sendJson(res, 200, { ok: true, clientes: nombres });
+    }
     if (!id && metodo === 'POST') {
       const { datos, errores } = crm.validarCliente(body);
       if (Object.keys(errores).length) return H.sendJson(res, 422, { ok: false, errors: errores });

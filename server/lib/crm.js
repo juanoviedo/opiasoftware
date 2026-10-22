@@ -275,10 +275,9 @@ function validarCliente(data, clienteId) {
 function validarContacto(data) {
   const c = limpiarCampos(data, CONTACTO_FIELDS);
   const errores = {};
-  if (!clientes.porId(c.clienteId)) errores.clienteId = 'El cliente no existe.';
-  if (c.nombres.length < 2 && !c.email && !c.celular) {
-    errores.nombres = 'Escribe al menos un nombre, correo o celular.';
-  }
+  // ningún campo es obligatorio: el contacto puede crearse desde la lista
+  // global sin empresa y con datos parciales (se completa después)
+  if (c.clienteId && !clientes.porId(c.clienteId)) errores.clienteId = 'El cliente no existe.';
   for (const campo of ['email', 'email2', 'email3']) {
     if (c[campo] && !EMAIL_RE.test(c[campo])) errores[campo] = 'Ese correo no parece válido.';
   }
