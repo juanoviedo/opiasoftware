@@ -56,10 +56,12 @@ function conectado() {
   return Boolean(c.tokens && c.tokens.access_token && c.tokens.expires_at > Date.now() + 5 * 60_000);
 }
 
-/** ¿El consentimiento vigente incluye lectura de correo? (lo pide lib/rebotes.js) */
+/** ¿El consentimiento vigente incluye lectura de correo? (lo pide lib/rebotes.js)
+ *  No exige el access token vivo: dura una hora y graph() lo renueva solo. */
 function correoAccesible() {
   const c = leerConfig();
-  return conectado() && /(^|\s)Mail\.Read(\s|$)/i.test(String(c.scopeConcedido || ''));
+  const haySesion = Boolean(c.tokens && c.tokens.refresh_token);
+  return haySesion && /(^|\s)Mail\.Read(\s|$)/i.test(String(c.scopeConcedido || ''));
 }
 
 /**
