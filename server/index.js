@@ -582,6 +582,22 @@ async function handleCrmApi(req, res, pathname, url) {
     });
   }
 
+  // la subida de imágenes viaja en binario: se atiende antes del parseo JSON
+  if (pathname === '/api/crm/emailmarketing/imagenes' && metodo === 'POST') {
+    let crudo;
+    try {
+      crudo = await H.readRawBody(req, 5 * 1024 * 1024);
+    } catch (err) {
+      return H.sendJson(res, err.status || 400, {
+        ok: false,
+        error: err.status === 413 ? 'La imagen pesa más de 5 MB.' : 'Solicitud inválida.',
+      });
+    }
+    const r = emailmkt.guardarImagen(crudo, String(req.headers['content-type'] || '').split(';')[0].trim());
+    if (r.error) return H.sendJson(res, 422, { ok: false, error: r.error });
+    return H.sendJson(res, 201, { ok: true, url: '/api/em/img/' + r.nombre });
+  }
+
   let body = {};
   if (metodo === 'POST' || metodo === 'PUT') {
     try {
@@ -794,6 +810,19 @@ function handleEmPixel(req, res, pathname) {
     // el píxel nunca puede romper: siempre responde imagen
   }
   responder();
+}
+
+/** Imágenes del cuerpo de las campañas (firma, logos): públicas e inmutables. */
+function handleEmImagen(req, res, pathname) {
+  const img = emailmkt.leerImagen(pathname.slice('/api/em/img/'.length));
+  if (!img) return H.sendJson(res, 404, { ok: false, error: 'not_found' });
+  res.writeHead(200, {
+    'Content-Type': img.tipo,
+    'Content-Length': img.datos.length,
+    'Cache-Control': 'public, max-age=31536000, immutable',
+    ...H.SECURITY_HEADERS,
+  });
+  return res.end(req.method === 'HEAD' ? undefined : img.datos);
 }
 
 /* ------------------------------------------------------------- /aiagent */
@@ -1020,6 +1049,7 @@ const server = http.createServer((req, res) => {
       if (req.method === 'GET' && pathname === '/api/crm/auth/verificar') return handleCrmVerificar(req, res, url);
       if (req.method === 'POST' && pathname === '/api/crm/auth/salir') return handleCrmSalir(req, res);
       if (req.method === 'GET' && pathname.startsWith('/api/em/pixel/')) return handleEmPixel(req, res, pathname);
+      if ((req.method === 'GET' || req.method === 'HEAD') && pathname.startsWith('/api/em/img/')) return handleEmImagen(req, res, pathname);
       if (pathname.startsWith('/api/crm/')) return await handleCrmApi(req, res, pathname, url);
 
       if (req.method === 'POST' && pathname === '/api/aiagent/mensaje') return await handleAiMensaje(req, res);

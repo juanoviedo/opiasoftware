@@ -1,6 +1,9 @@
 'use strict';
 
 const dns = require('node:dns').promises;
+const fs = require('node:fs');
+const path = require('node:path');
+const crypto = require('node:crypto');
 
 const config = require('./config');
 const auth = require('./auth');
@@ -64,6 +67,46 @@ async function dominioExiste(email) {
     return Boolean(a && a.length);
   } catch {
     return false;
+  }
+}
+
+/* Imágenes del cuerpo (p. ej. la firma del dueño pegada en el editor): viven
+   en el volumen y se sirven públicas por /api/em/img/<nombre>; el nombre lo
+   genera el servidor, así la lectura nunca sale de la carpeta. */
+const DIR_IMAGENES = path.join(config.dataDir, 'crm', 'imagenes');
+const TIPOS_IMAGEN = {
+  'image/png': { ext: '.png', tipo: 'image/png' },
+  'image/jpeg': { ext: '.jpg', tipo: 'image/jpeg' },
+  'image/gif': { ext: '.gif', tipo: 'image/gif' },
+  'image/webp': { ext: '.webp', tipo: 'image/webp' },
+};
+const TIPO_POR_EXT = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+};
+
+function guardarImagen(buffer, contentType) {
+  const tipo = TIPOS_IMAGEN[String(contentType || '').toLowerCase()];
+  if (!tipo) return { error: 'Solo se admiten imágenes PNG, JPG, GIF o WebP.' };
+  if (!buffer || !buffer.length) return { error: 'La imagen llegó vacía.' };
+  if (buffer.length > 5 * 1024 * 1024) return { error: 'La imagen no puede pesar más de 5 MB.' };
+  fs.mkdirSync(DIR_IMAGENES, { recursive: true });
+  const nombre = 'sig_' + crypto.randomBytes(8).toString('hex') + tipo.ext;
+  fs.writeFileSync(path.join(DIR_IMAGENES, nombre), buffer);
+  return { nombre };
+}
+
+function leerImagen(nombre) {
+  const limpio = String(nombre || '');
+  const ext = path.extname(limpio).toLowerCase();
+  if (!/^[a-z0-9_]+\.[a-z0-9.]+$/.test(limpio) || !TIPO_POR_EXT[ext]) return null;
+  try {
+    return { datos: fs.readFileSync(path.join(DIR_IMAGENES, limpio)), tipo: TIPO_POR_EXT[ext] };
+  } catch {
+    return null;
   }
 }
 
@@ -334,4 +377,6 @@ module.exports = {
   detalleEnvio,
   marcarEntregado,
   clasificarError,
+  guardarImagen,
+  leerImagen,
 };

@@ -159,6 +159,25 @@ function clean(value, max = 512) {
   return truncate(String(value), max).replace(/[\u0000-\u001F\u007F]/g, '');
 }
 
+/** Igual que readBody pero devuelve el Buffer crudo (imágenes subidas). */
+function readRawBody(req, limitBytes = 8192) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let size = 0;
+    req.on('data', (chunk) => {
+      size += chunk.length;
+      if (size > limitBytes) {
+        reject(Object.assign(new Error('payload_too_large'), { status: 413 }));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on('end', () => resolve(Buffer.concat(chunks)));
+    req.on('error', reject);
+  });
+}
+
 const SECURITY_HEADERS = {
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
@@ -175,6 +194,7 @@ module.exports = {
   sendJson,
   sendText,
   readBody,
+  readRawBody,
   readJsonBody,
   truncate,
   clean,

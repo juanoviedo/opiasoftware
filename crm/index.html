@@ -482,7 +482,7 @@
               <button type="button" class="chico" data-cmd="removeFormat">Quitar formato</button>
             </div>
             <div id="em-cuerpo" contenteditable="true" class="em-cuerpo" data-ejemplo="Escribe aquí el mensaje que recibirán los contactos…"></div>
-            <p class="mini mut" style="margin-bottom:0">El correo sale desde el remitente elegido. Si dejas una fecha, la campaña sale sola a esa hora (hora de tu computador) y puedes cancelarla mientras espera. Cuando el contacto lo recibe, queda marcado como <b>Recibido</b>; si el buzón no existe, como <b>No existe</b>.</p>
+            <p class="mini mut" style="margin-bottom:0">El correo sale desde el remitente elegido. Si dejas una fecha, la campaña sale sola a esa hora (hora de tu computador) y puedes cancelarla mientras espera. Puedes <b>pegar o arrastrar una imagen</b> (como tu firma) directo aquí. Cuando el contacto lo recibe, queda marcado como <b>Recibido</b>; si el buzón no existe, como <b>No existe</b>.</p>
           </div>
           <div class="tarjeta">
             <h2>Destinatarios</h2>
@@ -1912,6 +1912,91 @@
     });
     $('#em-asunto').addEventListener('input', guardarBorrador);
     $('#em-cuerpo').addEventListener('input', guardarBorrador);
+
+    /* Imágenes pegadas o arrastradas (p. ej. la firma): se suben al servidor y
+       en el correo va la URL pública, no el binario. */
+    async function insertarImagenArchivo(archivo) {
+      const bytes = await reducirImagen(archivo);
+      const r = await fetch('/api/crm/emailmarketing/imagenes', {
+        method: 'POST',
+        headers: { 'Content-Type': archivo.type || 'image/png' },
+        body: bytes,
+      });
+      const d = await r.json();
+      if (!d.ok) return alert(d.error || 'No se pudo subir la imagen.');
+      $('#em-cuerpo').focus();
+      document.execCommand('insertImage', false, location.origin + d.url);
+      guardarBorrador();
+    }
+
+    function reducirImagen(archivo) {
+      return new Promise((resolver) => {
+        // los GIF animados pierden el movimiento al re-dibujar: pasan intactos
+        if (archivo.type === 'image/gif') return resolver(archivo);
+        const img = new Image();
+        const url = URL.createObjectURL(archivo);
+        img.onload = () => {
+          URL.revokeObjectURL(url);
+          if (img.width <= 600) return resolver(archivo);
+          const lienzo = document.createElement('canvas');
+          lienzo.width = 600;
+          lienzo.height = Math.round((img.height * 600) / img.width);
+          lienzo.getContext('2d').drawImage(img, 0, 0, lienzo.width, lienzo.height);
+          lienzo.toBlob((b) => resolver(b || archivo), archivo.type === 'image/jpeg' ? 'image/jpeg' : 'image/png');
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(url);
+          resolver(archivo);
+        };
+        img.src = url;
+      });
+    }
+
+    function dataUrlAArchivo(dataUrl) {
+      const coma = dataUrl.indexOf(',');
+      const tipo = (/^data:([^;]+)/.exec(dataUrl) || [])[1] || 'image/png';
+      const bin = atob(dataUrl.slice(coma + 1));
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
+      return new File([bytes], 'imagen', { type: tipo });
+    }
+
+    $('#em-cuerpo').addEventListener('paste', async (ev) => {
+      const datos = ev.clipboardData;
+      if (!datos) return;
+      const archivos = [...datos.items].filter((i) => i.kind === 'file' && i.type.startsWith('image/'));
+      if (archivos.length) {
+        ev.preventDefault();
+        for (const item of archivos) await insertarImagenArchivo(item.getAsFile());
+        return;
+      }
+      const html = datos.getData ? datos.getData('text/html') : '';
+      const m = html ? /<img[^>]+src="(blob:|cid:|data:)([^"]*)"/i.exec(html) : null;
+      if (!m) return;
+      ev.preventDefault();
+      if (m[1] === 'cid:') {
+        // imagen incrustada de Outlook: el binario no viene en el portapapeles
+        alert('La imagen de esa firma vive dentro del correo original y no se puede copiar así. Guárdala como archivo (clic derecho → Guardar como imagen) y arrástrala aquí. El texto sí se pegó.');
+        const sinImagenes = html.replace(/<img[^>]+src="cid:[^"]*"[^>]*>/gi, '');
+        document.execCommand('insertHTML', false, sinImagenes);
+        guardarBorrador();
+        return;
+      }
+      if (m[1] === 'data:') {
+        await insertarImagenArchivo(dataUrlAArchivo(m[1] + m[2]));
+        return;
+      }
+      const blob = await fetch(m[1] + m[2]).then((r) => r.blob());
+      await insertarImagenArchivo(new File([blob], 'imagen', { type: blob.type }));
+    });
+    $('#em-cuerpo').addEventListener('dragover', (ev) => ev.preventDefault());
+    $('#em-cuerpo').addEventListener('drop', async (ev) => {
+      const archivos = [...(ev.dataTransfer ? ev.dataTransfer.files : [])].filter((f) => f.type.startsWith('image/'));
+      if (!archivos.length) return;
+      ev.preventDefault();
+      for (const f of archivos) await insertarImagenArchivo(f);
+    });
+
     $('#em-buscar').addEventListener('input', () => {
       clearTimeout(emBusquedaTimer);
       emBusquedaTimer = setTimeout(cargarPicker, 250);
