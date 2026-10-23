@@ -161,6 +161,109 @@ function verificarEnlace(tokenCrudo) {
   return { guid: s.id, correo: guardado.correo };
 }
 
+/* -------------------------------------------------- autenticación por WhatsApp */
+
+// El wa_id de Meta llega solo con dígitos e indicativo de país (573176994961):
+// ese número es la identidad y la llave para encontrar o crear el contacto.
+function soloDigitos(valor) {
+  return String(valor || '').replace(/\D/g, '');
+}
+
+function telefonoE164(numero) {
+  const d = soloDigitos(numero);
+  return d ? '+' + d : '';
+}
+
+function buscarContactoPorTelefono(numero) {
+  const d = soloDigitos(numero);
+  if (d.length < 7) return null;
+  return (
+    crm.contactos.todas().find((k) => {
+      const t = soloDigitos(k.celular);
+      if (t.length < 7) return false;
+      if (t === d) return true;
+      // un celular guardado sin indicativo (10 dígitos) coincide con el wa_id
+      const cola = (x) => (x.length >= 10 ? x.slice(-10) : x);
+      return cola(t) === cola(d);
+    }) || null
+  );
+}
+
+/**
+ * Resuelve la conversación de un número de WhatsApp: busca el contacto por
+ * celular o lo crea, reutiliza su última conversación (también si empezó por
+ * la web) y devuelve el saludo cuando la sesión es nueva.
+ */
+function sesionWhatsApp(numero) {
+  const d = soloDigitos(numero);
+  if (d.length < 7 || d.length > 15) return null;
+
+  let contacto = buscarContactoPorTelefono(d);
+  if (!contacto) {
+    const emp = empresaComodin();
+    const { datos, errores } = crm.validarContacto({
+      clienteId: emp.id,
+      nombres: NOMBRE_SIN_REGISTRAR,
+      celular: telefonoE164(d),
+    });
+    if (Object.keys(errores).length) {
+      throw new Error('contacto por WhatsApp: ' + Object.values(errores).join(' '));
+    }
+    contacto = crm.contactos.agregar(
+      { id: crm.siguienteId('p'), ...datos, archivoOrigen: 'agente_ia' },
+      'aiagent'
+    );
+  }
+  // un contacto que venía del correo sin celular adopta este número
+  if (!soloDigitos(contacto.celular)) {
+    crm.contactos.actualizar(contacto.id, { celular: telefonoE164(d) }, 'aiagent');
+  }
+
+  let s = sesiones
+    .todas()
+    .filter((x) => x.contactoId === contacto.id)
+    .sort((a, b) => String(b.modifiedon || '').localeCompare(String(a.modifiedon || '')))[0];
+  if (!s) {
+    s = sesiones.agregar(
+      {
+        id: crypto.randomBytes(9).toString('base64url'),
+        estado: 'lead',
+        contactoId: contacto.id,
+        clienteId: contacto.clienteId,
+        canal: 'whatsapp',
+        telefono: telefonoE164(d),
+      },
+      'aiagent'
+    );
+    const saludo = saludoInicial(contacto);
+    agregarMsg(s, { rol: 'ia', texto: saludo }, 'aiagent');
+    return { sesion: s, saludo };
+  }
+  return { sesion: s, saludo: null };
+}
+
+/** WhatsApp usa *negrita* de un asterisco y no tiene botones: la línea de
+ *  [OPCIONES] se convierte en una lista numerada que la persona responde. */
+function adaptarAWhatsApp(textoCrudo) {
+  const lineas = String(textoCrudo || '').split('\n');
+  let opciones = null;
+  const m = /^\[OPCIONES\]\s*:?\s*(.+)$/i.exec((lineas[lineas.length - 1] || '').trim());
+  if (m) {
+    const etiquetas = m[1].split('|').map((t) => t.replace(/\*/g, '').trim()).filter(Boolean);
+    if (etiquetas.length >= 2) {
+      lineas.pop();
+      while (lineas.length && !lineas[lineas.length - 1].trim()) lineas.pop();
+      opciones = etiquetas.slice(0, 6);
+    }
+  }
+  let texto = lineas.join('\n').trim().replace(/\*\*([^*\n]+)\*\*/g, '*$1*');
+  if (opciones) {
+    texto += '\n\n' + opciones.map((t, i) => `${i + 1}. ${t}`).join('\n');
+    texto += '\n\nResponde con el número de la opción.';
+  }
+  return { texto, opciones };
+}
+
 /* ------------------------------------------------------------------- sesiones */
 
 function obtenerSesion(guid) {
@@ -308,9 +411,9 @@ function historialVisible(s) {
 const SYSTEM_PROMPT = [
   'Eres el asistente comercial virtual de OPIA Software, una empresa colombiana de software y marketing digital. Hablas siempre en español con calidez y mensajes cortos.',
   '',
-  'La persona ya verificó su correo para chatear y su contacto existe en el CRM. La conversación sigue un orden secuencial estricto: no saltes pasos, no adelantes preguntas y no pidas datos antes de tiempo.',
+  'La persona ya se identificó y su contacto existe en el CRM. La conversación sigue un orden secuencial estricto: no saltes pasos, no adelantes preguntas y no pidas datos antes de tiempo.',
   '',
-  'PASO 1 · CÓMO EMPEZAR. El saludo inicial ya le explicó que puedes entender su necesidad conversando o, si lo prefiere, agendarle una reunión por Teams con el equipo; en la pantalla le aparecen dos botones para elegirlo. El primer mensaje de la persona suele llegar por esos botones (por ejemplo «Prefiero una reunión por Teams» o «Prefiero conversar con el asistente»), pero puede ser cualquier texto. Solo clasifica su elección: reunión por Teams (PASO 2A) o conversación de necesidades contigo (PASO 2B). Si no queda claro, pregúntale con cuál prefiere empezar, sin pedirle ningún dato todavía.',
+  'PASO 1 · CÓMO EMPEZAR. El saludo inicial ya le explicó que puedes entender su necesidad conversando o, si lo prefiere, agendarle una reunión por Teams con el equipo; el sistema le muestra las opciones para elegirlo. El primer mensaje de la persona suele llegar por esos botones (por ejemplo «Prefiero una reunión por Teams» o «Prefiero conversar con el asistente»), pero puede ser cualquier texto. Solo clasifica su elección: reunión por Teams (PASO 2A) o conversación de necesidades contigo (PASO 2B). Si no queda claro, pregúntale con cuál prefiere empezar, sin pedirle ningún dato todavía.',
   '',
   'PASO 2A · ELIGIÓ REUNIÓN POR TEAMS. Pregúntale si su necesidad es de software o de marketing (una sola pregunta). Pregúntale también cuánto tiempo quiere para la reunión: la duración la decide ella (lo habitual es una hora, pero puede ser media hora o la que prefiera; nunca la impongas tú). Con las respuestas, agenda la reunión: propón una fecha cercana que le quede bien, consulta los espacios libres con ver_disponibilidad pasando esa duración, ofrécele los horarios que devuelva y cuando acepte uno llama a agendar_reunion con el título exacto «Reunión con cliente de software» o «Reunión con cliente de marketing» y la duración elegida. Guarda también una nota con agregar_nota indicando que prefirió reunión con el equipo y de qué es su necesidad. Cuando la reunión quede agendada, pasa al PASO 3; si el calendario no se puede consultar o agendar, dile que el equipo le confirmará la hora por correo o WhatsApp y pasa al PASO 3 igualmente.',
   '',
@@ -346,19 +449,30 @@ const SYSTEM_PROMPT = [
   '- Máximo 3 frases por mensaje.',
 ].join('\n');
 
+// WhatsApp no tiene pantalla ni botones: las opciones se numeran y la
+// invitación de Teams necesita un correo que aquí no tenemos.
+const PROMPT_WHATSAPP = [
+  'CANAL WHATSAPP. La persona te escribe por WhatsApp, no por la página web: no hay pantalla ni botones. Cuando cierres una pregunta de elección con la línea [OPCIONES] ..., el sistema la mostrará como una lista numerada y la persona responderá con el número de la opción.',
+  'Su identidad ya está verificada con su número de WhatsApp y ese número ya quedó guardado como su celular en el CRM: no se lo vuelvas a pedir, no se lo confirmes y no le pidas que lo escriba. En el PASO 3 pídele solo su nombre completo y su empresa.',
+  'Para una reunión de Teams necesita recibir la invitación por correo: antes de agendar, pídele su correo electrónico y guárdalo con registrar_lead (campo email). Si no quiere darlo, no agendes la reunión y dile que el equipo le escribirá por este mismo WhatsApp.',
+  'No menciones ni escribas el enlace wa.me ni el número 573332782483: la persona ya está hablando por WhatsApp.',
+  'Para resaltar usa *un solo asterisco*; no uses dobles asteriscos, tablas, ni enlaces con formato Markdown.',
+].join('\n');
+
 const HERRAMIENTAS = [
   {
     type: 'function',
     function: {
       name: 'registrar_lead',
       description:
-        'Actualiza los datos de la persona que chatea en su contacto del CRM (nombre, celular). Usar apenas la persona dé su nombre, y de nuevo cuando dé su celular.',
+        'Actualiza los datos de la persona que chatea en su contacto del CRM (nombre, celular, correo). Usar apenas la persona dé su nombre, y de nuevo cuando dé su celular o su correo.',
       parameters: {
         type: 'object',
         properties: {
           nombres: { type: 'string' },
           apellidos: { type: 'string' },
           celular: { type: 'string' },
+          email: { type: 'string', description: 'Correo electrónico (en WhatsApp es necesario para enviarle la invitación de Teams)' },
         },
         required: ['nombres'],
       },
@@ -514,7 +628,7 @@ const LEV_CAMPOS_EMAIL = [
   'decisor', 'plazo', 'presupuesto',
 ];
 
-async function llamarModelo(mensajesApi, pais) {
+async function llamarModelo(mensajesApi, pais, canal) {
   const c = leerConfig();
   const base = String(c.baseUrl).replace(/\/+$/, '');
   // el modelo necesita la fecha actual (Bogotá) para proponer reuniones de una
@@ -537,6 +651,7 @@ async function llamarModelo(mensajesApi, pais) {
   // país probable por IP (caché de geoIP): sugerencia suave para el código de
   // teléfono y la zona horaria. Jamás se le dice a la persona de dónde sale.
   if (pais) sistema += ` Probable país de la persona: ${pais} (estimación del servidor; úsala solo como sugerencia amable).`;
+  if (canal === 'whatsapp') sistema += '\n\n' + PROMPT_WHATSAPP;
   const resp = await fetch(base + '/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + c.apiKey },
@@ -581,8 +696,8 @@ function empresaComodin() {
 
 /**
  * Actualiza el contacto de la conversación con los datos que la persona va
- * dando (nombre primero, celular después): la identidad del contacto es su
- * correo verificado, así que aquí nunca se crean contactos nuevos.
+ * dando (nombre, celular, correo). En web la identidad es el correo verificado
+ * y en WhatsApp el número; aquí nunca se crean contactos nuevos.
  */
 function registrarLead(s, args) {
   const contacto = crm.contactos.porId(s.contactoId);
@@ -591,9 +706,10 @@ function registrarLead(s, args) {
   const nombres = H.clean(args.nombres, 120).trim();
   const apellidos = H.clean(args.apellidos, 120).trim();
   const celular = H.clean(args.celular, 40).trim();
+  const email = H.clean(args.email, 160).trim().toLowerCase();
   const digitos = celular.replace(/\D/g, '');
 
-  if (nombres.length < 2 && !celular) return 'Necesito al menos el nombre de la persona.';
+  if (nombres.length < 2 && !celular && !email) return 'Necesito al menos el nombre de la persona.';
   if (celular && (digitos.length < 7 || digitos.length > 15)) {
     return 'Ese celular no parece válido (7 a 15 dígitos).';
   }
@@ -604,6 +720,7 @@ function registrarLead(s, args) {
     if (apellidos) cambios.apellidos = apellidos;
   }
   if (celular) cambios.celular = celular;
+  if (email) cambios.email = email;
   if (!Object.keys(cambios).length) return 'No tengo datos nuevos que guardar.';
 
   const { datos, errores } = crm.validarContacto({ ...contacto, ...cambios });
@@ -1143,10 +1260,10 @@ async function cancelarReunionConCliente(s, args) {
 
 /* ------------------------------------------------------------ conversación */
 
-async function responder(s, texto, pais) {
+async function responder(s, texto, pais, canal) {
   agregarMsg(s, { rol: 'usuario', texto }, 'visitante');
   for (let i = 0; i < MAX_ITER_HERRAMIENTAS; i += 1) {
-    const data = await llamarModelo(historialApi(s), pais);
+    const data = await llamarModelo(historialApi(s), pais, canal);
     const msg = data.choices && data.choices[0] && data.choices[0].message;
     if (!msg) throw new Error('respuesta vacía del modelo');
     if (Array.isArray(msg.tool_calls) && msg.tool_calls.length) {
@@ -1223,6 +1340,54 @@ async function mensaje(guidPropuesto, texto, pais) {
   }
 }
 
+/**
+ * Punto de entrada de cada mensaje de WhatsApp. La identidad es el número
+ * verificado por Meta: no hay enlace ni contraseña.
+ * Devuelve { texto, opciones, saludo } o { error, status }.
+ */
+async function mensajeWhatsApp(numero, textoCrudo) {
+  if (!configurado()) return { error: 'El agente de IA no está configurado todavía.', status: 503 };
+
+  const texto = H.clean(textoCrudo, 2000).trim();
+  if (!texto) return { error: 'Mensaje vacío.', status: 422 };
+
+  const resuelta = sesionWhatsApp(numero);
+  if (!resuelta) return { error: 'Número de WhatsApp inválido.', status: 422 };
+  const { sesion: s, saludo } = resuelta;
+
+  if (!topeDiarioOk()) {
+    return {
+      saludo,
+      error: 'tope diario',
+      status: 429,
+      texto: 'Hoy recibí muchos mensajes y necesito un descanso. Escríbeme mañana, por favor.',
+    };
+  }
+
+  // respuesta numérica a la última lista de opciones
+  let entrada = texto;
+  const opciones = Array.isArray(s.ultimasOpciones) ? s.ultimasOpciones : [];
+  const m = /^(\d{1,2})[.)]?$/.exec(texto);
+  if (m && opciones[Number(m[1]) - 1]) entrada = opciones[Number(m[1]) - 1];
+
+  // el indicativo 57 ubica a la persona en Colombia para las reuniones
+  const pais = soloDigitos(numero).startsWith('57') ? 'Colombia' : null;
+
+  try {
+    const respuesta = await responder(s, entrada, pais, 'whatsapp');
+    const adaptado = adaptarAWhatsApp(respuesta);
+    s.ultimasOpciones = adaptado.opciones || [];
+    guardarSesion(s, 'aiagent');
+    return { texto: adaptado.texto, opciones: adaptado.opciones, saludo };
+  } catch (err) {
+    // sin respuesta del modelo se quita el turno del usuario: evita duplicados al reintentar
+    const suyos = mensajes.todas().filter((x) => x.guid === s.id);
+    const ultimo = suyos[suyos.length - 1];
+    if (ultimo && ultimo.rol === 'usuario') mensajes.eliminar(ultimo.id);
+    throw err;
+  }
+}
+
 module.exports = {
   COOKIE_AI,
   ACCESO_SEGUNDOS,
@@ -1237,4 +1402,5 @@ module.exports = {
   solicitarEnlace,
   verificarEnlace,
   mensaje,
+  mensajeWhatsApp,
 };

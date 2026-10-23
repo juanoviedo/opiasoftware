@@ -15,6 +15,7 @@ const { buildStats, classifyTraffic } = require('./lib/analytics');
 const auth = require('./lib/auth');
 const crm = require('./lib/crm');
 const aiagent = require('./lib/aiagent');
+const whatsapp = require('./lib/whatsapp');
 const teams = require('./lib/teams');
 const emailmkt = require('./lib/emailmarketing');
 // arranca solo el reloj que lee los avisos de devolución del buzón (rebotes tardíos)
@@ -1068,6 +1069,12 @@ const server = http.createServer((req, res) => {
       if (req.method === 'GET' && pathname.startsWith('/api/em/pixel/')) return handleEmPixel(req, res, pathname);
       if ((req.method === 'GET' || req.method === 'HEAD') && pathname.startsWith('/api/em/img/')) return handleEmImagen(req, res, pathname);
       if (pathname.startsWith('/api/crm/')) return await handleCrmApi(req, res, pathname, url);
+
+      if (pathname === '/api/whatsapp/webhook') {
+        if (req.method === 'GET') return whatsapp.verificar(url, res);
+        if (req.method === 'POST') return await whatsapp.recibir(req, res);
+        return H.sendJson(res, 405, { ok: false, error: 'method_not_allowed' });
+      }
 
       if (req.method === 'POST' && pathname === '/api/aiagent/mensaje') return await handleAiMensaje(req, res);
       if (req.method === 'POST' && pathname === '/api/aiagent/email') return await handleAiEmail(req, res);
