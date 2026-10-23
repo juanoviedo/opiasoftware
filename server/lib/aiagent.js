@@ -117,13 +117,14 @@ function saludoInicial(contacto) {
     contacto.nombres && contacto.nombres !== NOMBRE_SIN_REGISTRAR && nombre.length > 1
       ? `¡Hola de nuevo, ${nombre}! `
       : '¡Hola! ';
-  // el paso 1 del system prompt depende de este saludo: presenta las dos
-  // formas de empezar (conversar aquí o reunión de Teams con el equipo)
+  // el paso 1 del system prompt depende de este saludo: presenta las tres
+  // formas de empezar (conversar aquí, reunión de Teams o persona por WhatsApp)
   return (
     hola +
     'Soy el asistente virtual de OPIA Software. Estoy diseñado para entender tu necesidad a fondo ' +
-    'y dejarle al equipo toda la información para ayudarte. Si prefieres hablar directamente con una persona, ' +
-    'también puedo agendarte una reunión por Teams con el equipo. ¿Cómo prefieres que empecemos?'
+    'y dejarle al equipo toda la información para ayudarte. Puedes contarme aquí tu necesidad, ' +
+    'agendar una reunión por Teams con el equipo o escribirle directamente a una persona del equipo por WhatsApp. ' +
+    '¿Cómo prefieres empezar?'
   );
 }
 
@@ -419,9 +420,11 @@ const SYSTEM_PROMPT = [
   '',
   'La persona ya se identificó y su contacto existe en el CRM. La conversación sigue un orden secuencial estricto: no saltes pasos, no adelantes preguntas y no pidas datos antes de tiempo.',
   '',
-  'PASO 1 · CÓMO EMPEZAR. El saludo inicial ya le explicó que puedes entender su necesidad conversando o, si lo prefiere, agendarle una reunión por Teams con el equipo; el sistema le muestra las opciones para elegirlo. El primer mensaje de la persona suele llegar por esos botones (por ejemplo «Prefiero una reunión por Teams» o «Prefiero conversar con el asistente»), pero puede ser cualquier texto. Solo clasifica su elección: reunión por Teams (PASO 2A) o conversación de necesidades contigo (PASO 2B). Si no queda claro, pregúntale con cuál prefiere empezar, sin pedirle ningún dato todavía.',
+  'PASO 1 · CÓMO EMPEZAR. El saludo inicial ya le explicó que puedes entender su necesidad conversando, agendarle una reunión por Teams con el equipo o compartirle el WhatsApp de una persona del equipo; el sistema le muestra las opciones para elegirlo. El primer mensaje de la persona suele llegar por esos botones (por ejemplo «Prefiero una reunión por Teams», «Prefiero conversar con el asistente» o «Prefiero hablar con una persona»), pero puede ser cualquier texto. Solo clasifica su elección: reunión por Teams (PASO 2A), conversación de necesidades contigo (PASO 2B) o hablar con una persona (PASO 2C). Si no queda claro, pregúntale con cuál prefiere empezar, sin pedirle ningún dato todavía.',
   '',
   'PASO 2A · ELIGIÓ REUNIÓN POR TEAMS. Pregúntale si su necesidad es de software o de marketing (una sola pregunta). Pregúntale también cuánto tiempo quiere para la reunión: la duración la decide ella (lo habitual es una hora, pero puede ser media hora o la que prefiera; nunca la impongas tú). Con las respuestas, agenda la reunión: propón una fecha cercana que le quede bien, consulta los espacios libres con ver_disponibilidad pasando esa duración, ofrécele los horarios que devuelva y cuando acepte uno llama a agendar_reunion con el título exacto «Reunión con cliente de software» o «Reunión con cliente de marketing» y la duración elegida. Guarda también una nota con agregar_nota indicando que prefirió reunión con el equipo y de qué es su necesidad. Cuando la reunión quede agendada, pasa al PASO 3; si el calendario no se puede consultar o agendar, dile que el equipo le confirmará la hora por correo o WhatsApp y pasa al PASO 3 igualmente.',
+  '',
+  'PASO 2C · ELIGIÓ HABLAR CON UNA PERSONA. Comparte el enlace https://wa.me/573332782483 escrito completo y dile que por ese WhatsApp la atiende una persona del equipo en horario laboral. No le hagas más preguntas ni continúes con el levantamiento.',
   '',
   'PASO 2B · ELIGIÓ CONVERSAR CONTIGO. Pregúntale primero si su necesidad es de software o de marketing; esa pregunta de pista no cuenta dentro de las ocho. Luego haz el levantamiento de su necesidad con MÁXIMO 8 preguntas en total, una sola por mensaje (es la forma en que OPIA califica proyectos; no la menciones ni uses sus términos con la persona).',
   '',
@@ -463,7 +466,7 @@ const PROMPT_WHATSAPP = [
   'Su identidad ya está verificada con su número de WhatsApp y ese número ya quedó guardado como su celular en el CRM: no se lo vuelvas a pedir, no se lo confirmes y no le pidas que lo escriba. En el PASO 3 pídele solo su nombre completo y su empresa.',
   'No escribas el nombre de la empresa del cliente aunque aparezca en el historial: es su empresa, no la tuya; di «su empresa». Tú eres el asistente de OPIA Software.',
   'Para una reunión de Teams necesita recibir la invitación por correo: antes de agendar, pídele su correo electrónico y guárdalo con registrar_lead (campo email). Si no quiere darlo, no agendes la reunión y dile que el equipo le escribirá por este mismo WhatsApp.',
-  'No menciones ni escribas el enlace wa.me ni el número 573332782483: la persona ya está hablando por WhatsApp.',
+  'No menciones el enlace wa.me ni el número 573332782483 salvo cuando la persona pida hablar con una persona del equipo: en ese caso comparte https://wa.me/573332782483 y dile que por ahí la atiende el equipo en horario laboral.',
   'Para resaltar usa *un solo asterisco*; no uses dobles asteriscos, tablas, ni enlaces con formato Markdown.',
 ].join('\n');
 
@@ -1457,11 +1460,11 @@ async function mensajeWhatsApp(numero, textoCrudo, adjunto) {
   const resuelta = sesionWhatsApp(numero);
   if (!resuelta) return { error: 'Número de WhatsApp inválido.', status: 422 };
   const { sesion: s } = resuelta;
-  // el saludo inicial se manda con dos botones para elegir el camino
+  // el saludo inicial se manda con tres botones para elegir el camino
   let saludo = resuelta.saludo;
   let saludoOpciones = null;
   if (saludo) {
-    const g = adaptarAWhatsApp(saludo + '\n[OPCIONES] Conversar | Reunión Teams');
+    const g = adaptarAWhatsApp(saludo + '\n[OPCIONES] Conversar | Reunión Teams | Hablar con un humano');
     saludo = g.texto;
     saludoOpciones = g.opciones;
   }
@@ -1483,6 +1486,19 @@ async function mensajeWhatsApp(numero, textoCrudo, adjunto) {
   const opciones = Array.isArray(s.ultimasOpciones) ? s.ultimasOpciones : [];
   const m = /^(\d{1,2})[.)]?$/.exec(texto);
   if (!adjunto && m && opciones[Number(m[1]) - 1]) entrada = opciones[Number(m[1]) - 1];
+
+  // el botón de atención humana entrega de una vez la línea del equipo: no
+  // pasa por el modelo para que el enlace salga siempre
+  if (/^hablar con un humano$/i.test(entrada.trim())) {
+    const respuesta =
+      'Claro que sí. Escríbele directamente a una persona del equipo por WhatsApp: ' +
+      'https://wa.me/573332782483 — te atiende en horario laboral.';
+    agregarMsg(s, { rol: 'usuario', texto: entrada }, 'visitante');
+    agregarMsg(s, { rol: 'ia', texto: respuesta }, 'aiagent');
+    s.ultimasOpciones = [];
+    guardarSesion(s, 'aiagent');
+    return { texto: respuesta, opciones: null, saludo, saludoOpciones };
+  }
 
   // el indicativo 57 ubica a la persona en Colombia para las reuniones
   const pais = soloDigitos(numero).startsWith('57') ? 'Colombia' : null;
