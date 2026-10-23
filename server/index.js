@@ -687,6 +687,13 @@ async function handleCrmApi(req, res, pathname, url) {
       crm.propagarEmpleados(creado.clienteId, body.numEmpleadosAprox, email);
       return H.sendJson(res, 201, { ok: true, contacto: creado });
     }
+    // la ficha del contacto refresca solo las conversaciones mientras el
+    // agente sigue escribiendo, sin volver a cargar toda la ficha
+    if (id && metodo === 'GET' && partes[4] === 'conversaciones') {
+      const contacto = crm.contactos.porId(id);
+      if (!contacto) return H.sendJson(res, 404, { ok: false, error: 'Contacto no encontrado.' });
+      return H.sendJson(res, 200, { ok: true, conversaciones: aiagent.conversacionesDeContacto(id) });
+    }
     const contacto = crm.contactos.porId(id);
     if (!contacto) return H.sendJson(res, 404, { ok: false, error: 'Contacto no encontrado.' });
     if (metodo === 'GET') {

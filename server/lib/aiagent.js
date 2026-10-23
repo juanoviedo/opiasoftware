@@ -231,15 +231,24 @@ function sesionWhatsApp(numero) {
         contactoId: contacto.id,
         clienteId: contacto.clienteId,
         canal: 'whatsapp',
+        whatsapp: true,
         telefono: telefonoE164(d),
       },
       'aiagent'
     );
     const saludo = saludoInicial(contacto);
     agregarMsg(s, { rol: 'ia', texto: saludo }, 'aiagent');
-    return { sesion: s, saludo };
+    return { sesion: s, saludo, contacto, primeraVezWhatsApp: true };
   }
-  return { sesion: s, saludo: null };
+  // una sesión vieja (por ejemplo, del chat web) no trae la marca: su primer
+  // mensaje por WhatsApp se avisa al equipo una sola vez
+  let primeraVezWhatsApp = false;
+  if (!s.whatsapp) {
+    primeraVezWhatsApp = true;
+    sesiones.actualizar(s.id, { whatsapp: true }, 'aiagent');
+    s.whatsapp = true;
+  }
+  return { sesion: s, saludo: null, contacto, primeraVezWhatsApp };
 }
 
 /** WhatsApp usa *negrita* de un asterisco. Las opciones de la última línea
@@ -1406,6 +1415,28 @@ async function mensaje(guidPropuesto, texto, pais) {
   }
 }
 
+/** Aviso al equipo cuando un número escribe por primera vez al agente. */
+function avisarNuevoWhatsApp(contacto, texto, adjunto) {
+  const nombreReal = [contacto.nombres, contacto.apellidos].filter(Boolean).join(' ').trim();
+  const nombre = nombreReal && nombreReal !== NOMBRE_SIN_REGISTRAR ? nombreReal : 'Número nuevo';
+  const empresa = crm.clientes.porId(contacto.clienteId);
+  const primer =
+    String(texto || '').trim() ||
+    (adjunto && adjunto.tipo === 'imagen' ? '[Envió una foto]' : '[Envió un archivo]');
+  const base = String(config.publicUrl || '').replace(/\/+$/, '');
+  crm
+    .notificarEquipo({
+      subject: `Nuevo WhatsApp: ${nombre} ${contacto.celular || ''}`.trim(),
+      text:
+        `Un número escribió por primera vez al WhatsApp del agente.\n\n` +
+        `Nombre: ${nombre}\nCelular: ${contacto.celular || '—'}\n` +
+        `Empresa: ${empresa ? empresa.nombre : '—'}\n` +
+        `Primer mensaje: ${primer.slice(0, 500)}\n\n` +
+        `Ver la conversación en el CRM: ${base}/crm?contacto=${encodeURIComponent(contacto.id)}\n`,
+    })
+    .catch((err) => console.error('[aiagent] aviso WhatsApp:', err.message));
+}
+
 /**
  * Punto de entrada de cada mensaje de WhatsApp. La identidad es el número
  * verificado por Meta: no hay enlace ni contraseña. `adjunto` lleva la foto ya
@@ -1439,6 +1470,8 @@ async function mensajeWhatsApp(numero, textoCrudo, adjunto) {
       texto: 'Hoy recibí muchos mensajes y necesito un descanso. Escríbeme mañana, por favor.',
     };
   }
+
+  if (resuelta.primeraVezWhatsApp) avisarNuevoWhatsApp(resuelta.contacto, texto, adjunto);
 
   // respuesta numérica a la última lista de opciones (solo si no es una foto)
   let entrada = texto || (adjunto ? '[La persona envió una foto]' : '');

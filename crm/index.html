@@ -1207,6 +1207,74 @@
       return String(t).split('\n').filter((l) => !/^\s*\[OPCIONES\]/i.test(l)).join('\n').trim();
     }
 
+    let convPollTimer = null;
+    let convFirma = '';
+
+    /** Pinta las conversaciones del contacto conservando las que están abiertas. */
+    function pintarConversaciones(convs, nombre, forzar) {
+      const firma = convs
+        .map((c) => `${c.guid}:${c.modifiedon || ''}:${(c.mensajes || []).length}`)
+        .join('|');
+      if (!forzar && firma === convFirma) return;
+      convFirma = firma;
+      const cuerpoConv = $('#conversaciones-cuerpo');
+      const previas = cuerpoConv.querySelectorAll('details.conv[data-guid]');
+      const abiertas = new Set(
+        Array.from(previas)
+          .filter((d) => d.open)
+          .map((d) => d.dataset.guid)
+      );
+      cuerpoConv.textContent = '';
+      $('#tarjeta-conversaciones').hidden = !convs.length;
+      convs.forEach((c, i) => {
+        const det = el('details');
+        det.className = 'conv';
+        det.dataset.guid = c.guid;
+        // al abrir otra ficha se despliega la más reciente; al refrescar se
+        // respeta lo que la persona dejó abierto o cerrado
+        det.open = forzar ? i === 0 : (previas.length ? abiertas.has(c.guid) : i === 0);
+        det.appendChild(el('summary', 'Conversación del ' + fechaBonita(c.modifiedon || c.createdon || '') + ' · ' + (c.mensajes || []).length + ' mensajes'));
+        const cuerpo = el('div');
+        cuerpo.className = 'conv-cuerpo';
+        for (const m of c.mensajes || []) {
+          const d = el('div', textoSinOpciones(m.texto));
+          d.className = 'conv-msg ' + (m.rol === 'usuario' ? 'usuario' : 'ia');
+          const rol = el('span', m.rol === 'usuario' ? nombre : 'Asistente');
+          rol.className = 'conv-rol';
+          d.prepend(rol);
+          cuerpo.appendChild(d);
+        }
+        const enlace = el('div');
+        enlace.className = 'conv-enlace';
+        const a = el('a', 'Abrir esta conversación en el chat del asistente');
+        a.href = '/aiagent/' + c.guid;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        enlace.appendChild(a);
+        cuerpo.appendChild(enlace);
+        det.appendChild(cuerpo);
+        cuerpoConv.appendChild(det);
+      });
+    }
+
+    /** Refresca la conversación cada 12 s mientras la ficha siga abierta. */
+    function vigilarConversaciones(id, nombre) {
+      clearTimeout(convPollTimer);
+      const paso = async () => {
+        if ($('#vista-app').hidden || estado.vista !== 'contacto' || !estado.contactoActual || estado.contactoActual.id !== id) return;
+        // con la pestaña en segundo plano no vale la pena gastar el limitador
+        const espera = document.hidden ? 60000 : 12000;
+        let r = null;
+        try {
+          r = await api('/api/crm/contactos/' + id + '/conversaciones');
+        } catch { /* sin red: se reintenta en el siguiente ciclo */ }
+        if ($('#vista-app').hidden || estado.vista !== 'contacto' || !estado.contactoActual || estado.contactoActual.id !== id) return;
+        if (r && r.ok) pintarConversaciones(r.conversaciones || [], nombre, false);
+        convPollTimer = setTimeout(paso, espera);
+      };
+      convPollTimer = setTimeout(paso, 12000);
+    }
+
     async function abrirContacto(id) {
       const r = await api('/api/crm/contactos/' + id);
       if (!r.ok) return alert(r.error || 'No se pudo abrir el contacto.');
@@ -1217,6 +1285,7 @@
       estado.regresoContacto = desdeCliente ? () => abrirCliente(estado.clienteActual.id) : () => irA('contactos');
       estado.contactoActual = contacto;
       estado.clienteActual = empresa || null;
+      convFirma = '';
 
       const ficha = $('#ficha-contacto');
       ficha.textContent = '';
@@ -1290,36 +1359,7 @@
       ficha.appendChild(datos);
 
       // conversaciones con el asistente de IA
-      const cuerpoConv = $('#conversaciones-cuerpo');
-      cuerpoConv.textContent = '';
-      const convs = conversaciones || [];
-      $('#tarjeta-conversaciones').hidden = !convs.length;
-      convs.forEach((c, i) => {
-        const det = el('details');
-        det.className = 'conv';
-        if (i === 0) det.open = true;
-        det.appendChild(el('summary', 'Conversación del ' + fechaBonita(c.modifiedon || c.createdon || '') + ' · ' + (c.mensajes || []).length + ' mensajes'));
-        const cuerpo = el('div');
-        cuerpo.className = 'conv-cuerpo';
-        for (const m of c.mensajes || []) {
-          const d = el('div', textoSinOpciones(m.texto));
-          d.className = 'conv-msg ' + (m.rol === 'usuario' ? 'usuario' : 'ia');
-          const rol = el('span', m.rol === 'usuario' ? nombre : 'Asistente');
-          rol.className = 'conv-rol';
-          d.prepend(rol);
-          cuerpo.appendChild(d);
-        }
-        const enlace = el('div');
-        enlace.className = 'conv-enlace';
-        const a = el('a', 'Abrir esta conversación en el chat del asistente');
-        a.href = '/aiagent/' + c.guid;
-        a.target = '_blank';
-        a.rel = 'noopener';
-        enlace.appendChild(a);
-        cuerpo.appendChild(enlace);
-        det.appendChild(cuerpo);
-        cuerpoConv.appendChild(det);
-      });
+      pintarConversaciones(conversaciones || [], nombre, true);
 
       // levantamientos hechos por el agente
       const cuerpoLev = $('#levantamiento-contacto-cuerpo');
@@ -1360,6 +1400,7 @@
       }
 
       irA('contacto');
+      vigilarConversaciones(contacto.id, nombre);
     }
 
     /* ---------------- contactos globales ---------------- */
@@ -1423,6 +1464,8 @@
     function detenerPoll() {
       clearTimeout(emPollTimer);
       emPollTimer = null;
+      clearTimeout(convPollTimer);
+      convPollTimer = null;
     }
 
     // El borrador sobrevive los cambios de pestaña (cada clic navega de verdad).
@@ -1975,6 +2018,9 @@
       if (ok) {
         estado.email = email;
         mostrarApp();
+        // enlace directo del aviso por correo: /crm?contacto=p000123
+        const contacto = params.get('contacto');
+        if (contacto) abrirContacto(contacto);
       } else {
         mostrarLogin();
       }
