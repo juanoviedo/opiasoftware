@@ -184,7 +184,15 @@ async function graph(metodo, ruta, cuerpo, headersExtra) {
     const detalle = await resp.text().catch(() => '');
     throw new Error(`graph ${resp.status}: ${detalle.slice(0, 200)}`);
   }
-  return resp.status === 204 ? null : resp.json();
+  // cancelar un evento responde 202 con cuerpo vacío: json() lanzaría
+  // "Unexpected end of JSON input" y la cancelación se reportaba como fallida
+  const texto = await resp.text();
+  if (!texto) return null;
+  try {
+    return JSON.parse(texto);
+  } catch {
+    return null;
+  }
 }
 
 /* -------------------------------------------------------------- disponibilidad */

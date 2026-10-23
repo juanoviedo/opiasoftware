@@ -242,8 +242,8 @@ function sesionWhatsApp(numero) {
   return { sesion: s, saludo: null };
 }
 
-/** WhatsApp usa *negrita* de un asterisco y no tiene botones: la línea de
- *  [OPCIONES] se convierte en una lista numerada que la persona responde. */
+/** WhatsApp usa *negrita* de un asterisco. Las opciones de la última línea
+ *  viajan aparte: el canal las muestra como botones o lista nativa. */
 function adaptarAWhatsApp(textoCrudo) {
   const lineas = String(textoCrudo || '').split('\n');
   let opciones = null;
@@ -253,14 +253,10 @@ function adaptarAWhatsApp(textoCrudo) {
     if (etiquetas.length >= 2) {
       lineas.pop();
       while (lineas.length && !lineas[lineas.length - 1].trim()) lineas.pop();
-      opciones = etiquetas.slice(0, 6);
+      opciones = etiquetas.slice(0, 10);
     }
   }
-  let texto = lineas.join('\n').trim().replace(/\*\*([^*\n]+)\*\*/g, '*$1*');
-  if (opciones) {
-    texto += '\n\n' + opciones.map((t, i) => `${i + 1}. ${t}`).join('\n');
-    texto += '\n\nResponde con el número de la opción.';
-  }
+  const texto = lineas.join('\n').trim().replace(/\*\*([^*\n]+)\*\*/g, '*$1*');
   return { texto, opciones };
 }
 
@@ -449,10 +445,11 @@ const SYSTEM_PROMPT = [
   '- Máximo 3 frases por mensaje.',
 ].join('\n');
 
-// WhatsApp no tiene pantalla ni botones: las opciones se numeran y la
-// invitación de Teams necesita un correo que aquí no tenemos.
+// WhatsApp usa botones/lista nativa para las [OPCIONES] y la invitación de
+// Teams necesita un correo que en este canal no viene dado.
 const PROMPT_WHATSAPP = [
-  'CANAL WHATSAPP. La persona te escribe por WhatsApp, no por la página web: no hay pantalla ni botones. Cuando cierres una pregunta de elección con la línea [OPCIONES] ..., el sistema la mostrará como una lista numerada y la persona responderá con el número de la opción.',
+  'CANAL WHATSAPP. La persona te escribe por WhatsApp. Cuando cierres una pregunta de elección con la línea [OPCIONES] ..., el sistema la mostrará como botones o una lista tocable; usa entre 2 y 4 etiquetas muy cortas (máximo 20 caracteres, por ejemplo «Software», «Una hora», «Sí, con gusto»). Si alguna etiqueta no cabe, el sistema la numera y la persona responde con el número.',
+  'Puedes ver las fotos que la persona envíe por WhatsApp: si manda una imagen sin texto, coméntala o úsala para responder su consulta. Las notas de voz llegan como «[Audio transcrito] ...»: respóndelas con naturalidad, sin mencionar que hubo una transcripción.',
   'Su identidad ya está verificada con su número de WhatsApp y ese número ya quedó guardado como su celular en el CRM: no se lo vuelvas a pedir, no se lo confirmes y no le pidas que lo escriba. En el PASO 3 pídele solo su nombre completo y su empresa.',
   'Para una reunión de Teams necesita recibir la invitación por correo: antes de agendar, pídele su correo electrónico y guárdalo con registrar_lead (campo email). Si no quiere darlo, no agendes la reunión y dile que el equipo le escribirá por este mismo WhatsApp.',
   'No menciones ni escribas el enlace wa.me ni el número 573332782483: la persona ya está hablando por WhatsApp.',
@@ -1079,10 +1076,17 @@ async function agendarReunionConCliente(s, args) {
   }
 }
 
+/** Graph responde 404 ErrorItemNotFound cuando el evento guardado ya no existe
+ *  (se canceló o se borró a mano en Outlook). */
+function esEventoInexistente(err) {
+  return /ErrorItemNotFound|\b404\b/i.test(String(err && err.message ? err.message : err));
+}
+
 /**
  * Cambia la hora de la reunión ya agendada en esta conversación (PATCH sobre el
  * mismo evento de Teams: el enlace se conserva y Microsoft reenvía la invitación
- * actualizada al cliente). Avisa al dueño por correo con el cambio.
+ * actualizada al cliente). Si el evento guardado ya no existe en el calendario,
+ * agenda una reunión nueva con el correo del cliente. Avisa al dueño por correo.
  */
 async function reagendarReunionConCliente(s, args) {
   if (s.estado !== 'lead' || !s.contactoId) {
@@ -1090,26 +1094,6 @@ async function reagendarReunionConCliente(s, args) {
   }
   if (!s.reunion || !s.reunion.joinUrl) {
     return 'No hay reunión agendada en esta conversación. Si la persona quiere una, ofrece horarios con ver_disponibilidad y agenda con agendar_reunion.';
-  }
-
-  // reuniones creadas antes de guardar eventoId: se busca el evento en el calendario
-  if (!s.reunion.eventoId) {
-    try {
-      const id = await teams.encontrarEvento(s.reunion.inicio);
-      if (id) {
-        s.reunion.eventoId = id;
-        guardarSesion(s, 'aiagent');
-      }
-    } catch (err) {
-      console.error('[teams] encontrar evento:', err.message);
-    }
-  }
-  if (!s.reunion.eventoId) {
-    await avisarCalendarioCaido(
-      s,
-      `la persona pidió reagendar a ${args.fecha || 'sin fecha'} ${args.hora || ''} y no se encontró en el calendario la reunión previa (${s.reunion.inicio})`
-    );
-    return 'No encuentro en el calendario la reunión agendada antes, así que no puedo moverla desde aquí. Dile que el equipo le confirmará el cambio por correo o WhatsApp.';
   }
 
   if (!(await teams.asegurarActivo())) {
@@ -1125,42 +1109,99 @@ async function reagendarReunionConCliente(s, args) {
   const duracion = Number(args.duracion_minutos);
   const viejo = s.reunion.inicio;
   const contacto = crm.contactos.porId(s.contactoId);
+  if (!contacto) return 'No encontré el contacto en el CRM.';
   const empresa = crm.clientes.porId(s.clienteId);
-  const nombreCompleto = contacto
-    ? `${contacto.nombres || ''} ${contacto.apellidos || ''}`.trim() || contacto.email
-    : 'cliente';
+  const nombreCompleto = `${contacto.nombres || ''} ${contacto.apellidos || ''}`.trim() || contacto.email;
+  const dur = Number.isFinite(duracion) && duracion > 0 ? duracion : undefined;
+
+  const mover = (eventoId) => teams.moverReunion(eventoId, { fecha: nh.fechaBog, hora: nh.horaNorm, duracion: dur });
 
   try {
-    const r = await teams.moverReunion(s.reunion.eventoId, {
-      fecha: nh.fechaBog,
-      hora: nh.horaNorm,
-      duracion: Number.isFinite(duracion) && duracion > 0 ? duracion : undefined,
-    });
+    let r = null;
+    let id = s.reunion.eventoId || '';
+    if (!id) {
+      try {
+        id = await teams.encontrarEvento(viejo);
+      } catch (err) {
+        console.error('[teams] encontrar evento:', err.message);
+      }
+    }
+    if (id) {
+      try {
+        r = await mover(id);
+      } catch (err) {
+        if (!esEventoInexistente(err)) throw err;
+        // el id quedó viejo: se intenta ubicar el evento por su fecha y hora
+        console.error('[teams] reagendar: el evento guardado ya no existe, se busca de nuevo');
+        try {
+          id = await teams.encontrarEvento(viejo);
+        } catch {
+          id = '';
+        }
+        if (id) {
+          try {
+            r = await mover(id);
+          } catch (err2) {
+            if (!esEventoInexistente(err2)) throw err2;
+            id = '';
+          }
+        }
+      }
+    }
+
+    // la reunión anterior desapareció del calendario (por ejemplo, se canceló y
+    // la sesión conservó el id viejo): se crea una nueva con el correo del cliente
+    let nueva = false;
+    if (!r) {
+      if (!contacto.email) {
+        return 'La reunión anterior ya no está en el calendario y falta el correo de la persona para enviarle una invitación nueva. Pídeselo y vuelve a intentar.';
+      }
+      r = await teams.agendarReunion({
+        fecha: nh.fechaBog,
+        hora: nh.horaNorm,
+        duracion: dur || 60,
+        titulo: `Reunión de Teams — ${nombreCompleto}`,
+        nombre: nombreCompleto,
+        email: contacto.email,
+        notas: `Cliente: ${nombreCompleto} · Celular: ${contacto.celular || '—'} · Empresa: ${empresa ? empresa.nombre : '—'}`,
+      });
+      nueva = true;
+    }
 
     crm.notas.agregar(
       {
         id: crm.siguienteId('n'),
         clienteId: s.clienteId,
-        contactoId: contacto ? contacto.id : '',
-        texto: `Reunión de Teams reagendada por el agente de IA: de ${viejo} a ${r.inicio} (${r.fin} fin).${
+        contactoId: contacto.id,
+        texto: `${nueva ? 'Reunión de Teams agendada de nuevo' : 'Reunión de Teams reagendada'} por el agente de IA: de ${viejo} a ${r.inicio} (${r.fin} fin).${
           nh.horaPersona ? ` Hora de la persona: ${nh.horaPersona}.` : ''
         } Enlace: ${r.joinUrl}`,
       },
       'aiagent'
     );
     await crm.notificarEquipo({
-      subject: `Reunión reagendada: ${nombreCompleto} — ${viejo} → ${r.inicio}`,
+      subject: `${nueva ? 'Reunión reagendada (nueva invitación)' : 'Reunión reagendada'}: ${nombreCompleto} — ${viejo} → ${r.inicio}`,
       text:
         `El agente de IA movió la reunión de Teams de ${viejo} a ${r.inicio}.\n\n` +
-        `Cliente: ${nombreCompleto}\nCorreo: ${contacto ? contacto.email : '—'}\nCelular: ${contacto ? contacto.celular || '—' : '—'}\n` +
+        (nueva
+          ? 'La reunión anterior ya no existía en el calendario, así que se creó una invitación nueva con su enlace de Teams.\n\n'
+          : '') +
+        `Cliente: ${nombreCompleto}\nCorreo: ${contacto.email || '—'}\nCelular: ${contacto.celular || '—'}\n` +
         `Empresa: ${empresa ? empresa.nombre : '—'}\nNueva fecha: ${r.inicio} (hora Colombia)${
           nh.horaPersona ? ` — ${nh.horaPersona} hora de la persona` : ''
         }\n\n` +
-        `Enlace Teams (el mismo de siempre): ${r.joinUrl}\n\nConversación: busca a ${nombreCompleto} en el CRM (${(config.publicUrl || '') + '/crm'}) y abre su ficha.`,
+        `Enlace Teams: ${r.joinUrl}\n\nConversación: busca a ${nombreCompleto} en el CRM (${(config.publicUrl || '') + '/crm'}) y abre su ficha.`,
     });
 
     s.reunion = { joinUrl: r.joinUrl, inicio: r.inicio, eventoId: r.eventoId };
     guardarSesion(s, 'aiagent');
+    if (nueva) {
+      return (
+        `La reunión anterior ya no estaba en el calendario, así que agendé una nueva para el ${r.inicio} (hora Colombia)${
+          nh.horaPersona ? ` — para la persona son las ${nh.horaPersona} de su hora local` : ''
+        } con un enlace de Teams nuevo: ${r.joinUrl}. Dile que recibirá la invitación en su correo y que este enlace reemplaza al anterior.`
+      );
+    }
     return (
       `Reunión movida al ${r.inicio} (hora Colombia)${nh.horaPersona ? ` — para la persona son las ${nh.horaPersona} de su hora local` : ''}. ` +
       `El enlace de Teams es el mismo: ${r.joinUrl}. Dile que recibirá la invitación actualizada en su correo.`
@@ -1254,16 +1295,39 @@ async function cancelarReunionConCliente(s, args) {
     );
   } catch (err) {
     console.error('[teams] cancelar:', err.message);
+    if (esEventoInexistente(err)) {
+      // el evento ya no está en el calendario: la cancelación está hecha
+      s.reunion = null;
+      guardarSesion(s, 'aiagent');
+      return (
+        'La reunión ya no estaba en el calendario (se había cancelado o borrado antes), así que no hay nada más que hacer. ' +
+        'Dile a la persona que su reunión quedó cancelada y que el equipo está atento para cuando quiera retomar el proyecto.'
+      );
+    }
     return 'No pude cancelar la reunión (' + err.message + '). Dile que el equipo le confirmará la cancelación por correo o WhatsApp.';
   }
 }
 
 /* ------------------------------------------------------------ conversación */
 
-async function responder(s, texto, pais, canal) {
+async function responder(s, texto, pais, canal, adjunto) {
   agregarMsg(s, { rol: 'usuario', texto }, 'visitante');
   for (let i = 0; i < MAX_ITER_HERRAMIENTAS; i += 1) {
-    const data = await llamarModelo(historialApi(s), pais, canal);
+    const historial = historialApi(s);
+    // la foto viaja en el turno del usuario; se reengancha en cada iteración
+    // para que el modelo la siga viendo después de una llamada a herramienta
+    if (adjunto && adjunto.tipo === 'imagen' && adjunto.base64) {
+      for (let j = historial.length - 1; j >= 0; j -= 1) {
+        if (historial[j].role === 'user') {
+          historial[j].content = [
+            { type: 'text', text: texto || 'La persona envió esta imagen.' },
+            { type: 'image_url', image_url: { url: `data:${adjunto.mime || 'image/jpeg'};base64,${adjunto.base64}` } },
+          ];
+          break;
+        }
+      }
+    }
+    const data = await llamarModelo(historial, pais, canal);
     const msg = data.choices && data.choices[0] && data.choices[0].message;
     if (!msg) throw new Error('respuesta vacía del modelo');
     if (Array.isArray(msg.tool_calls) && msg.tool_calls.length) {
@@ -1342,43 +1406,53 @@ async function mensaje(guidPropuesto, texto, pais) {
 
 /**
  * Punto de entrada de cada mensaje de WhatsApp. La identidad es el número
- * verificado por Meta: no hay enlace ni contraseña.
- * Devuelve { texto, opciones, saludo } o { error, status }.
+ * verificado por Meta: no hay enlace ni contraseña. `adjunto` lleva la foto ya
+ * descargada por el canal ({ tipo: 'imagen', mime, base64 }).
+ * Devuelve { texto, opciones, saludo, saludoOpciones } o { error, status }.
  */
-async function mensajeWhatsApp(numero, textoCrudo) {
+async function mensajeWhatsApp(numero, textoCrudo, adjunto) {
   if (!configurado()) return { error: 'El agente de IA no está configurado todavía.', status: 503 };
 
   const texto = H.clean(textoCrudo, 2000).trim();
-  if (!texto) return { error: 'Mensaje vacío.', status: 422 };
+  if (!texto && !adjunto) return { error: 'Mensaje vacío.', status: 422 };
 
   const resuelta = sesionWhatsApp(numero);
   if (!resuelta) return { error: 'Número de WhatsApp inválido.', status: 422 };
-  const { sesion: s, saludo } = resuelta;
+  const { sesion: s } = resuelta;
+  // el saludo inicial se manda con dos botones para elegir el camino
+  let saludo = resuelta.saludo;
+  let saludoOpciones = null;
+  if (saludo) {
+    const g = adaptarAWhatsApp(saludo + '\n[OPCIONES] Conversar | Reunión Teams');
+    saludo = g.texto;
+    saludoOpciones = g.opciones;
+  }
 
   if (!topeDiarioOk()) {
     return {
       saludo,
+      saludoOpciones,
       error: 'tope diario',
       status: 429,
       texto: 'Hoy recibí muchos mensajes y necesito un descanso. Escríbeme mañana, por favor.',
     };
   }
 
-  // respuesta numérica a la última lista de opciones
-  let entrada = texto;
+  // respuesta numérica a la última lista de opciones (solo si no es una foto)
+  let entrada = texto || (adjunto ? '[La persona envió una foto]' : '');
   const opciones = Array.isArray(s.ultimasOpciones) ? s.ultimasOpciones : [];
   const m = /^(\d{1,2})[.)]?$/.exec(texto);
-  if (m && opciones[Number(m[1]) - 1]) entrada = opciones[Number(m[1]) - 1];
+  if (!adjunto && m && opciones[Number(m[1]) - 1]) entrada = opciones[Number(m[1]) - 1];
 
   // el indicativo 57 ubica a la persona en Colombia para las reuniones
   const pais = soloDigitos(numero).startsWith('57') ? 'Colombia' : null;
 
   try {
-    const respuesta = await responder(s, entrada, pais, 'whatsapp');
+    const respuesta = await responder(s, entrada, pais, 'whatsapp', adjunto);
     const adaptado = adaptarAWhatsApp(respuesta);
     s.ultimasOpciones = adaptado.opciones || [];
     guardarSesion(s, 'aiagent');
-    return { texto: adaptado.texto, opciones: adaptado.opciones, saludo };
+    return { texto: adaptado.texto, opciones: adaptado.opciones, saludo, saludoOpciones };
   } catch (err) {
     // sin respuesta del modelo se quita el turno del usuario: evita duplicados al reintentar
     const suyos = mensajes.todas().filter((x) => x.guid === s.id);
