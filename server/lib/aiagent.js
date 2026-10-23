@@ -1417,20 +1417,25 @@ async function mensaje(guidPropuesto, texto, pais) {
 
 /** Aviso al equipo cuando un número escribe por primera vez al agente. */
 function avisarNuevoWhatsApp(contacto, texto, adjunto) {
+  // por WhatsApp solo se conoce el número: nombre y empresa aparecen únicamente
+  // si el celular ya correspondía a un contacto del CRM
   const nombreReal = [contacto.nombres, contacto.apellidos].filter(Boolean).join(' ').trim();
-  const nombre = nombreReal && nombreReal !== NOMBRE_SIN_REGISTRAR ? nombreReal : 'Número nuevo';
+  const nombre = nombreReal && nombreReal !== NOMBRE_SIN_REGISTRAR ? nombreReal : '';
   const empresa = crm.clientes.porId(contacto.clienteId);
+  const empresaReal = empresa && empresa.nombre !== EMPRESA_COMODIN ? empresa.nombre : '';
   const primer =
     String(texto || '').trim() ||
     (adjunto && adjunto.tipo === 'imagen' ? '[Envió una foto]' : '[Envió un archivo]');
+  const celular = contacto.celular || '—';
   const base = String(config.publicUrl || '').replace(/\/+$/, '');
   crm
     .notificarEquipo({
-      subject: `Nuevo WhatsApp: ${nombre} ${contacto.celular || ''}`.trim(),
+      subject: `Nuevo WhatsApp: ${celular}${nombre ? ' · ' + nombre : ''}`,
       text:
         `Un número escribió por primera vez al WhatsApp del agente.\n\n` +
-        `Nombre: ${nombre}\nCelular: ${contacto.celular || '—'}\n` +
-        `Empresa: ${empresa ? empresa.nombre : '—'}\n` +
+        `Celular: ${celular}\n` +
+        (nombre ? `Nombre: ${nombre}\n` : '') +
+        (empresaReal ? `Empresa: ${empresaReal}\n` : '') +
         `Primer mensaje: ${primer.slice(0, 500)}\n\n` +
         `Ver la conversación en el CRM: ${base}/crm?contacto=${encodeURIComponent(contacto.id)}\n`,
     })
