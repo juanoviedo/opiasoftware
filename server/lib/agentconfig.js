@@ -34,6 +34,12 @@ const FUNCIONES = [
     descripcion: 'Tres preguntas para dar dirección inicial a una estrategia de marketing.',
   },
   {
+    id: 'reunion',
+    nombre: 'Agendar reunión por Teams',
+    etiqueta: '📅 Agendar reunión Teams',
+    descripcion: 'Reunión virtual con el equipo para hablar de tu proyecto.',
+  },
+  {
     id: 'datos',
     nombre: 'Registrar mis datos',
     etiqueta: '📝 Registrar mis datos',
