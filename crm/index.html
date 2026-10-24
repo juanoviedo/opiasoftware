@@ -151,6 +151,15 @@
         padding: 18px 20px; margin-bottom: 18px;
       }
       .tarjeta h2 { margin: 0 0 4px; font-size: 19px; }
+      /* funciones del agente: una fila por función, legible también en móvil */
+      .fila-agente {
+        display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+        padding: 12px 0; border-bottom: 1px solid var(--line);
+      }
+      .fila-agente .texto-funcion { flex: 1 1 240px; }
+      .fila-agente .texto-funcion b { font-size: 14px; font-weight: 500; }
+      .fila-agente input[type="text"] { flex: 0 1 230px; min-width: 160px; }
+      .fila-agente .orden-botones { display: flex; gap: 4px; }
       .ficha { display: flex; flex-wrap: wrap; gap: 6px 22px; color: var(--muted); font-size: 13px; margin-top: 8px; }
       .ficha b { color: var(--text); font-weight: 500; }
       .estado {
@@ -340,6 +349,7 @@
           <a id="tab-contactos" href="/crm/contactos">Contactos</a>
           <a id="tab-em" href="/crm/emailmarketing">Email marketing</a>
           <a id="tab-acceso" href="/crm/acceso">Acceso</a>
+          <a id="tab-agentconfig" href="/crm/agentconfig">Agente IA</a>
         </nav>
         <div class="espacio"></div>
         <span class="quien" id="quien"></span>
@@ -573,6 +583,24 @@
               <button class="primario" id="btn-agregar-correo">Autorizar</button>
             </div>
             <div id="acceso-aviso" class="aviso" hidden></div>
+          </div>
+        </section>
+
+        <!-- funciones del agente de IA -->
+        <section id="panel-agentconfig" hidden>
+          <div class="tarjeta" style="max-width:860px">
+            <h2>Funciones del agente de IA</h2>
+            <p class="mini mut" style="margin-top:0">
+              El asistente ofrece estas funciones a quien le escribe por WhatsApp o por el chat web.
+              Apaga las que no quieras mostrar, cambia el nombre de cada botón (máximo 24 caracteres)
+              y usa las flechas para definir el orden en que aparecen.
+            </p>
+            <div id="lista-agentconfig"></div>
+            <div class="herramientas" style="margin-top:16px; margin-bottom:0">
+              <div style="flex:1"></div>
+              <button class="primario" id="btn-guardar-agentconfig">Guardar cambios</button>
+            </div>
+            <div id="agentconfig-aviso" class="aviso" hidden></div>
           </div>
         </section>
       </main>
@@ -817,6 +845,7 @@
       if (location.pathname === '/crm/contactos') return 'contactos';
       if (location.pathname === '/crm/emailmarketing') return 'emailmarketing';
       if (location.pathname === '/crm/acceso') return 'acceso';
+      if (location.pathname === '/crm/agentconfig') return 'agentconfig';
       return 'clientes';
     }
 
@@ -836,12 +865,14 @@
       $('#tab-contactos').classList.toggle('activo', vista === 'contactos' || vista === 'contacto');
       $('#tab-em').classList.toggle('activo', vista === 'emailmarketing');
       $('#tab-acceso').classList.toggle('activo', vista === 'acceso');
+      $('#tab-agentconfig').classList.toggle('activo', vista === 'agentconfig');
       $('#panel-clientes').hidden = vista !== 'clientes';
       $('#panel-cliente').hidden = vista !== 'cliente';
       $('#panel-contacto').hidden = vista !== 'contacto';
       $('#panel-contactos').hidden = vista !== 'contactos';
       $('#panel-emailmarketing').hidden = vista !== 'emailmarketing';
       $('#panel-acceso').hidden = vista !== 'acceso';
+      $('#panel-agentconfig').hidden = vista !== 'agentconfig';
       detenerPoll();
       if (vista === 'clientes') cargarClientes();
       if (vista === 'contactos') cargarContactosGlobales();
@@ -851,6 +882,7 @@
         cargarHistorial();
       }
       if (vista === 'acceso') cargarAcceso();
+      if (vista === 'agentconfig') cargarAgentconfig();
     }
 
     /* ---------------- acceso: correos autorizados ---------------- */
@@ -897,6 +929,102 @@
       if (!resp.ok) return avisoAcceso(resp.error || 'No se pudo quitar.', true);
       avisoAcceso('Correo quitado de la lista.', false);
       cargarAcceso();
+    }
+
+    /* ---------------- agente IA: funciones y menú ---------------- */
+    let funcionesAgente = [];
+
+    function avisoAgente(mensaje, esError) {
+      const aviso = $('#agentconfig-aviso');
+      aviso.textContent = mensaje;
+      aviso.className = 'aviso' + (esError ? ' error' : ' ok');
+      aviso.hidden = false;
+    }
+
+    async function cargarAgentconfig() {
+      const resp = await api('/api/crm/agentconfig');
+      if (!resp.ok) return avisoAgente(resp.error || 'No se pudo cargar la configuración.', true);
+      funcionesAgente = resp.funciones || [];
+      $('#agentconfig-aviso').hidden = true;
+      pintarAgentconfig();
+    }
+
+    function pintarAgentconfig() {
+      const caja = $('#lista-agentconfig');
+      caja.textContent = '';
+      funcionesAgente.forEach((f, i) => {
+        const fila = el('div');
+        fila.className = 'fila-agente';
+
+        const activa = el('input');
+        activa.type = 'checkbox';
+        activa.checked = f.activa;
+        activa.title = 'Mostrar esta función en el menú';
+        activa.setAttribute('aria-label', 'Mostrar ' + f.nombre);
+        activa.addEventListener('change', () => { f.activa = activa.checked; });
+        fila.appendChild(activa);
+
+        const texto = el('div');
+        texto.className = 'texto-funcion';
+        texto.appendChild(el('b', f.nombre));
+        const descripcion = el('div', f.descripcion || '');
+        descripcion.className = 'mini mut';
+        texto.appendChild(descripcion);
+        fila.appendChild(texto);
+
+        const nombreBoton = el('input');
+        nombreBoton.type = 'text';
+        nombreBoton.value = f.etiqueta;
+        nombreBoton.maxLength = 24;
+        nombreBoton.placeholder = 'Nombre del botón';
+        nombreBoton.setAttribute('aria-label', 'Nombre del botón de ' + f.nombre);
+        nombreBoton.addEventListener('input', () => { f.etiqueta = nombreBoton.value; });
+        fila.appendChild(nombreBoton);
+
+        const flechas = el('div');
+        flechas.className = 'orden-botones';
+        const subir = el('button', '↑');
+        subir.type = 'button';
+        subir.className = 'chico';
+        subir.title = 'Subir';
+        subir.disabled = i === 0;
+        subir.addEventListener('click', () => moverFuncion(i, -1));
+        const bajar = el('button', '↓');
+        bajar.type = 'button';
+        bajar.className = 'chico';
+        bajar.title = 'Bajar';
+        bajar.disabled = i === funcionesAgente.length - 1;
+        bajar.addEventListener('click', () => moverFuncion(i, 1));
+        flechas.appendChild(subir);
+        flechas.appendChild(bajar);
+        fila.appendChild(flechas);
+
+        caja.appendChild(fila);
+      });
+    }
+
+    function moverFuncion(i, delta) {
+      const j = i + delta;
+      if (j < 0 || j >= funcionesAgente.length) return;
+      [funcionesAgente[i], funcionesAgente[j]] = [funcionesAgente[j], funcionesAgente[i]];
+      pintarAgentconfig();
+    }
+
+    async function guardarAgentconfig() {
+      const funciones = funcionesAgente.map((f, i) => ({
+        id: f.id,
+        activa: f.activa,
+        etiqueta: String(f.etiqueta || '').trim(),
+        orden: i + 1,
+      }));
+      const resp = await api('/api/crm/agentconfig', {
+        method: 'PUT',
+        body: JSON.stringify({ funciones }),
+      });
+      if (!resp.ok) return avisoAgente(resp.error || 'No se pudo guardar.', true);
+      funcionesAgente = resp.funciones || funciones;
+      pintarAgentconfig();
+      avisoAgente('Cambios guardados. El agente ya usa este menú.', false);
     }
 
     /* ---------------- clientes ---------------- */
@@ -1201,10 +1329,15 @@
 
     /* ---------------- ficha del contacto ---------------- */
 
-    // el marcador [OPCIONES] de los botones es un comando de la interfaz del
-    // chat: en el CRM se muestra el mensaje sin esa línea
+    // los marcadores [OPCIONES] y [MENU] son comandos de la interfaz del chat:
+    // en el CRM se muestra el mensaje sin esas líneas
     function textoSinOpciones(t) {
-      return String(t).split('\n').filter((l) => !/^\s*\[OPCIONES\]/i.test(l)).join('\n').trim();
+      return String(t)
+        .split('\n')
+        .filter((l) => !/^\s*\[OPCIONES\]/i.test(l))
+        .join('\n')
+        .replace(/\[MENU\]/gi, '')
+        .trim();
     }
 
     let convPollTimer = null;
@@ -2053,6 +2186,7 @@
       location.href = '/crm';
     });
     $('#btn-agregar-correo').addEventListener('click', agregarCorreoAutorizado);
+    $('#btn-guardar-agentconfig').addEventListener('click', guardarAgentconfig);
     $('#nuevo-correo').addEventListener('keydown', (ev) => { if (ev.key === 'Enter') agregarCorreoAutorizado(); });
     $('#btn-volver').addEventListener('click', () => irA('clientes'));
     $('#btn-volver-contacto').addEventListener('click', () => {

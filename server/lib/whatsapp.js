@@ -281,7 +281,7 @@ async function atender(msg, phoneNumberId) {
   }
 
   const r = await aiagent.mensajeWhatsApp(de, texto, adjunto);
-  // primera vez: el saludo explica las dos formas de empezar y trae botones
+  // saludo con el menú de funciones configurado en el CRM
   if (r.saludo) await enviar(de, r.saludo, phoneNumberId, r.saludoOpciones);
   if (r.texto) {
     await enviar(de, r.texto, phoneNumberId, r.opciones);

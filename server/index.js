@@ -630,6 +630,18 @@ async function handleCrmApi(req, res, pathname, url) {
     return H.sendJson(res, 405, { ok: false, error: 'Método no permitido.' });
   }
 
+  if (partes[2] === 'agentconfig' && !partes[3]) {
+    if (metodo === 'GET') {
+      return H.sendJson(res, 200, { ok: true, funciones: aiagent.listarFuncionesAgente() });
+    }
+    if (metodo === 'PUT') {
+      const r = aiagent.guardarFuncionesAgente(body.funciones);
+      if (r.error) return H.sendJson(res, 422, { ok: false, error: r.error });
+      return H.sendJson(res, 200, { ok: true, funciones: r.funciones });
+    }
+    return H.sendJson(res, 405, { ok: false, error: 'Método no permitido.' });
+  }
+
   if (coleccion === 'clientes') {
     if (!id && metodo === 'GET') return H.sendJson(res, 200, { ok: true, ...listadoClientes(url) });
     // solo id y nombre: alimenta el autocompletar de empresa del formulario de
@@ -1131,7 +1143,7 @@ const server = http.createServer((req, res) => {
 
       // Cada pestaña del CRM vive en su propia URL: mismo HTML, la vista
       // inicial la decide location.pathname en el frontend.
-      const CRM_PESTANAS = new Set(['/crm/clientes', '/crm/contactos', '/crm/emailmarketing', '/crm/acceso']);
+      const CRM_PESTANAS = new Set(['/crm/clientes', '/crm/contactos', '/crm/emailmarketing', '/crm/acceso', '/crm/agentconfig']);
       if (CRM_PESTANAS.has(pathname) && (req.method === 'GET' || req.method === 'HEAD')) {
         const archivo = path.join(config.publicRoot, 'crm', 'index.html');
         if (sendFile(res, req, archivo, pathname)) return;

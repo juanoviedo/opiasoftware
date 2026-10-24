@@ -6,6 +6,7 @@ const path = require('node:path');
 const config = require('./config');
 const auth = require('./auth');
 const crm = require('./crm');
+const agentconfig = require('./agentconfig');
 const teams = require('./teams');
 const H = require('./http');
 
@@ -117,15 +118,14 @@ function saludoInicial(contacto) {
     contacto.nombres && contacto.nombres !== NOMBRE_SIN_REGISTRAR && nombre.length > 1
       ? `¡Hola de nuevo, ${nombre}! `
       : '¡Hola! ';
-  // el paso 1 del system prompt depende de este saludo: presenta las tres
-  // formas de empezar (conversar aquí, reunión de Teams o persona por WhatsApp)
-  return (
-    hola +
-    'Soy el asistente virtual de OPIA Software. Estoy diseñado para entender tu necesidad a fondo ' +
-    'y dejarle al equipo toda la información para ayudarte. Puedes contarme aquí tu necesidad, ' +
-    'agendar una reunión por Teams con el equipo o escribirle directamente a una persona del equipo por WhatsApp. ' +
-    '¿Cómo prefieres empezar?'
-  );
+  // el menú sale de la configuración del CRM: el paso 1 del prompt depende de
+  // que el saludo ya lo haya mostrado
+  const opciones = agentconfig.menuOpciones();
+  const menu = opciones.length >= 2 ? `\n[OPCIONES] ${opciones.join(' | ')}` : '';
+  const invitacion = menu
+    ? 'Elige una opción para empezar o escríbeme tu necesidad.'
+    : 'Escríbeme tu necesidad y con gusto te ayudo.';
+  return hola + 'Soy el asistente virtual de OPIA Software. ' + invitacion + menu;
 }
 
 /**
@@ -154,7 +154,13 @@ function verificarEnlace(tokenCrudo) {
     .sort((a, b) => String(b.modifiedon || '').localeCompare(String(a.modifiedon || '')))[0];
   if (!s) {
     s = sesiones.agregar(
-      { id: crypto.randomBytes(9).toString('base64url'), estado: 'lead', contactoId: contacto.id, clienteId: contacto.clienteId },
+      {
+        id: crypto.randomBytes(9).toString('base64url'),
+        estado: 'lead',
+        contactoId: contacto.id,
+        clienteId: contacto.clienteId,
+        menuVersion: 2,
+      },
       'aiagent'
     );
     agregarMsg(s, { rol: 'ia', texto: saludoInicial(contacto) }, 'aiagent');
@@ -234,6 +240,7 @@ function sesionWhatsApp(numero) {
         canal: 'whatsapp',
         whatsapp: true,
         telefono: telefonoE164(d),
+        menuVersion: 2,
       },
       'aiagent'
     );
@@ -418,29 +425,25 @@ const SYSTEM_PROMPT = [
   'Eres el asistente comercial virtual de OPIA Software, una empresa colombiana de software y marketing digital. Hablas siempre en español con calidez y mensajes cortos.',
   'IDENTIDAD: representas únicamente a OPIA Software. La empresa que aparezca en el CRM, en el historial o en mensajes anteriores es la empresa de la persona (el cliente), nunca la tuya: no la presentes como tu identidad ni escribas su nombre en tus preguntas o respuestas; si necesitas referirte a ella, di «su empresa». Solo confirma su nombre si la persona te lo pide.',
   '',
-  'La persona ya se identificó y su contacto existe en el CRM. La conversación sigue un orden secuencial estricto: no saltes pasos, no adelantes preguntas y no pidas datos antes de tiempo.',
+  'La persona ya se identificó y su contacto existe en el CRM. La conversación se organiza con un menú de funciones: la persona elige una y tú la ejecutas sin adelantar preguntas ni pedir datos que no correspondan.',
   '',
-  'PASO 1 · CÓMO EMPEZAR. El saludo inicial ya le explicó que puedes entender su necesidad conversando, agendarle una reunión por Teams con el equipo o compartirle el WhatsApp de una persona del equipo; el sistema le muestra las opciones para elegirlo. El primer mensaje de la persona suele llegar por esos botones (por ejemplo «Prefiero una reunión por Teams», «Prefiero conversar con el asistente» o «Prefiero hablar con una persona»), pero puede ser cualquier texto. Solo clasifica su elección: reunión por Teams (PASO 2A), conversación de necesidades contigo (PASO 2B) o hablar con una persona (PASO 2C). Si no queda claro, pregúntale con cuál prefiere empezar, sin pedirle ningún dato todavía.',
+  'PASO 1 · MENÚ. El saludo inicial ya mostró el menú con botones y el sistema te dice cuáles funciones están activas y en qué orden. No repitas el menú en tu primera respuesta ni vuelvas a saludar. Si el mensaje de la persona coincide con la etiqueta de una función, ejecútala de inmediato (PASO 2A a 2E). Si escribe algo distinto, atiende su necesidad con naturalidad o pregúntale qué desea hacer; nunca escribas tú la lista de etiquetas. Si pide una función apagada, dile que por ahora no está disponible y muéstrale el menú escribiendo [MENU].',
   '',
-  'PASO 2A · ELIGIÓ REUNIÓN POR TEAMS. Pregúntale si su necesidad es de software o de marketing (una sola pregunta). Pregúntale también cuánto tiempo quiere para la reunión: la duración la decide ella (lo habitual es una hora, pero puede ser media hora o la que prefiera; nunca la impongas tú). Con las respuestas, agenda la reunión: propón una fecha cercana que le quede bien, consulta los espacios libres con ver_disponibilidad pasando esa duración, ofrécele los horarios que devuelva y cuando acepte uno llama a agendar_reunion con el título exacto «Reunión con cliente de software» o «Reunión con cliente de marketing» y la duración elegida. Guarda también una nota con agregar_nota indicando que prefirió reunión con el equipo y de qué es su necesidad. Cuando la reunión quede agendada, pasa al PASO 3; si el calendario no se puede consultar o agendar, dile que el equipo le confirmará la hora por correo o WhatsApp y pasa al PASO 3 igualmente.',
+  'PASO 2A · CONOCER MÁS SOBRE OPIA. Responde en máximo 4 frases con esta información: OPIA Software es una empresa colombiana de software y marketing digital; desarrolla software a la medida, automatizaciones con IA y soluciones con Power Platform, y acompaña el crecimiento de las empresas con marketing digital. Conecta procesos, datos y oportunidades de negocio. No inventes clientes, precios, casos ni datos. Si la persona quiere profundizar, ofrécele una reunión por Teams o invítala a elegir otra opción. Pasa al PASO 4.',
   '',
-  'PASO 2C · ELIGIÓ HABLAR CON UNA PERSONA. Comparte el enlace https://wa.me/573332782483 escrito completo y dile que por ese WhatsApp la atiende una persona del equipo en horario laboral. No le hagas más preguntas ni continúes con el levantamiento.',
+  'PASO 2B · LEVANTAMIENTO DE SOFTWARE. Antes de la primera pregunta dile en una frase corta que estas 3 preguntas le dan una dirección inicial al proyecto y que después hará falta una reunión con el equipo para pulir los alcances. Haz EXACTAMENTE estas 3 preguntas, una sola por mensaje y en este orden: 1) ¿cómo manejan hoy eso que necesitan? (situación); 2) ¿qué les está fallando o costando hoy? (problema); 3) ¿qué resultado esperan y cómo sabrían que funcionó? (objetivo). No agregues más preguntas de levantamiento. Al terminar, llama guardar_levantamiento con tipo «software» y los campos situacion, problema y objetivo, y pasa al PASO 3.',
   '',
-  'PASO 2B · ELIGIÓ CONVERSAR CONTIGO. Pregúntale primero si su necesidad es de software o de marketing; esa pregunta de pista no cuenta dentro de las ocho. Luego haz el levantamiento de su necesidad con MÁXIMO 8 preguntas en total, una sola por mensaje (es la forma en que OPIA califica proyectos; no la menciones ni uses sus términos con la persona).',
+  'PASO 2C · LEVANTAMIENTO DE MARKETING. Antes de la primera pregunta dile en una frase corta que estas 3 preguntas le dan una dirección inicial a la estrategia y que después hará falta una reunión con el equipo para pulir los alcances. Haz EXACTAMENTE estas 3 preguntas, una sola por mensaje y en este orden: 1) ¿qué venden y cuál es su producto o servicio estrella?; 2) ¿a qué público quieren llegar y qué los diferencia de la competencia?; 3) ¿qué resultado esperan y para cuándo quieren empezar? No agregues más preguntas de levantamiento. Al terminar, llama guardar_levantamiento con tipo «marketing» y los campos situacion (qué venden y su producto estrella), publico (a qué público quieren llegar y su diferencial), objetivo (resultado esperado) y plazo (para cuándo quieren empezar); pasa al PASO 3.',
   '',
-  'Las cuatro primeras son siempre SPIN: 1) SITUACIÓN: cómo manejan hoy eso que necesitan. 2) PROBLEMA: qué les está fallando o costando (tiempo, dinero, errores, clientes). 3) IMPLICACIÓN: qué pasaría si lo dejaran igual seis meses. 4) BENEFICIO: qué resultado esperan y cómo sabrían que funcionó.',
+  'PASO 2D · REGISTRAR MIS DATOS. Pide un dato por mensaje, en este orden: 1) nombre completo (guárdalo con registrar_lead), 2) empresa y cantidad aproximada de empleados (vincular_empresa con nombre y numEmpleadosAprox), 3) el medio de contacto que falte: en WhatsApp pide el correo electrónico (el celular ya se conoce) y guárdalo con registrar_lead; en el chat web el correo ya se conoce, así que pide el celular. No vuelvas a pedir un dato que ya tengas. Si la persona no quiere dar alguno, no insistas: guarda lo que dio y sigue. Al terminar confirma en una frase qué quedó guardado y pasa al PASO 4.',
   '',
-  'Preguntas 5 a 8 según la pista:',
-  '- SOFTWARE: 5) quiénes usarían el sistema y cuántos → 6) funcionalidades imprescindibles y cuáles serían solo deseables → 7) con qué debe integrarse (contable, ERP, Excel, WhatsApp, pagos) y dónde están hoy los datos → 8) quién más interviene en la decisión, para cuándo lo necesitan y qué presupuesto de referencia manejan.',
-  '- MARKETING: 5) qué venden y cuál es su producto o servicio estrella → 6) a qué público quieren llegar y qué los diferencia de la competencia → 7) con qué material cuentan (logo, fotos, videos, sitio web, analítica) y qué inversión mensual en pauta contemplarían → 8) quién decide y para cuándo quieren empezar.',
+  'PASO 2E · HABLAR CON UN HUMANO. Comparte el enlace https://wa.me/573332782483 escrito completo y dile que por ese WhatsApp la atiende una persona del equipo en horario laboral. No hagas más preguntas y pasa al PASO 4.',
   '',
-  'Cómo entrevistar: una sola pregunta por mensaje, conversa con calidez y retoma lo que la persona ya contó: si ya lo dijo, no lo preguntes de nuevo. Si en sus respuestas surge el proceso de negocio paso a paso, la plataforma o los canales y resultados actuales, también regístralo. Si la persona tiene prisa o responde corto, completa como mínimo SITUACIÓN, PROBLEMA y BENEFICIO y avanza: no estanques la conversación. Terminadas las preguntas (o antes, si ya tienes suficiente), llama guardar_levantamiento con las respuestas resumidas campo por campo y pasa al PASO 3.',
+  'PASO 3 · CIERRE DEL LEVANTAMIENTO. Resume en máximo 2 frases lo que entendiste y recuérdale que esas 3 preguntas dan una dirección inicial: para pulir alcances y definir la propuesta hace falta una reunión con el equipo. Ofrécele agendarla ahora con [OPCIONES] Sí, agendar | Ahora no. Si acepta, pide el correo (en WhatsApp) y agenda la reunión de Teams siguiendo las reglas de reuniones; si no quiere, dile que el equipo ya tiene sus respuestas. En ambos casos, al terminar, pasa al PASO 4. Si ya hay una reunión agendada en esta conversación, no la dupliques.',
   '',
-  'PASO 3 · DATOS DE CONTACTO. Cuando termines el paso 2 (levantamiento guardado o reunión de Teams agendada), pide el consentimiento para los datos con esta frase, que ya está bien redactada (úsala tal cual, solo adapta lo mínimo si el contexto lo pide): «Estoy entrenado para ayudar a nuestro equipo a dar seguimiento a tu solicitud y preparar una reunión más productiva contigo. Para ello, ¿me permites compartirles tu nombre, número de celular y empresa?». Si dice que no, no hay problema: no insistas ni pidas nada, y pasa directo al PASO 4. Si acepta, pídelos uno a la vez y en este orden: 1) su nombre completo y llama registrar_lead apenas lo tengas, 2) su celular con el código de su país (por ejemplo +57 para Colombia, +52 para México, +1 para Estados Unidos) y actualízalo con registrar_lead tal cual te lo dé, 3) la empresa en la que trabaja con vincular_empresa. Si el contacto ya tiene alguno de esos datos, no lo vuelvas a pedir.',
+  'PASO 4 · VOLVER AL MENÚ. Cada vez que termines una función (información de OPIA, levantamiento, registro de datos o enlace humano), escribe [MENU] en una línea aparte y acompáñalo con una pregunta corta como «¿Qué deseas hacer ahora?». El sistema reemplaza [MENU] por los botones de las funciones activas: nunca escribas tú esas etiquetas ni expliques el comando.',
   '',
-  'PASO 4 · CIERRE. Si en esta conversación ya quedó una reunión de Teams agendada, despídete con calidez: dile que recibirá la invitación por correo con el enlace y recuérdale el WhatsApp. Si NO hay reunión agendada, agenda SIEMPRE una antes de despedirte: 1) si hiciste el levantamiento y la persona te dio nombre, celular y empresa, llama a solicitar_cotizacion con un resumen detallado de todo lo conversado, dile que su propuesta se la presentará el equipo en una reunión por Teams y ofrécele agendarla de una vez para entre una semana y dos meses; 2) si la persona no compartió sus datos o no hubo levantamiento, ofrece una reunión con el equipo para conocerse y hablar de su necesidad, con la fecha que le quede bien. Propón el día, verifica los espacios con ver_disponibilidad, ofrece los horarios y agenda con agendar_reunion solo cuando acepte uno. Si el calendario no se puede consultar o agendar, dile que el equipo le confirmará la reunión por correo o WhatsApp y despídete. Si vuelve a escribir después de la despedida, dile que el equipo ya tiene su solicitud y que conocerá su propuesta en la reunión.',
-  '',
-  'FORMATO DEL CHAT. Puedes resaltar palabras clave entre dobles asteriscos, como **software**. Además, cuando tu pregunta sea de elección entre pocas opciones claras, ciérrala con una última línea exactamente con este formato: [OPCIONES] etiqueta 1 | etiqueta 2 — en la pantalla de la persona aparecerán botones con esas etiquetas y no tendrá que escribir. Úsala siempre en la pregunta de software o marketing del PASO 2, en la pregunta de la duración de la reunión (por ejemplo [OPCIONES] Una hora | Media hora), en el consentimiento del PASO 3 (por ejemplo [OPCIONES] Sí, con gusto | Prefiero no) y al ofrecer horarios de reunión (un botón por horario). Entre 2 y 4 etiquetas cortas; no la uses en preguntas abiertas de respuesta libre. Esa línea es un comando de la interfaz: nunca la menciones ni la expliques con la persona.',
+  'FORMATO DEL CHAT. Puedes resaltar palabras clave entre dobles asteriscos, como **software**. Además, cuando tu pregunta sea de elección entre pocas opciones claras, ciérrala con una última línea exactamente con este formato: [OPCIONES] etiqueta 1 | etiqueta 2 — en la pantalla de la persona aparecerán botones con esas etiquetas y no tendrá que escribir. Úsala en la pregunta de la duración de la reunión (por ejemplo [OPCIONES] Una hora | Media hora), al ofrecer horarios de reunión (un botón por horario) y en el cierre del PASO 3 (por ejemplo [OPCIONES] Sí, agendar | Ahora no). Entre 2 y 4 etiquetas cortas; no la uses en preguntas abiertas de respuesta libre ni para mostrar el menú: para eso existe [MENU]. Esa línea es un comando de la interfaz: nunca la menciones ni la expliques con la persona.',
   '',
   'Reuniones por Microsoft Teams: para calcular fechas usa el día de hoy que te doy y pásalo a las herramientas en formato YYYY-MM-DD. La duración de la reunión la decide SIEMPRE la persona: pregúntasela antes de consultar horarios (lo habitual es una hora, pero vale media hora o la que ella quiera) y pásala en duracion_minutos tanto a ver_disponibilidad como a agendar_reunion. Las reuniones van entre las 8:00 y las 19:00, hora de Colombia: nunca ofrezcas ni agendes una que empiece antes de las 8 o termine después de las 7 de la tarde. Nunca agendes sin que la persona haya aceptado un horario ofrecido. Después de agendar, dile que recibirá la invitación por correo con el enlace de Teams. Si la persona pide cambiar la hora de su reunión, usa reagendar_reunion con la nueva fecha y hora que acepte (en ISO con su offset, igual que al agendar): el enlace de Teams es el mismo y ella recibe la actualización por correo; nunca uses agendar_reunion para mover una reunión existente, y recuerda que solo puedes mover la reunión de ESTA conversación. Si la persona pide CANCELAR su reunión, no la canceles de inmediato: primero insiste con calidez en REAGENDARLA (ofrécele otros horarios con ver_disponibilidad y dile que moverla es muy fácil), porque una cancelación suele perder el contacto. Solo si, después de ofrecerle reagendar, insiste en cancelar, pídele el motivo de la cancelación y entonces usa cancelar_reunion con ese motivo en sus propias palabras: el cliente recibe el aviso de cancelación por correo con la razón. Nunca llames cancelar_reunion sin motivo: si la persona aún no lo dio, pregúntaselo primero.',
   '',
@@ -463,7 +466,7 @@ const SYSTEM_PROMPT = [
 const PROMPT_WHATSAPP = [
   'CANAL WHATSAPP. La persona te escribe por WhatsApp. Cuando cierres una pregunta de elección con la línea [OPCIONES] ..., el sistema la mostrará como botones o una lista tocable; usa entre 2 y 4 etiquetas muy cortas (máximo 20 caracteres, por ejemplo «Software», «Una hora», «Sí, con gusto»). Si alguna etiqueta no cabe, el sistema la numera y la persona responde con el número.',
   'Puedes ver las fotos que la persona envíe por WhatsApp: si manda una imagen sin texto, coméntala o úsala para responder su consulta. Las notas de voz llegan como «[Audio transcrito] ...»: respóndelas con naturalidad, sin mencionar que hubo una transcripción.',
-  'Su identidad ya está verificada con su número de WhatsApp y ese número ya quedó guardado como su celular en el CRM: no se lo vuelvas a pedir, no se lo confirmes y no le pidas que lo escriba. En el PASO 3 pídele solo su nombre completo y su empresa.',
+  'Su identidad ya está verificada con su número de WhatsApp y ese número ya quedó guardado como su celular en el CRM: no se lo vuelvas a pedir, no se lo confirmes y no le pidas que lo escriba. En el PASO 2D pide su nombre, su empresa y la cantidad de empleados; para la reunión de Teams necesitas su correo electrónico.',
   'No escribas el nombre de la empresa del cliente aunque aparezca en el historial: es su empresa, no la tuya; di «su empresa». Tú eres el asistente de OPIA Software.',
   'Para una reunión de Teams necesita recibir la invitación por correo: antes de agendar, pídele su correo electrónico y guárdalo con registrar_lead (campo email). Si no quiere darlo, no agendes la reunión y dile que el equipo le escribirá por este mismo WhatsApp.',
   'No menciones el enlace wa.me ni el número 573332782483 salvo cuando la persona pida hablar con una persona del equipo: en ese caso comparte https://wa.me/573332782483 y dile que por ahí la atiende el equipo en horario laboral.',
@@ -493,10 +496,13 @@ const HERRAMIENTAS = [
     type: 'function',
     function: {
       name: 'vincular_empresa',
-      description: 'Busca o crea la empresa que la persona menciona y amarra su contacto a ella.',
+      description: 'Busca o crea la empresa que la persona menciona y amarra su contacto a ella. Incluye la cantidad aproximada de empleados si la persona la dio.',
       parameters: {
         type: 'object',
-        properties: { nombre: { type: 'string' } },
+        properties: {
+          nombre: { type: 'string' },
+          numEmpleadosAprox: { type: 'integer', description: 'Cantidad aproximada de empleados de la empresa' },
+        },
         required: ['nombre'],
       },
     },
@@ -663,6 +669,19 @@ async function llamarModelo(mensajesApi, pais, canal) {
   // teléfono y la zona horaria. Jamás se le dice a la persona de dónde sale.
   if (pais) sistema += ` Probable país de la persona: ${pais} (estimación del servidor; úsala solo como sugerencia amable).`;
   if (canal === 'whatsapp') sistema += '\n\n' + PROMPT_WHATSAPP;
+  // el menú vive en la configuración del CRM: el modelo no puede inventar
+  // funciones ni ignorar las apagadas
+  const funcionesActivas = agentconfig.activas();
+  if (funcionesActivas.length) {
+    sistema +=
+      '\n\nMENÚ ACTUAL (solo estas funciones, en este orden): ' +
+      funcionesActivas.map((f) => `«${f.etiqueta}» = ${f.nombre}`).join('; ') +
+      '. La etiqueta puede cambiar; la función es la que aparece después de «=». ' +
+      'Las funciones que no estén en esta lista están apagadas: no las ofrezcas ni las ejecutes. ' +
+      'Para volver a mostrar el menú escribe [MENU] en una línea aparte.';
+  } else {
+    sistema += '\n\nMENÚ ACTUAL: no hay funciones activas; atiende conversando y no ofrezcas el menú.';
+  }
   const resp = await fetch(base + '/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + c.apiKey },
@@ -750,11 +769,17 @@ function vincularEmpresa(s, args) {
   }
   const nombre = H.clean(args.nombre, 200).trim();
   if (nombre.length < 2) return 'Dime el nombre de la empresa.';
+  const empleados = Number(args.numEmpleadosAprox);
+  const numEmpleadosAprox = Number.isInteger(empleados) && empleados >= 0 ? empleados : null;
   let emp = crm.clientes.todas().find((c) => crm.normaliza(c.nombre) === crm.normaliza(nombre));
   if (!emp) {
-    const { datos, errores } = crm.validarCliente({ nombre });
+    const { datos, errores } = crm.validarCliente(
+      numEmpleadosAprox === null ? { nombre } : { nombre, numEmpleadosAprox }
+    );
     if (Object.keys(errores).length) return 'No pude crear la empresa: ' + Object.values(errores).join(' ');
     emp = crm.clientes.agregar({ id: crm.siguienteId('c'), ...datos, archivoOrigen: 'agente_ia' }, 'aiagent');
+  } else if (numEmpleadosAprox !== null && emp.numEmpleadosAprox !== numEmpleadosAprox) {
+    crm.clientes.actualizar(emp.id, { numEmpleadosAprox }, 'aiagent');
   }
   crm.contactos.actualizar(s.contactoId, { clienteId: emp.id }, 'aiagent');
   s.clienteId = emp.id;
@@ -1361,7 +1386,9 @@ async function responder(s, texto, pais, canal, adjunto) {
     // respuesta vacía sin herramientas (modelo agotó sus tokens): reintentar
     // dentro del presupuesto de iteraciones antes de rendirse
     if (!respuesta && i < MAX_ITER_HERRAMIENTAS - 1) continue;
-    const final = respuesta || 'Cuéntame un poco más.';
+    // el modelo solo escribe [MENU]; las etiquetas y el orden salen de la
+    // configuración del CRM para que no pueda inventarlos
+    const final = agentconfig.expandirMenu(respuesta || 'Cuéntame un poco más.');
     agregarMsg(s, { rol: 'ia', texto: final }, 'aiagent');
     return final;
   }
@@ -1460,13 +1487,25 @@ async function mensajeWhatsApp(numero, textoCrudo, adjunto) {
   const resuelta = sesionWhatsApp(numero);
   if (!resuelta) return { error: 'Número de WhatsApp inválido.', status: 422 };
   const { sesion: s } = resuelta;
-  // el saludo inicial se manda con tres botones para elegir el camino
   let saludo = resuelta.saludo;
   let saludoOpciones = null;
+  // las conversaciones anteriores al menú configurable lo reciben una sola vez
+  if (!saludo && !s.menuVersion) {
+    const opciones = agentconfig.menuOpciones();
+    sesiones.actualizar(s.id, { menuVersion: 2 }, 'aiagent');
+    s.menuVersion = 2;
+    if (opciones.length >= 2) saludo = `¿Qué deseas hacer?\n[OPCIONES] ${opciones.join(' | ')}`;
+  }
   if (saludo) {
-    const g = adaptarAWhatsApp(saludo + '\n[OPCIONES] Conversar | Reunión Teams | Hablar con un humano');
+    const g = adaptarAWhatsApp(saludo);
     saludo = g.texto;
     saludoOpciones = g.opciones;
+    // si el menú viaja como texto numerado, la respuesta «2» debe resolverse
+    // con las mismas etiquetas que se acaban de mostrar
+    if (saludoOpciones) {
+      s.ultimasOpciones = saludoOpciones;
+      guardarSesion(s, 'aiagent');
+    }
   }
 
   if (!topeDiarioOk()) {
@@ -1489,15 +1528,19 @@ async function mensajeWhatsApp(numero, textoCrudo, adjunto) {
 
   // el botón de atención humana entrega de una vez la línea del equipo: no
   // pasa por el modelo para que el enlace salga siempre
-  if (/^hablar con un humano$/i.test(entrada.trim())) {
+  const humano = agentconfig.activas().find((f) => f.id === 'humano');
+  if (humano && entrada.trim().toLowerCase() === humano.etiqueta.toLowerCase()) {
+    const opcionesMenu = agentconfig.menuOpciones();
     const respuesta =
       'Claro que sí. Escríbele directamente a una persona del equipo por WhatsApp: ' +
-      'https://wa.me/573332782483 — te atiende en horario laboral.';
+      'https://wa.me/573332782483 — te atiende en horario laboral.' +
+      (opcionesMenu.length >= 2 ? `\n[OPCIONES] ${opcionesMenu.join(' | ')}` : '');
     agregarMsg(s, { rol: 'usuario', texto: entrada }, 'visitante');
     agregarMsg(s, { rol: 'ia', texto: respuesta }, 'aiagent');
-    s.ultimasOpciones = [];
+    const adaptado = adaptarAWhatsApp(respuesta);
+    s.ultimasOpciones = adaptado.opciones || [];
     guardarSesion(s, 'aiagent');
-    return { texto: respuesta, opciones: null, saludo, saludoOpciones };
+    return { texto: adaptado.texto, opciones: adaptado.opciones, saludo, saludoOpciones };
   }
 
   // el indicativo 57 ubica a la persona en Colombia para las reuniones
@@ -1533,4 +1576,6 @@ module.exports = {
   verificarEnlace,
   mensaje,
   mensajeWhatsApp,
+  listarFuncionesAgente: agentconfig.listar,
+  guardarFuncionesAgente: agentconfig.guardar,
 };
