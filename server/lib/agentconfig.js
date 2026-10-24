@@ -18,31 +18,31 @@ const FUNCIONES = [
   {
     id: 'conocer',
     nombre: 'Conocer más sobre OPIA',
-    etiqueta: 'Conocer OPIA',
+    etiqueta: '🏢 Conocer OPIA',
     descripcion: 'Presenta a OPIA Software y lo que hace.',
   },
   {
     id: 'software',
     nombre: 'Levantamiento de necesidades de Software',
-    etiqueta: 'Necesito software',
+    etiqueta: '💻 Necesito software',
     descripcion: 'Tres preguntas para dar dirección inicial a un proyecto de software.',
   },
   {
     id: 'marketing',
     nombre: 'Levantamiento de necesidades de Marketing',
-    etiqueta: 'Necesito marketing',
+    etiqueta: '📣 Necesito marketing',
     descripcion: 'Tres preguntas para dar dirección inicial a una estrategia de marketing.',
   },
   {
     id: 'datos',
     nombre: 'Registrar mis datos',
-    etiqueta: 'Registrar mis datos',
+    etiqueta: '📝 Registrar mis datos',
     descripcion: 'Nombre, empresa, correo o celular y cantidad de empleados.',
   },
   {
     id: 'humano',
     nombre: 'Hablar con un humano por WhatsApp',
-    etiqueta: 'Hablar con un humano',
+    etiqueta: '💬 Hablar con un humano',
     descripcion: 'Comparte el WhatsApp del equipo para atención humana.',
   },
 ];
