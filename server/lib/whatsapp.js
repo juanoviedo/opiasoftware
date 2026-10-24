@@ -307,19 +307,37 @@ function trozos(textoCrudo) {
 
 /**
  * WhatsApp acepta hasta 3 botones de 20 caracteres o una lista de hasta 10
- * filas de 24. Si las etiquetas no caben, se mandan numeradas como texto.
+ * filas (título ≤24, descripción ≤72). Con especificación siempre va lista:
+ * los botones no la muestran. Si no cabe, se mandan numeradas como texto.
  */
+function normalizarOpciones(opciones) {
+  return (opciones || [])
+    .map((o) => {
+      const objeto = o && typeof o === 'object';
+      return {
+        titulo: String((objeto ? o.titulo : o) || '').replace(/\s+/g, ' ').trim(),
+        descripcion: objeto
+          ? String(o.descripcion || '').replace(/\s+/g, ' ').trim().slice(0, 72)
+          : '',
+      };
+    })
+    .filter((o) => o.titulo);
+}
+
 function interactivoValido(texto, opciones) {
-  const etiquetas = (opciones || []).map((t) => String(t || '').replace(/\s+/g, ' ').trim()).filter(Boolean);
+  const filas = normalizarOpciones(opciones);
   const cuerpo = String(texto || '').trim();
   if (!cuerpo || cuerpo.length > 1024) return null;
-  if (etiquetas.length < 2 || etiquetas.length > 10) return null;
-  if (etiquetas.some((t) => t.length > 24)) return null;
-  if (etiquetas.length <= 3 && etiquetas.every((t) => t.length <= 20)) {
+  if (filas.length < 2 || filas.length > 10) return null;
+  if (filas.some((f) => f.titulo.length > 24)) return null;
+  const conDetalle = filas.some((f) => f.descripcion);
+  if (!conDetalle && filas.length <= 3 && filas.every((f) => f.titulo.length <= 20)) {
     return {
       type: 'button',
       body: { text: cuerpo },
-      action: { buttons: etiquetas.map((t, i) => ({ type: 'reply', reply: { id: 'op' + (i + 1), title: t } })) },
+      action: {
+        buttons: filas.map((f, i) => ({ type: 'reply', reply: { id: 'op' + (i + 1), title: f.titulo } })),
+      },
     };
   }
   return {
@@ -327,13 +345,22 @@ function interactivoValido(texto, opciones) {
     body: { text: cuerpo },
     action: {
       button: 'Ver opciones',
-      sections: [{ title: 'Opciones', rows: etiquetas.map((t, i) => ({ id: 'op' + (i + 1), title: t })) }],
+      sections: [
+        {
+          title: 'Opciones',
+          rows: filas.map((f, i) => {
+            const fila = { id: 'op' + (i + 1), title: f.titulo };
+            if (f.descripcion) fila.description = f.descripcion;
+            return fila;
+          }),
+        },
+      ],
     },
   };
 }
 
 function conNumeros(texto, opciones) {
-  const etiquetas = (opciones || []).map((t) => String(t || '').trim()).filter(Boolean);
+  const etiquetas = normalizarOpciones(opciones).map((o) => o.titulo);
   if (!etiquetas.length) return String(texto || '');
   return (
     String(texto || '').trim() +

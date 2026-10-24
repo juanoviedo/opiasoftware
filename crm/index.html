@@ -153,12 +153,18 @@
       .tarjeta h2 { margin: 0 0 4px; font-size: 19px; }
       /* funciones del agente: una fila por función, legible también en móvil */
       .fila-agente {
-        display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+        display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap;
         padding: 12px 0; border-bottom: 1px solid var(--line);
       }
-      .fila-agente .texto-funcion { flex: 1 1 240px; }
+      .fila-agente input[type="checkbox"] { margin-top: 3px; }
+      .fila-agente .texto-funcion { flex: 1 1 220px; }
       .fila-agente .texto-funcion b { font-size: 14px; font-weight: 500; }
-      .fila-agente input[type="text"] { flex: 0 1 230px; min-width: 160px; }
+      .fila-agente .campos-agente { flex: 1 1 300px; display: flex; flex-direction: column; gap: 6px; }
+      .fila-agente .campos-agente label {
+        display: flex; flex-direction: column; gap: 3px;
+        font-size: 11.5px; color: var(--muted);
+      }
+      .fila-agente .campos-agente input { width: 100%; }
       .fila-agente .orden-botones { display: flex; gap: 4px; }
       .ficha { display: flex; flex-wrap: wrap; gap: 6px 22px; color: var(--muted); font-size: 13px; margin-top: 8px; }
       .ficha b { color: var(--text); font-weight: 500; }
@@ -592,7 +598,8 @@
             <h2>Funciones del agente de IA</h2>
             <p class="mini mut" style="margin-top:0">
               El asistente ofrece estas funciones a quien le escribe por WhatsApp o por el chat web.
-              Apaga las que no quieras mostrar, cambia el nombre de cada botón (máximo 24 caracteres)
+              Apaga las que no quieras mostrar, cambia el nombre de cada botón (máximo 24 caracteres),
+              su especificación (máximo 72, es el texto que se ve debajo del nombre en la lista de WhatsApp)
               y usa las flechas para definir el orden en que aparecen.
             </p>
             <div id="lista-agentconfig"></div>
@@ -972,6 +979,11 @@
         texto.appendChild(descripcion);
         fila.appendChild(texto);
 
+        const campos = el('div');
+        campos.className = 'campos-agente';
+
+        const campoNombre = el('label');
+        campoNombre.appendChild(el('span', 'Nombre del botón'));
         const nombreBoton = el('input');
         nombreBoton.type = 'text';
         nombreBoton.value = f.etiqueta;
@@ -979,7 +991,22 @@
         nombreBoton.placeholder = 'Nombre del botón';
         nombreBoton.setAttribute('aria-label', 'Nombre del botón de ' + f.nombre);
         nombreBoton.addEventListener('input', () => { f.etiqueta = nombreBoton.value; });
-        fila.appendChild(nombreBoton);
+        campoNombre.appendChild(nombreBoton);
+        campos.appendChild(campoNombre);
+
+        const campoEspec = el('label');
+        campoEspec.appendChild(el('span', 'Especificación en WhatsApp'));
+        const especificacion = el('input');
+        especificacion.type = 'text';
+        especificacion.value = f.especificacion || '';
+        especificacion.maxLength = 72;
+        especificacion.placeholder = 'Especificación que se ve en WhatsApp';
+        especificacion.setAttribute('aria-label', 'Especificación de ' + f.nombre);
+        especificacion.addEventListener('input', () => { f.especificacion = especificacion.value; });
+        campoEspec.appendChild(especificacion);
+        campos.appendChild(campoEspec);
+
+        fila.appendChild(campos);
 
         const flechas = el('div');
         flechas.className = 'orden-botones';
@@ -1015,6 +1042,7 @@
         id: f.id,
         activa: f.activa,
         etiqueta: String(f.etiqueta || '').trim(),
+        especificacion: String(f.especificacion || '').trim(),
         orden: i + 1,
       }));
       const resp = await api('/api/crm/agentconfig', {

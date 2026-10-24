@@ -270,11 +270,23 @@ function adaptarAWhatsApp(textoCrudo) {
     if (etiquetas.length >= 2) {
       lineas.pop();
       while (lineas.length && !lineas[lineas.length - 1].trim()) lineas.pop();
-      opciones = etiquetas.slice(0, 10);
+      // la especificación sale de /crm/agentconfig; las opciones de una
+      // pregunta abierta no coinciden con ninguna función y van sin texto
+      const funciones = agentconfig.activas();
+      opciones = etiquetas.slice(0, 10).map((titulo) => {
+        const f = funciones.find((x) => x.etiqueta.toLowerCase() === titulo.toLowerCase());
+        return { titulo, descripcion: f ? f.especificacion : '' };
+      });
     }
   }
   const texto = lineas.join('\n').trim().replace(/\*\*([^*\n]+)\*\*/g, '*$1*');
   return { texto, opciones };
+}
+
+/** Etiqueta legible de una opción (las viejas sesiones guardaban texto). */
+function tituloOpcion(opcion) {
+  if (opcion && typeof opcion === 'object') return String(opcion.titulo || '');
+  return String(opcion || '');
 }
 
 /* ------------------------------------------------------------------- sesiones */
@@ -1515,7 +1527,7 @@ async function mensajeWhatsApp(numero, textoCrudo, adjunto) {
     // si el menú viaja como texto numerado, la respuesta «2» debe resolverse
     // con las mismas etiquetas que se acaban de mostrar
     if (saludoOpciones) {
-      s.ultimasOpciones = saludoOpciones;
+      s.ultimasOpciones = saludoOpciones.map(tituloOpcion);
       guardarSesion(s, 'aiagent');
     }
   }
@@ -1536,7 +1548,7 @@ async function mensajeWhatsApp(numero, textoCrudo, adjunto) {
   let entrada = texto || (adjunto ? '[La persona envió una foto]' : '');
   const opciones = Array.isArray(s.ultimasOpciones) ? s.ultimasOpciones : [];
   const m = /^(\d{1,2})[.)]?$/.exec(texto);
-  if (!adjunto && m && opciones[Number(m[1]) - 1]) entrada = opciones[Number(m[1]) - 1];
+  if (!adjunto && m && opciones[Number(m[1]) - 1]) entrada = tituloOpcion(opciones[Number(m[1]) - 1]);
 
   // el botón de atención humana entrega de una vez la línea del equipo: no
   // pasa por el modelo para que el enlace salga siempre
@@ -1550,7 +1562,7 @@ async function mensajeWhatsApp(numero, textoCrudo, adjunto) {
     agregarMsg(s, { rol: 'usuario', texto: entrada }, 'visitante');
     agregarMsg(s, { rol: 'ia', texto: respuesta }, 'aiagent');
     const adaptado = adaptarAWhatsApp(respuesta);
-    s.ultimasOpciones = adaptado.opciones || [];
+    s.ultimasOpciones = (adaptado.opciones || []).map(tituloOpcion);
     guardarSesion(s, 'aiagent');
     return { texto: adaptado.texto, opciones: adaptado.opciones, saludo, saludoOpciones };
   }
@@ -1561,7 +1573,7 @@ async function mensajeWhatsApp(numero, textoCrudo, adjunto) {
   try {
     const respuesta = await responder(s, entrada, pais, 'whatsapp', adjunto);
     const adaptado = adaptarAWhatsApp(respuesta);
-    s.ultimasOpciones = adaptado.opciones || [];
+    s.ultimasOpciones = (adaptado.opciones || []).map(tituloOpcion);
     guardarSesion(s, 'aiagent');
     return { texto: adaptado.texto, opciones: adaptado.opciones, saludo, saludoOpciones };
   } catch (err) {

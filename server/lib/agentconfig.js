@@ -5,13 +5,15 @@ const path = require('node:path');
 const config = require('./config');
 
 const RUTA = path.join(config.dataDir, 'agent-config.json');
-// WhatsApp corta los títulos de una lista en 24 caracteres: el mismo límite
-// aplica al nombre editable del botón
+// Límites de la lista interactiva de WhatsApp: título ≤24 y descripción ≤72.
+// El nombre editable del botón usa el título; la especificación, la descripción.
 const MAX_ETIQUETA = 24;
+const MAX_ESPECIFICACION = 72;
 
 // menú fijo del agente: el dueño decide en /crm/agentconfig cuáles se muestran,
-// en qué orden y con qué texto en el botón. La etiqueta es lo único editable;
-// el id mantiene la funcionalidad aunque el nombre cambie.
+// en qué orden y con qué texto y especificación en el botón. Lo editable son
+// la etiqueta y la especificación; el id mantiene la funcionalidad aunque cambie
+// el nombre.
 const FUNCIONES = [
   {
     id: 'conocer',
@@ -60,6 +62,12 @@ function etiquetaSegura(valor, porDefecto) {
   return t;
 }
 
+/** Texto que WhatsApp muestra bajo el nombre en la lista ('' = sin texto). */
+function especificacionSegura(valor, porDefecto) {
+  if (valor == null) return porDefecto;
+  return limpiar(valor).slice(0, MAX_ESPECIFICACION);
+}
+
 /** Config guardada, normalizada: ids conocidos, sin repetidos y orden 1..n. */
 function leer() {
   let crudo = null;
@@ -78,11 +86,18 @@ function leer() {
       activa: fila.activa !== false,
       orden: Number.isFinite(orden) ? orden : Number.MAX_SAFE_INTEGER,
       etiqueta: etiquetaSegura(fila.etiqueta, definicion(fila.id).etiqueta),
+      especificacion: especificacionSegura(fila.especificacion, definicion(fila.id).descripcion),
     });
   }
   const lista = FUNCIONES.map((f, i) => {
     const g = guardadas.get(f.id);
-    return g || { id: f.id, activa: true, orden: 1000 + i, etiqueta: f.etiqueta };
+    return g || {
+      id: f.id,
+      activa: true,
+      orden: 1000 + i,
+      etiqueta: f.etiqueta,
+      especificacion: f.descripcion,
+    };
   });
   lista.sort((a, b) => a.orden - b.orden);
   return lista.map((f, i) => ({
@@ -90,14 +105,21 @@ function leer() {
     activa: f.activa !== false,
     orden: i + 1,
     etiqueta: etiquetaSegura(f.etiqueta, definicion(f.id).etiqueta),
+    especificacion: especificacionSegura(f.especificacion, definicion(f.id).descripcion),
   }));
 }
 
-/** Lo que ve el CRM: definición completa + estado, orden y texto del botón. */
+/** Lo que ve el CRM: definición completa + estado, orden, botón y especificación. */
 function listar() {
   return leer().map((fila) => {
     const def = definicion(fila.id);
-    return { ...def, etiqueta: fila.etiqueta, activa: fila.activa, orden: fila.orden };
+    return {
+      ...def,
+      etiqueta: fila.etiqueta,
+      especificacion: fila.especificacion,
+      activa: fila.activa,
+      orden: fila.orden,
+    };
   });
 }
 
@@ -110,9 +132,10 @@ function menuOpciones() {
   return activas().map((f) => f.etiqueta);
 }
 
-/** Guarda orden, interruptores y nombres de botón. Devuelve { funciones } o { error }. */
+/** Guarda orden, interruptores, nombres y especificaciones. Devuelve { funciones } o { error }. */
 function guardar(filas) {
   if (!Array.isArray(filas)) return { error: 'Formato de configuración inválido.' };
+  const actuales = new Map(leer().map((f) => [f.id, f]));
   const vistos = new Set();
   const usadas = new Set();
   const limpias = [];
@@ -131,7 +154,18 @@ function guardar(filas) {
     const llave = etiqueta.toLowerCase();
     if (usadas.has(llave)) return { error: 'Dos funciones no pueden tener el mismo nombre de botón.' };
     usadas.add(llave);
-    limpias.push({ id, activa: fila.activa !== false, orden: limpias.length + 1, etiqueta });
+    const previa = actuales.get(id);
+    const especificacion = limpiar(
+      fila.especificacion == null
+        ? (previa ? previa.especificacion : def.descripcion)
+        : fila.especificacion
+    );
+    if (especificacion.length > MAX_ESPECIFICACION) {
+      return {
+        error: `La especificación de «${def.nombre}» supera los ${MAX_ESPECIFICACION} caracteres.`,
+      };
+    }
+    limpias.push({ id, activa: fila.activa !== false, orden: limpias.length + 1, etiqueta, especificacion });
   }
   if (limpias.length !== FUNCIONES.length) return { error: 'Faltan funciones en la configuración.' };
   fs.mkdirSync(path.dirname(RUTA), { recursive: true });
@@ -154,4 +188,13 @@ function expandirMenu(texto) {
   return opciones.length >= 2 ? `${limpio}\n[OPCIONES] ${opciones.join(' | ')}` : limpio;
 }
 
-module.exports = { FUNCIONES, MAX_ETIQUETA, listar, activas, menuOpciones, guardar, expandirMenu };
+module.exports = {
+  FUNCIONES,
+  MAX_ETIQUETA,
+  MAX_ESPECIFICACION,
+  listar,
+  activas,
+  menuOpciones,
+  guardar,
+  expandirMenu,
+};
