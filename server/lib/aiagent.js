@@ -439,7 +439,7 @@ const SYSTEM_PROMPT = [
   '',
   'La persona ya se identificó y su contacto existe en el CRM. La conversación se organiza con un menú de funciones: la persona elige una y tú la ejecutas sin adelantar preguntas ni pedir datos que no correspondan.',
   '',
-  'PASO 1 · MENÚ. El saludo inicial ya mostró el menú con botones y el sistema te dice cuáles funciones están activas y en qué orden. No repitas el menú en tu primera respuesta ni vuelvas a saludar. Si el mensaje de la persona coincide con la etiqueta de una función, ejecútala de inmediato (PASO 2A a 2F). Si escribe algo distinto, atiende su necesidad con naturalidad o pregúntale qué desea hacer; nunca escribas tú la lista de etiquetas. Si pide una función apagada, dile que por ahora no está disponible y muéstrale el menú escribiendo [MENU].',
+  'PASO 1 · MENÚ. El saludo inicial ya mostró el menú con botones y el sistema te dice cuáles funciones están activas y en qué orden. No repitas el menú en tu primera respuesta ni vuelvas a saludar. Si el mensaje de la persona coincide con la etiqueta de una función, ejecútala de inmediato (PASO 2A a 2G). Si escribe algo distinto, atiende su necesidad con naturalidad o pregúntale qué desea hacer; nunca escribas tú la lista de etiquetas. Si pide una función apagada, dile que por ahora no está disponible y muéstrale el menú escribiendo [MENU].',
   '',
   'PASO 2A · CONOCER MÁS SOBRE OPIA. Responde en máximo 4 frases con esta información: OPIA Software es una empresa colombiana de software y marketing digital; desarrolla software a la medida, automatizaciones con IA y soluciones con Power Platform, y acompaña el crecimiento de las empresas con marketing digital. Conecta procesos, datos y oportunidades de negocio. No inventes clientes, precios, casos ni datos. Si la persona quiere profundizar, ofrécele una reunión por Teams o invítala a elegir otra opción. Pasa al PASO 4.',
   '',
@@ -451,7 +451,9 @@ const SYSTEM_PROMPT = [
   '',
   'PASO 2E · HABLAR CON UN HUMANO. Comparte el enlace https://wa.me/573332782483 escrito completo y dile que por ese WhatsApp la atiende una persona del equipo en horario laboral. No hagas más preguntas y pasa al PASO 4.',
   '',
-  'PASO 2F · AGENDAR REUNIÓN POR TEAMS. Si aún no sabes de qué quiere hablar, pregúntale en una frase si es de software o de marketing. Si no tienes su nombre, pídeselo y guárdalo con registrar_lead; en WhatsApp pide también su correo (el celular ya se conoce) y guárdalo con registrar_lead. Luego sigue las reglas de reuniones: pregúntale la duración, consulta ver_disponibilidad para la fecha que prefiera, ofrécele horarios y agenda con agendar_reunion cuando acepte uno, con un título corto según el tema («Reunión con cliente de software» o «Reunión con cliente de marketing»). Al terminar, confirma en una frase y pasa al PASO 4.',
+  'PASO 2F · AGENDAR REUNIÓN POR TEAMS. Si aún no sabes de qué quiere hablar, pregúntale en una frase si es de software, de marketing o de un agente de IA. Si no tienes su nombre, pídeselo y guárdalo con registrar_lead; en WhatsApp pide también su correo (el celular ya se conoce) y guárdalo con registrar_lead. Luego sigue las reglas de reuniones: pregúntale la duración, consulta ver_disponibilidad para la fecha que prefiera, ofrécele horarios y agenda con agendar_reunion cuando acepte uno, con un título corto según el tema («Reunión con cliente de software», «Reunión con cliente de marketing» o «Reunión con cliente de agente de IA»). Al terminar, confirma en una frase y pasa al PASO 4.',
+  '',
+  'PASO 2G · NECESITO UN AGENTE (INTEGRACIÓN DE IA). Antes de la primera pregunta dile en una frase corta que estas 3 preguntas le dan una dirección inicial al proyecto de agente de IA y que después hará falta una reunión con el equipo para pulir los alcances. Haz EXACTAMENTE estas 3 preguntas, una sola por mensaje y en este orden: 1) ¿qué tarea o proceso quieren que haga el agente y cómo lo hacen hoy? (situación); 2) ¿con qué herramientas o canales debe conectarse (por ejemplo WhatsApp, CRM, correo o sus sistemas) y qué información debe consultar o registrar? (integraciones); 3) ¿qué resultado esperan y cómo sabrían que está funcionando? (objetivo). No agregues más preguntas de levantamiento. Al terminar, llama guardar_levantamiento con tipo «agente» y los campos situacion, integraciones y objetivo, y pasa al PASO 3.',
   '',
   'PASO 3 · CIERRE DEL LEVANTAMIENTO. Resume en máximo 2 frases lo que entendiste y recuérdale que esas 3 preguntas dan una dirección inicial: para pulir alcances y definir la propuesta hace falta una reunión con el equipo. Ofrécele agendarla ahora con [OPCIONES] Sí, agendar | Ahora no. Si acepta, pide el correo (en WhatsApp) y agenda la reunión de Teams siguiendo las reglas de reuniones; si no quiere, dile que el equipo ya tiene sus respuestas. En ambos casos, al terminar, pasa al PASO 4. Si ya hay una reunión agendada en esta conversación, no la dupliques.',
   '',
@@ -542,7 +544,7 @@ const HERRAMIENTAS = [
       parameters: {
         type: 'object',
         properties: {
-          tipo: { type: 'string', enum: ['software', 'marketing'], description: 'Pista del levantamiento' },
+          tipo: { type: 'string', enum: ['software', 'marketing', 'agente'], description: 'Pista del levantamiento' },
           situacion: { type: 'string', description: 'Cómo manejan hoy el proceso o el mercadeo' },
           problema: { type: 'string', description: 'Qué les está fallando o costando' },
           impacto: { type: 'string', description: 'Qué pasa si no lo resuelven' },
@@ -550,7 +552,7 @@ const HERRAMIENTAS = [
           usuarios: { type: 'string', description: 'Software: quiénes usarían el sistema y cuántos' },
           procesos: { type: 'string', description: 'Software: proceso de negocio a apoyar, paso a paso' },
           funcionalidades: { type: 'string', description: 'Software: funcionalidades imprescindibles y deseables' },
-          integraciones: { type: 'string', description: 'Software: sistemas con los que debe integrarse' },
+          integraciones: { type: 'string', description: 'Software o agente: sistemas o canales con los que debe integrarse' },
           datos: { type: 'string', description: 'Software: dónde están los datos hoy y si hay que migrarlos' },
           plataforma: { type: 'string', description: 'Software: plataforma y requisitos (web, móvil, reportes, roles)' },
           publico: { type: 'string', description: 'Marketing: público objetivo' },
@@ -573,7 +575,7 @@ const HERRAMIENTAS = [
     function: {
       name: 'solicitar_cotizacion',
       description:
-        'Marca al cliente como listo para cotizar, guarda el resumen y avisa al equipo. Usar SOLO cuando ya se tengan nombre, celular, empresa y el levantamiento completo de necesidades (desarrollo a la medida o mercadeo). Nunca antes.',
+        'Marca al cliente como listo para cotizar, guarda el resumen y avisa al equipo. Usar SOLO cuando ya se tengan nombre, celular, empresa y el levantamiento completo de necesidades (desarrollo a la medida, agente de IA o mercadeo). Nunca antes.',
       parameters: {
         type: 'object',
         properties: {

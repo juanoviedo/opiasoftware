@@ -1275,7 +1275,7 @@
       }
       tarjeta.hidden = false;
       const lev = levs[0];
-      const pista = lev.tipo === 'software' ? 'desarrollo de software' : lev.tipo === 'marketing' ? 'marketing' : 'pista sin definir';
+      const pista = lev.tipo === 'software' ? 'desarrollo de software' : lev.tipo === 'marketing' ? 'marketing' : lev.tipo === 'agente' ? 'agente de IA' : 'pista sin definir';
       const encabezado = el('p', 'Hecho por el agente de IA · ' + pista + ' · ' + fechaBonita(lev.modifiedon || lev.createdon || ''));
       encabezado.className = 'mini mut';
       encabezado.style.marginTop = '0';
@@ -1528,7 +1528,7 @@
       const levs = levantamientos || [];
       $('#tarjeta-levantamiento-contacto').hidden = !levs.length;
       levs.forEach((lev, i) => {
-        const pista = lev.tipo === 'software' ? 'desarrollo de software' : lev.tipo === 'marketing' ? 'marketing' : 'pista sin definir';
+        const pista = lev.tipo === 'software' ? 'desarrollo de software' : lev.tipo === 'marketing' ? 'marketing' : lev.tipo === 'agente' ? 'agente de IA' : 'pista sin definir';
         const det = el('details');
         det.className = 'conv';
         if (i === 0) det.open = true;

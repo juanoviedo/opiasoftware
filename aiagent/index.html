@@ -181,7 +181,7 @@
       if (etiquetas.length < 2) return { texto, opciones: null };
       lineas.pop();
       while (lineas.length && !lineas[lineas.length - 1].trim()) lineas.pop();
-      return { texto: lineas.join('\n'), opciones: etiquetas.slice(0, 6) };
+      return { texto: lineas.join('\n'), opciones: etiquetas.slice(0, 10) };
     }
 
     function ocultarOpciones() {

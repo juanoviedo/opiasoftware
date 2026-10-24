@@ -34,6 +34,12 @@ const FUNCIONES = [
     descripcion: 'Tres preguntas para dar dirección inicial a una estrategia de marketing.',
   },
   {
+    id: 'agente',
+    nombre: 'Levantamiento de necesidades de Agente de IA',
+    etiqueta: '🤖 Necesito un agente',
+    descripcion: 'Tres preguntas para dar dirección inicial a un agente de IA.',
+  },
+  {
     id: 'reunion',
     nombre: 'Agendar reunión por Teams',
     etiqueta: '📅 Agendar reunión Teams',

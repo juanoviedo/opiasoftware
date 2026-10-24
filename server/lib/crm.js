@@ -33,7 +33,7 @@ const LEVANTAMIENTO_FIELDS = [
   'publico', 'propuesta', 'canales', 'competencia', 'kpis', 'assets', 'inversionAds',
   'decisor', 'plazo', 'presupuesto',
 ];
-const TIPOS_LEVANTAMIENTO = ['software', 'marketing', 'otro'];
+const TIPOS_LEVANTAMIENTO = ['software', 'marketing', 'agente', 'otro'];
 // Etiquetas legibles: las usa el correo interno del agente y la ficha del CRM.
 const ETIQUETAS_LEVANTAMIENTO = {
   tipo: 'Pista', situacion: 'Situación actual', problema: 'Problema', impacto: 'Impacto si no se resuelve',
