@@ -1349,7 +1349,7 @@ async function cancelarReunionConCliente(s, args) {
 
 /* ------------------------------------------------------------ conversación */
 
-async function responder(s, texto, pais, canal, adjunto) {
+async function responder(s, texto, pais, canal, adjunto, conMenu) {
   agregarMsg(s, { rol: 'usuario', texto }, 'visitante');
   for (let i = 0; i < MAX_ITER_HERRAMIENTAS; i += 1) {
     const historial = historialApi(s);
@@ -1388,7 +1388,11 @@ async function responder(s, texto, pais, canal, adjunto) {
     if (!respuesta && i < MAX_ITER_HERRAMIENTAS - 1) continue;
     // el modelo solo escribe [MENU]; las etiquetas y el orden salen de la
     // configuración del CRM para que no pueda inventarlos
-    const final = agentconfig.expandirMenu(respuesta || 'Cuéntame un poco más.');
+    let final = respuesta || 'Cuéntame un poco más.';
+    // una sesión anterior al menú configurable lo ve al menos una vez, sin
+    // pisar las opciones propias de la respuesta
+    if (conMenu && !/\[OPCIONES\]/i.test(final)) final += '\n[MENU]';
+    final = agentconfig.expandirMenu(final);
     agregarMsg(s, { rol: 'ia', texto: final }, 'aiagent');
     return final;
   }
@@ -1434,7 +1438,15 @@ async function mensaje(guidPropuesto, texto, pais) {
   }
 
   try {
-    const respuesta = await responder(s, texto, pais);
+    // las conversaciones web anteriores al menú configurable lo reciben una
+    // sola vez al final de la respuesta
+    let conMenu = false;
+    if (!s.menuVersion) {
+      sesiones.actualizar(s.id, { menuVersion: 2 }, 'aiagent');
+      s.menuVersion = 2;
+      conMenu = agentconfig.menuOpciones().length >= 2;
+    }
+    const respuesta = await responder(s, texto, pais, undefined, undefined, conMenu);
     return { guid: s.id, texto: respuesta };
   } catch (err) {
     // sin respuesta del modelo se quita el turno del usuario: evita duplicados al reintentar
