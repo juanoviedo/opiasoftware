@@ -138,16 +138,25 @@ async function procesar(payload) {
       if (cambio.field !== 'messages') continue;
       const valor = cambio.value || {};
       const phoneNumberId = valor.metadata && valor.metadata.phone_number_id;
+      const contactosWa = valor.contacts || [];
       // el id de la cuenta y del número son la llave para operar la WABA
       console.log(`[whatsapp] cuenta ${entry.id || '—'} · número ${phoneNumberId || '—'}`);
       for (const msg of valor.messages || []) {
         if (!msg || !msg.id || yaProcesado(msg.id)) continue;
+        // con nombre de usuario, Meta omite el teléfono y manda un BSUID
+        const contactoWa =
+          contactosWa.find((c) => c.wa_id === msg.from || c.user_id === msg.from) || contactosWa[0] || {};
+        const de = String(msg.from || contactoWa.user_id || contactoWa.wa_id || '');
+        if (!de) {
+          console.error(`[whatsapp] mensaje ${msg.id}: sin identidad`);
+          continue;
+        }
         try {
-          await enFila(msg.from, () => atender(msg, phoneNumberId));
+          await enFila(de, () => atender(msg, phoneNumberId, de, contactoWa.username));
         } catch (err) {
           console.error(`[whatsapp] mensaje ${msg.id}:`, err.message);
           await enviar(
-            msg.from,
+            de,
             'Estoy teniendo un problema técnico en este momento. Escríbeme de nuevo en unos minutos, por favor.',
             phoneNumberId
           );
@@ -236,8 +245,8 @@ async function transcribirAudio(buffer, mime) {
   return transcribirLocal(buffer);
 }
 
-async function atender(msg, phoneNumberId) {
-  const de = String(msg.from || '');
+async function atender(msg, phoneNumberId, identidad, username) {
+  const de = String(identidad || msg.from || '');
   let texto = '';
   let adjunto = null;
   if (msg.type === 'text' && msg.text) texto = msg.text.body;
@@ -280,7 +289,7 @@ async function atender(msg, phoneNumberId) {
     return;
   }
 
-  const r = await aiagent.mensajeWhatsApp(de, texto, adjunto);
+  const r = await aiagent.mensajeWhatsApp(de, texto, adjunto, { username });
   // saludo con el menú de funciones configurado en el CRM
   if (r.saludo) await enviar(de, r.saludo, phoneNumberId, r.saludoOpciones);
   if (r.texto) {
@@ -399,16 +408,23 @@ async function enviar(numero, texto, phoneNumberId, opciones) {
     console.error('[whatsapp] sin token o phone_number_id para enviar');
     return { ok: false, error: 'sin configurar' };
   }
-  const destino = String(numero || '').replace(/\D/g, '');
+  // El wa_id de un teléfono llega solo con dígitos; un usuario con nombre de
+  // usuario llega como BSUID (p. ej. US.abc123) y se responde con `recipient`,
+  // no con `to`. Si se le quitan las letras se envía a un número inexistente.
+  const ident = String(numero || '').trim();
+  const digitos = ident.replace(/\D/g, '');
+  const esTelefono = /^[+\d\s()-]+$/.test(ident) && digitos.length >= 7 && digitos.length <= 15;
+  const destino = esTelefono ? digitos : ident;
   if (!destino) return { ok: false, error: 'número vacío' };
   const version = c.version || VERSION_POR_DEFECTO;
+  const direccion = esTelefono ? { to: destino } : { recipient: destino };
 
   const interactivo = interactivoValido(texto, opciones);
   if (interactivo) {
     const r = await enviarPayload(id, version, c.token, {
       messaging_product: 'whatsapp',
       recipient_type: 'individual',
-      to: destino,
+      ...direccion,
       type: 'interactive',
       interactive: interactivo,
     });
@@ -421,7 +437,7 @@ async function enviar(numero, texto, phoneNumberId, opciones) {
     const r = await enviarPayload(id, version, c.token, {
       messaging_product: 'whatsapp',
       recipient_type: 'individual',
-      to: destino,
+      ...direccion,
       type: 'text',
       text: { preview_url: false, body: parte },
     });

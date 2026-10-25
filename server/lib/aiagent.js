@@ -181,6 +181,12 @@ function telefonoE164(numero) {
   return d ? '+' + d : '';
 }
 
+function esTelefonoWa(valor) {
+  const limpio = String(valor || '').trim();
+  const d = soloDigitos(limpio);
+  return /^[+\d\s()-]+$/.test(limpio) && d.length >= 7 && d.length <= 15;
+}
+
 function buscarContactoPorTelefono(numero) {
   const d = soloDigitos(numero);
   if (d.length < 7) return null;
@@ -199,32 +205,43 @@ function buscarContactoPorTelefono(numero) {
 /**
  * Resuelve la conversación de un número de WhatsApp: busca el contacto por
  * celular o lo crea, reutiliza su última conversación (también si empezó por
- * la web) y devuelve el saludo cuando la sesión es nueva.
+ * la web) y devuelve el saludo cuando la sesión es nueva. Un usuario con
+ * nombre de usuario llega como BSUID (sin teléfono) y se identifica por él.
  */
 function sesionWhatsApp(numero) {
-  const d = soloDigitos(numero);
-  if (d.length < 7 || d.length > 15) return null;
+  const ident = String(numero || '').trim();
+  const esTelefono = esTelefonoWa(ident);
+  if (!esTelefono && (!ident || ident.length > 200)) return null;
 
-  let contacto = buscarContactoPorTelefono(d);
+  const d = soloDigitos(ident);
+  let contacto = esTelefono
+    ? buscarContactoPorTelefono(d)
+    : crm.contactos.todas().find((k) => k.waBsuid === ident) || null;
   if (!contacto) {
     const emp = empresaComodin();
-    const { datos, errores } = crm.validarContacto({
-      clienteId: emp.id,
-      nombres: NOMBRE_SIN_REGISTRAR,
-      celular: telefonoE164(d),
-    });
+    const { datos, errores } = crm.validarContacto(
+      esTelefono
+        ? { clienteId: emp.id, nombres: NOMBRE_SIN_REGISTRAR, celular: telefonoE164(d) }
+        : { clienteId: emp.id, nombres: NOMBRE_SIN_REGISTRAR, origen: 'WhatsApp (usuario)' }
+    );
     if (Object.keys(errores).length) {
       throw new Error('contacto por WhatsApp: ' + Object.values(errores).join(' '));
     }
     contacto = crm.contactos.agregar(
-      { id: crm.siguienteId('p'), ...datos, archivoOrigen: 'agente_ia' },
+      {
+        id: crm.siguienteId('p'),
+        ...datos,
+        ...(esTelefono ? {} : { waBsuid: ident }),
+        archivoOrigen: 'agente_ia',
+      },
       'aiagent'
     );
   }
   // un contacto que venía del correo sin celular adopta este número
-  if (!soloDigitos(contacto.celular)) {
+  if (esTelefono && !soloDigitos(contacto.celular)) {
     crm.contactos.actualizar(contacto.id, { celular: telefonoE164(d) }, 'aiagent');
   }
+  const sinNumero = !esTelefono && !soloDigitos(contacto.celular);
 
   let s = sesiones
     .todas()
@@ -239,14 +256,14 @@ function sesionWhatsApp(numero) {
         clienteId: contacto.clienteId,
         canal: 'whatsapp',
         whatsapp: true,
-        telefono: telefonoE164(d),
+        telefono: esTelefono ? telefonoE164(d) : '',
         menuVersion: 2,
       },
       'aiagent'
     );
     const saludo = saludoInicial(contacto);
     agregarMsg(s, { rol: 'ia', texto: saludo }, 'aiagent');
-    return { sesion: s, saludo, contacto, primeraVezWhatsApp: true };
+    return { sesion: s, saludo, contacto, primeraVezWhatsApp: true, sinNumero };
   }
   // una sesión vieja (por ejemplo, del chat web) no trae la marca: su primer
   // mensaje por WhatsApp se avisa al equipo una sola vez
@@ -256,7 +273,7 @@ function sesionWhatsApp(numero) {
     sesiones.actualizar(s.id, { whatsapp: true }, 'aiagent');
     s.whatsapp = true;
   }
-  return { sesion: s, saludo: null, contacto, primeraVezWhatsApp };
+  return { sesion: s, saludo: null, contacto, primeraVezWhatsApp, sinNumero };
 }
 
 /** WhatsApp usa *negrita* de un asterisco. Las opciones de la última línea
@@ -661,7 +678,7 @@ const LEV_CAMPOS_EMAIL = [
   'decisor', 'plazo', 'presupuesto',
 ];
 
-async function llamarModelo(mensajesApi, pais, canal) {
+async function llamarModelo(mensajesApi, pais, canal, sinNumero) {
   const c = leerConfig();
   const base = String(c.baseUrl).replace(/\/+$/, '');
   // el modelo necesita la fecha actual (Bogotá) para proponer reuniones de una
@@ -684,7 +701,14 @@ async function llamarModelo(mensajesApi, pais, canal) {
   // país probable por IP (caché de geoIP): sugerencia suave para el código de
   // teléfono y la zona horaria. Jamás se le dice a la persona de dónde sale.
   if (pais) sistema += ` Probable país de la persona: ${pais} (estimación del servidor; úsala solo como sugerencia amable).`;
-  if (canal === 'whatsapp') sistema += '\n\n' + PROMPT_WHATSAPP;
+  if (canal === 'whatsapp') {
+    sistema += '\n\n' + PROMPT_WHATSAPP;
+    // usuarios con nombre de usuario: Meta no comparte su teléfono
+    if (sinNumero) {
+      sistema +=
+        '\n\nEsta persona escribe desde un usuario de WhatsApp y su número de celular no es visible: NO tienes su celular, no digas que ya lo tienes guardado y, si lo necesitas, pídelo con amabilidad.';
+    }
+  }
   // el menú vive en la configuración del CRM: el modelo no puede inventar
   // funciones ni ignorar las apagadas
   const funcionesActivas = agentconfig.activas();
@@ -1365,7 +1389,7 @@ async function cancelarReunionConCliente(s, args) {
 
 /* ------------------------------------------------------------ conversación */
 
-async function responder(s, texto, pais, canal, adjunto, conMenu) {
+async function responder(s, texto, pais, canal, adjunto, conMenu, sinNumero) {
   agregarMsg(s, { rol: 'usuario', texto }, 'visitante');
   for (let i = 0; i < MAX_ITER_HERRAMIENTAS; i += 1) {
     const historial = historialApi(s);
@@ -1382,7 +1406,7 @@ async function responder(s, texto, pais, canal, adjunto, conMenu) {
         }
       }
     }
-    const data = await llamarModelo(historial, pais, canal);
+    const data = await llamarModelo(historial, pais, canal, sinNumero);
     const msg = data.choices && data.choices[0] && data.choices[0].message;
     if (!msg) throw new Error('respuesta vacía del modelo');
     if (Array.isArray(msg.tool_calls) && msg.tool_calls.length) {
@@ -1474,7 +1498,7 @@ async function mensaje(guidPropuesto, texto, pais) {
 }
 
 /** Aviso al equipo cuando un número escribe por primera vez al agente. */
-function avisarNuevoWhatsApp(contacto, texto, adjunto) {
+function avisarNuevoWhatsApp(contacto, texto, adjunto, username) {
   // por WhatsApp solo se conoce el número: nombre y empresa aparecen únicamente
   // si el celular ya correspondía a un contacto del CRM
   const nombreReal = [contacto.nombres, contacto.apellidos].filter(Boolean).join(' ').trim();
@@ -1484,14 +1508,17 @@ function avisarNuevoWhatsApp(contacto, texto, adjunto) {
   const primer =
     String(texto || '').trim() ||
     (adjunto && adjunto.tipo === 'imagen' ? '[Envió una foto]' : '[Envió un archivo]');
-  const celular = contacto.celular || '—';
+  const usuarioWa = String(username || '').replace(/^@/, '').trim();
+  const identidad = contacto.celular || (usuarioWa ? '@' + usuarioWa : 'usuario de WhatsApp');
   const base = String(config.publicUrl || '').replace(/\/+$/, '');
   crm
     .notificarEquipo({
-      subject: `Nuevo WhatsApp: ${celular}${nombre ? ' · ' + nombre : ''}`,
+      subject: `Nuevo WhatsApp: ${identidad}${nombre ? ' · ' + nombre : ''}`,
       text:
-        `Un número escribió por primera vez al WhatsApp del agente.\n\n` +
-        `Celular: ${celular}\n` +
+        `Alguien escribió por primera vez al WhatsApp del agente.\n\n` +
+        (contacto.celular ? `Celular: ${contacto.celular}\n` : '') +
+        (usuarioWa ? `Usuario de WhatsApp: @${usuarioWa}\n` : '') +
+        (!contacto.celular ? 'Su número no es visible para la empresa.\n' : '') +
         (nombre ? `Nombre: ${nombre}\n` : '') +
         (empresaReal ? `Empresa: ${empresaReal}\n` : '') +
         `Primer mensaje: ${primer.slice(0, 500)}\n\n` +
@@ -1506,7 +1533,7 @@ function avisarNuevoWhatsApp(contacto, texto, adjunto) {
  * descargada por el canal ({ tipo: 'imagen', mime, base64 }).
  * Devuelve { texto, opciones, saludo, saludoOpciones } o { error, status }.
  */
-async function mensajeWhatsApp(numero, textoCrudo, adjunto) {
+async function mensajeWhatsApp(numero, textoCrudo, adjunto, usuario) {
   if (!configurado()) return { error: 'El agente de IA no está configurado todavía.', status: 503 };
 
   const texto = H.clean(textoCrudo, 2000).trim();
@@ -1546,7 +1573,7 @@ async function mensajeWhatsApp(numero, textoCrudo, adjunto) {
     };
   }
 
-  if (resuelta.primeraVezWhatsApp) avisarNuevoWhatsApp(resuelta.contacto, texto, adjunto);
+  if (resuelta.primeraVezWhatsApp) avisarNuevoWhatsApp(resuelta.contacto, texto, adjunto, usuario && usuario.username);
 
   // respuesta numérica a la última lista de opciones (solo si no es una foto)
   let entrada = texto || (adjunto ? '[La persona envió una foto]' : '');
@@ -1572,10 +1599,10 @@ async function mensajeWhatsApp(numero, textoCrudo, adjunto) {
   }
 
   // el indicativo 57 ubica a la persona en Colombia para las reuniones
-  const pais = soloDigitos(numero).startsWith('57') ? 'Colombia' : null;
+  const pais = esTelefonoWa(numero) && soloDigitos(numero).startsWith('57') ? 'Colombia' : null;
 
   try {
-    const respuesta = await responder(s, entrada, pais, 'whatsapp', adjunto);
+    const respuesta = await responder(s, entrada, pais, 'whatsapp', adjunto, false, resuelta.sinNumero);
     const adaptado = adaptarAWhatsApp(respuesta);
     s.ultimasOpciones = (adaptado.opciones || []).map(tituloOpcion);
     guardarSesion(s, 'aiagent');
