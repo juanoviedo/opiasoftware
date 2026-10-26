@@ -1734,7 +1734,7 @@
       $('#em-tarjeta-envio').hidden = false;
       $('#em-envio-titulo').textContent = e.id + ' · ' + e.asunto;
       const estadosCampana = {
-        pendiente: 'En cola', programada: 'Programada', en_curso: 'Enviándose…', terminada: 'Terminada',
+        pendiente: 'En cola', en_cola: 'En cola · esperando', programada: 'Programada', en_curso: 'Enviándose…', terminada: 'Terminada',
         cancelada: 'Cancelada', interrumpida: 'Interrumpida',
       };
       const estadoSpam = el('span', estadosCampana[e.estado] || e.estado);
@@ -1886,12 +1886,24 @@
           }
         });
         encabezado.appendChild(ver);
-        if (e.estado === 'interrumpida') {
+        if (e.estado === 'terminada' && e.conteo && e.conteo.error) {
+          const reintentar = el('button', 'Reintentar fallidos (' + e.conteo.error + ')');
+          reintentar.className = 'chico primario';
+          reintentar.addEventListener('click', async () => {
+            if (!confirm('¿Volver a poner en cola los ' + e.conteo.error + ' correo(s) que fallaron? Quedan esperando: se envían máximo 20 por día, uno cada ~2 minutos.')) return;
+            const r = await api('/api/crm/emailmarketing/envios/' + e.id + '/reencolar', { method: 'POST' });
+            if (!r || !r.ok) { alert((r && r.error) || 'No se pudo reencolar.'); cargarHistorial(); return; }
+            alert('Listo: ' + r.reencolados + ' correo(s) volvieron a la cola. Pulsa "Reanudar" en la campaña cuando quieras que empiecen a salir.');
+            cargarHistorial();
+          });
+          encabezado.appendChild(reintentar);
+        }
+        if (e.estado === 'interrumpida' || e.estado === 'en_cola') {
           const pendientes = (e.conteo && e.conteo.pendiente) || 0;
           const reanudar = el('button', 'Reanudar');
           reanudar.className = 'chico primario';
           reanudar.addEventListener('click', async () => {
-            if (!confirm('¿Reanudar el envío? Se enviarán solo los ' + pendientes + ' correo(s) que quedaron en cola; los que ya salieron no se repiten.')) return;
+            if (!confirm('¿Reanudar el envío? Se enviarán solo los ' + pendientes + ' correo(s) que quedaron en cola; los que ya salieron no se repiten. Salen máximo 20 por día, uno cada ~2 minutos.')) return;
             const r = await api('/api/crm/emailmarketing/envios/' + e.id + '/reanudar', { method: 'POST' });
             if (!r || !r.ok) { alert((r && r.error) || 'No se pudo reanudar.'); cargarHistorial(); return; }
             const det = await api('/api/crm/emailmarketing/envios/' + e.id);

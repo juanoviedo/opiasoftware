@@ -11,12 +11,48 @@ const crm = require('./crm');
 const { quitarEtiquetas } = require('./mail');
 
 // Office365 rechaza más de ~30 mensajes por minuto por SMTP AUTH: la pausa
-// mantiene la campaña justo por debajo del tope.
-const PAUSA_MS = 2100;
+// mantiene la campaña justo por debajo del tope. El tope diario existe porque
+// Microsoft bloqueó el buzón del dueño tras una ráfaga de 200 correos fríos
+// en 21 min: la cola avanza sola hasta ese tope por día y sigue al día siguiente.
+const PAUSA_MS = Number(process.env.OPIA_EM_PAUSA_MS) || 2100;
+const MAX_ENVIOS_DIA = Number(process.env.OPIA_EM_MAX_DIA) || 20;
 const MAX_DESTINATARIOS = 500;
 const PIXEL_DIAS = 365;
 
 const envios = new crm.Tabla('envios.json');
+
+const RITMO_ARCHIVO = path.join(config.dataDir, 'crm', 'envios-ritmo.json');
+
+function hoyBogota() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date());
+}
+
+function leerRitmo() {
+  try {
+    return JSON.parse(fs.readFileSync(RITMO_ARCHIVO, 'utf8'));
+  } catch {
+    return {};
+  }
+}
+
+function enviadosHoy() {
+  const r = leerRitmo();
+  return r.fecha === hoyBogota() ? Number(r.enviados) || 0 : 0;
+}
+
+function cupoDisponible() {
+  return enviadosHoy() < MAX_ENVIOS_DIA;
+}
+
+function registrarEnvioHoy() {
+  const r = leerRitmo();
+  const estado =
+    r.fecha === hoyBogota()
+      ? { fecha: r.fecha, enviados: (Number(r.enviados) || 0) + 1 }
+      : { fecha: hoyBogota(), enviados: 1 };
+  fs.mkdirSync(path.dirname(RITMO_ARCHIVO), { recursive: true });
+  fs.writeFileSync(RITMO_ARCHIVO, JSON.stringify(estado));
+}
 
 /* Píxel de 1x1: cuando el cliente de correo del destinatario la descarga,
    sabemos que el correo llegó a un buzón real. */
@@ -226,18 +262,23 @@ function crearEnvio({ asunto, cuerpoHtml, contactoIds, de, programadoPara }, act
   if (programado) fila.programadoPara = programado;
   envios.agregar(fila, actor);
   if (programado) return { envio: envios.porId(fila.id) };
-  enCurso = fila.id;
-  enviarTodo(fila.id).catch((err) => {
-    console.error('[emailmarketing] campaña', fila.id, err.message);
+  arrancarEnvio(fila.id);
+  return { envio: envios.porId(fila.id) };
+}
+
+function arrancarEnvio(envioId) {
+  enCurso = envioId;
+  enviarTodo(envioId).catch((err) => {
+    console.error('[emailmarketing] campaña', envioId, err.message);
     enCurso = null;
   });
-  return { envio: envios.porId(fila.id) };
 }
 
 async function enviarTodo(envioId) {
   const envio = envios.porId(envioId);
   if (!envio) return;
   envios.actualizar(envioId, { estado: 'en_curso' }, 'emailmarketing');
+  let pausadaPorLimite = false;
   try {
     for (const d of envio.destinatarios) {
       if (d.estado !== 'pendiente') continue;
@@ -245,6 +286,11 @@ async function enviarTodo(envioId) {
         d.estado = 'omitido';
         d.detalle = 'campaña cancelada';
         continue;
+      }
+      // sin cupo del día la campaña queda 'pendiente': el tic la reanuda sola
+      if (!cupoDisponible()) {
+        pausadaPorLimite = true;
+        break;
       }
       const contacto = crm.contactos.porId(d.contactoId);
       if (!contacto || String(contacto.email || '').toLowerCase().trim() !== d.email) {
@@ -261,6 +307,7 @@ async function enviarTodo(envioId) {
           html: plantillaHtml(envio.html, pixelToken(d.contactoId, envioId)),
           de: envio.de,
         });
+        registrarEnvioHoy();
         if (r.ok) {
           d.estado = 'enviado';
           marcarContacto(d.contactoId, 'enviado');
@@ -274,7 +321,7 @@ async function enviarTodo(envioId) {
       if (!canceladas.has(envioId)) await new Promise((r) => setTimeout(r, PAUSA_MS));
     }
   } finally {
-    const estadoFinal = canceladas.has(envioId) ? 'cancelada' : 'terminada';
+    const estadoFinal = canceladas.has(envioId) ? 'cancelada' : pausadaPorLimite ? 'pendiente' : 'terminada';
     canceladas.delete(envioId);
     if (enCurso === envioId) enCurso = null;
     envios.actualizar(envioId, { estado: estadoFinal }, 'emailmarketing');
@@ -289,7 +336,19 @@ function cancelarEnvio(envioId) {
     envios.actualizar(envioId, { estado: 'cancelada' }, 'emailmarketing');
     return { ok: true };
   }
-  if (enCurso !== envioId) return { error: 'Esa campaña ya terminó.' };
+  if (enCurso !== envioId) {
+    // cola pausada por el tope diario: tampoco hay proceso corriendo
+    if (envio.estado === 'pendiente') {
+      for (const d of envio.destinatarios) {
+        if (d.estado !== 'pendiente') continue;
+        d.estado = 'omitido';
+        d.detalle = 'campaña cancelada';
+      }
+      envios.actualizar(envioId, { estado: 'cancelada', destinatarios: envio.destinatarios }, 'emailmarketing');
+      return { ok: true };
+    }
+    return { error: 'Esa campaña ya terminó.' };
+  }
   canceladas.add(envioId);
   return { ok: true };
 }
@@ -300,19 +359,42 @@ function cancelarEnvio(envioId) {
 function reanudarEnvio(envioId) {
   const envio = envios.porId(envioId);
   if (!envio) return { error: 'Campaña no encontrada.' };
-  if (envio.estado !== 'interrumpida') {
-    return { error: 'Solo se pueden reanudar las campañas interrumpidas por un reinicio del servidor.' };
+  if (envio.estado !== 'interrumpida' && envio.estado !== 'en_cola') {
+    return { error: 'Solo se pueden reanudar las campañas interrumpidas o las que están en cola.' };
   }
   if (enCurso) return { error: 'Ya hay una campaña enviándose. Espera a que termine o cancélala.' };
   const pendientes = envio.destinatarios.filter((d) => d.estado === 'pendiente').length;
   if (!pendientes) return { error: 'No quedan correos por enviar en esa campaña.' };
   envios.actualizar(envioId, { estado: 'pendiente' }, 'emailmarketing');
-  enCurso = envioId;
-  enviarTodo(envioId).catch((err) => {
-    console.error('[emailmarketing] campaña', envioId, err.message);
-    enCurso = null;
-  });
+  arrancarEnvio(envioId);
   return { ok: true, pendientes };
+}
+
+/* Los rechazos por el bloqueo del buzón (o por reputación) no son culpa del
+   destinatario: esos correos vuelven a la cola. Los no_existe se quedan como
+   están (la dirección está muerta y ya se le vació el correo al contacto). */
+function reencolarFallidos(envioId) {
+  const envio = envios.porId(envioId);
+  if (!envio) return { error: 'Campaña no encontrada.' };
+  if (envio.estado === 'en_curso' || envio.estado === 'pendiente' || envio.estado === 'programada') {
+    return { error: 'Esa campaña todavía está activa. Espera a que termine.' };
+  }
+  let reencolados = 0;
+  for (const d of envio.destinatarios || []) {
+    if (d.estado !== 'error') continue;
+    d.estado = 'pendiente';
+    d.detalle = '';
+    delete d.abiertoEn;
+    reencolados += 1;
+    const k = crm.contactos.porId(d.contactoId);
+    if (k && k.emailmarketing_status === 'error') {
+      crm.contactos.actualizar(k.id, { emailmarketing_status: '' }, 'emailmarketing');
+    }
+  }
+  if (!reencolados) return { error: 'Esa campaña no tiene correos fallidos para reintentar.' };
+  // queda 'en_cola': no sale sola; el dueño la reanuda cuando el buzón esté libre
+  envios.actualizar(envioId, { destinatarios: envio.destinatarios, estado: 'en_cola' }, 'emailmarketing');
+  return { ok: true, reencolados };
 }
 
 function eliminarEnvio(envioId) {
@@ -329,8 +411,10 @@ function eliminarEnvio(envioId) {
 
 /* Las campañas programadas viven en la tabla: un tic cada 15 s revisa si ya es
    la hora. Si el servidor se reinicia (los despliegues lo hacen seguido), la
-   campaña sobrevive al reinicio y sale igual, apenas haya turno libre. */
-function ticProgramadas() {
+   campaña sobrevive al reinicio y sale igual, apenas haya turno libre. El mismo
+   tic reanuda las campañas 'pendiente': las que el tope diario pausó a mitad
+   siguen solas al día siguiente, sin que nadie esté mirando. */
+function ticEnvios() {
   if (enCurso) return;
   const ahora = Date.now();
   const lista = envios
@@ -340,23 +424,23 @@ function ticProgramadas() {
   for (const e of lista) {
     if (e.estado !== 'programada') continue;
     if (Date.parse(e.programadoPara || '') > ahora) continue;
-    enCurso = e.id;
-    enviarTodo(e.id).catch((err) => {
-      console.error('[emailmarketing] campaña', e.id, err.message);
-      enCurso = null;
-    });
+    arrancarEnvio(e.id);
     return; // de una en una
   }
+  if (!cupoDisponible()) return;
+  const cola = lista.filter((e) => e.estado === 'pendiente');
+  if (cola.length) arrancarEnvio(cola[0].id);
 }
-const relojProgramadas = setInterval(ticProgramadas, 15_000);
+const relojEnvios = setInterval(ticEnvios, 15_000);
 // los scripts que cargan la librería (importadores, pruebas) deben poder terminar
-relojProgramadas.unref();
+relojEnvios.unref();
 
-/* La cola vive en memoria: si el servidor se apaga a mitad de campaña, la
-   marca como interrumpida para que la interfaz no espere para siempre. */
+/* La cola vive en la tabla: una campaña 'pendiente' (pausada por el tope diario
+   o por un reinicio justo al crearla) sigue sola vía ticEnvios. Solo las que
+   estaban 'en_curso' quedan marcadas como interrumpidas para avisar en la UI. */
 function recuperarInterrumpidas() {
   for (const e of envios.todas()) {
-    if (e.estado === 'en_curso' || e.estado === 'pendiente') {
+    if (e.estado === 'en_curso') {
       envios.actualizar(e.id, { estado: 'interrumpida' }, 'emailmarketing');
     }
   }
@@ -450,6 +534,7 @@ module.exports = {
   crearEnvio,
   cancelarEnvio,
   reanudarEnvio,
+  reencolarFallidos,
   eliminarEnvio,
   listarEnvios,
   detalleEnvio,

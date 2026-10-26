@@ -781,6 +781,11 @@ async function handleCrmApi(req, res, pathname, url) {
       if (r.error) return H.sendJson(res, r.error === 'Campaña no encontrada.' ? 404 : 409, { ok: false, error: r.error });
       return H.sendJson(res, 200, { ok: true, pendientes: r.pendientes });
     }
+    if (partes[4] && partes[5] === 'reencolar' && metodo === 'POST') {
+      const r = emailmkt.reencolarFallidos(partes[4]);
+      if (r.error) return H.sendJson(res, r.error === 'Campaña no encontrada.' ? 404 : 409, { ok: false, error: r.error });
+      return H.sendJson(res, 200, { ok: true, reencolados: r.reencolados });
+    }
     if (partes[4] && !partes[5] && metodo === 'DELETE') {
       const r = emailmkt.eliminarEnvio(partes[4]);
       if (r.error) return H.sendJson(res, r.error === 'Campaña no encontrada.' ? 404 : 409, { ok: false, error: r.error });
