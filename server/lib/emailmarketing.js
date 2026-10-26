@@ -154,9 +154,26 @@ function marcarReboteTardio(email, estado, detalle) {
 let enCurso = null; // id del envío que se está mandando
 const canceladas = new Set();
 
+/* Un href sin esquema ("wa.me/...") es un enlace relativo para el buzón: lo
+   muestra como dirección rota ("[wa.me/...]texto") en vez de hacerlo clicable.
+   Se completa con https:// al crear la campaña, venga como venga del editor. */
+function enlacesAbsolutos(html) {
+  return String(html || '').replace(
+    /(href\s*=\s*)(["'])([^"']*)\2/gi,
+    (todo, prefijo, comilla, url) => {
+      const limpia = url.trim();
+      if (!limpia) return todo;
+      if (/^[a-z][a-z0-9+.-]*:/i.test(limpia)) return todo; // https:, mailto:, tel:…
+      if (limpia.startsWith('//')) return prefijo + comilla + 'https:' + limpia + comilla;
+      if (limpia.startsWith('/') || limpia.startsWith('#')) return todo;
+      return prefijo + comilla + 'https://' + limpia + comilla;
+    }
+  );
+}
+
 function crearEnvio({ asunto, cuerpoHtml, contactoIds, de, programadoPara }, actor) {
   const titulo = String(asunto || '').trim();
-  const cuerpo = String(cuerpoHtml || '').trim();
+  const cuerpo = enlacesAbsolutos(cuerpoHtml).trim();
   if (titulo.length < 2) return { error: 'Escribe el asunto del correo.' };
   if (cuerpo.length < 2) return { error: 'Escribe el cuerpo del correo.' };
   const cuando = String(programadoPara || '').trim();
