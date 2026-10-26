@@ -277,6 +277,27 @@ function cancelarEnvio(envioId) {
   return { ok: true };
 }
 
+/* Un despliegue puede apagar el servidor a mitad de campaña y la fila queda
+   'interrumpida'. enviarTodo solo procesa destinatarios 'pendiente', así que
+   reanudar es seguro: nunca reenvía lo que ya salió o falló. */
+function reanudarEnvio(envioId) {
+  const envio = envios.porId(envioId);
+  if (!envio) return { error: 'Campaña no encontrada.' };
+  if (envio.estado !== 'interrumpida') {
+    return { error: 'Solo se pueden reanudar las campañas interrumpidas por un reinicio del servidor.' };
+  }
+  if (enCurso) return { error: 'Ya hay una campaña enviándose. Espera a que termine o cancélala.' };
+  const pendientes = envio.destinatarios.filter((d) => d.estado === 'pendiente').length;
+  if (!pendientes) return { error: 'No quedan correos por enviar en esa campaña.' };
+  envios.actualizar(envioId, { estado: 'pendiente' }, 'emailmarketing');
+  enCurso = envioId;
+  enviarTodo(envioId).catch((err) => {
+    console.error('[emailmarketing] campaña', envioId, err.message);
+    enCurso = null;
+  });
+  return { ok: true, pendientes };
+}
+
 function eliminarEnvio(envioId) {
   const envio = envios.porId(envioId);
   if (!envio) return { error: 'Campaña no encontrada.' };
@@ -411,6 +432,7 @@ module.exports = {
   MAX_DESTINATARIOS,
   crearEnvio,
   cancelarEnvio,
+  reanudarEnvio,
   eliminarEnvio,
   listarEnvios,
   detalleEnvio,

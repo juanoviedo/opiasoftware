@@ -1886,6 +1886,24 @@
           }
         });
         encabezado.appendChild(ver);
+        if (e.estado === 'interrumpida') {
+          const pendientes = (e.conteo && e.conteo.pendiente) || 0;
+          const reanudar = el('button', 'Reanudar');
+          reanudar.className = 'chico primario';
+          reanudar.addEventListener('click', async () => {
+            if (!confirm('¿Reanudar el envío? Se enviarán solo los ' + pendientes + ' correo(s) que quedaron en cola; los que ya salieron no se repiten.')) return;
+            const r = await api('/api/crm/emailmarketing/envios/' + e.id + '/reanudar', { method: 'POST' });
+            if (!r || !r.ok) { alert((r && r.error) || 'No se pudo reanudar.'); cargarHistorial(); return; }
+            const det = await api('/api/crm/emailmarketing/envios/' + e.id);
+            if (det.ok) {
+              pintarEnvio(det.envio);
+              vigilarEnvio(e.id);
+              $('#em-tarjeta-envio').scrollIntoView();
+            }
+            cargarHistorial();
+          });
+          encabezado.appendChild(reanudar);
+        }
         const borrar = el('button', 'Borrar');
         borrar.className = 'chico peligro';
         borrar.addEventListener('click', () => borrarCampana(e));
