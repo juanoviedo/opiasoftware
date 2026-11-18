@@ -1,8 +1,8 @@
 #!/bin/bash
-# Despliegue de opiasoftware.com en el servidor Debian (/opt/opiasoftware).
+# Despliegue de opiasoftware.com en el servidor Debian (/opt/oviserver/proyectos/opiasoftware).
 # Lo ejecuta opiasoftware-deploy.timer cada 5 minutos como root.
 set -euo pipefail
-cd /opt/opiasoftware
+cd /opt/oviserver/proyectos/opiasoftware
 exec 9>/run/lock/opiasoftware-deploy.lock
 flock -n 9 || exit 0
 

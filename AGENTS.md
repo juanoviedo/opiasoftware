@@ -59,3 +59,8 @@ No hay tests automatizados ni linter: verificar con curl (`/api/health`, `/priva
 - Servidor: Node puro, CommonJS, `'use strict'`, cero dependencias npm.
 - Comentarios solo cuando explican el *porqué* (restricciones ocultas, decisiones no obvias), en español.
 - El servidor inyecta tags solo si la página no los trae horneados (`ALREADY_INJECTED` en `lib/static.js`): una sola fuente de verdad por página.
+
+
+## Servidor de producción: encontrar su IP
+
+El servidor Debian (`debianhome`, usuario `gost`) obtiene su IP por DHCP y puede cambiar. Para saber la IP LAN actual desde cualquier lugar: `curl -s https://ip.opiasoftware.com/` (responde solo la IP, p. ej. `192.168.1.2`). Acceso SSH: `ssh -i ~/.ssh/debian_codex gost@<ip>`. El servicio que responde vive en `/opt/oviserver/infra/ipapi/` del servidor (unidad systemd `ipapi.service`, puerto loopback 8411) y sale por el túnel de Cloudflare; expone únicamente la IP interna.
